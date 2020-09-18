@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="BranchesTreeState">
+    <expand>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="LOCAL_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+    </expand>
+    <select />
+  </component>
+  <component name="CMakeRunConfigurationManager" shouldGenerate="true" shouldDeleteObsolete="true">
+    <generated />
+  </component>
+  <component name="CMakeSettings">
+    <configurations>
+      <configuration PROFILE_NAME="Debug" CONFIG_NAME="Debug" />
+    </configurations>
+  </component>
+  <component name="CargoProjects">
+    <cargoProject FILE="$PROJECT_DIR$/Cargo.toml" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="4b17c99f-758c-48ea-b0b5-e3d26e51a8dc" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/language.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/examples/lexer/linear_tokens" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/examples/lexer/tree_tokens" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/error.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/file.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/syntax/ast.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/syntax/mod.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/syntax/parse/mod.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/syntax/parse/parser.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/syntax/token.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/syntax/tokenizer/mod.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/tests/mod.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/tests/syntax/mod.rs" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Rust File" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="MacroExpansionManager">
+    <option name="directoryName" value="n457c8fm" />
+  </component>
+  <component name="ProjectId" id="1hUAaOfvKXQBIJj5RQbmu3qoiOf" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="ASKED_SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="cf.first.check.clang-format" value="false" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="org.rust.cargo.project.model.PROJECT_DISCOVERY" value="true" />
+    <property name="settings.editor.selected.configurable" value="language.rust" />
+  </component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\Projects\language\src" />
+      <recent name="D:\Projects\language\bin" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Cargo Command.Run">
+    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Run" type="CargoCommandRunConfiguration" factoryName="Cargo Command" nameIsGenerated="true">
+      <option name="channel" value="DEFAULT" />
+      <option name="command" value="run" />
+      <option name="allFeatures" value="false" />
+      <option name="emulateTerminal" value="false" />
+      <option name="backtrace" value="SHORT" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <envs />
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Test syntax::tokenizer::tests::hierarchy_tokenizer" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
+      <option name="channel" value="DEFAULT" />
+      <option name="command" value="test --package language --lib syntax::tokenizer::tests::hierarchy_tokenizer -- --exact" />
+      <option name="allFeatures" value="false" />
+      <option name="emulateTerminal" value="false" />
+      <option name="backtrace" value="SHORT" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <envs />
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Test syntax::tokenizer::tests::multi_tokens_tokenizer" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
+      <option name="channel" value="DEFAULT" />
+      <option name="command" value="test --package language --lib syntax::tokenizer::tests::multi_tokens_tokenizer -- --exact" />
+      <option name="allFeatures" value="false" />
+      <option name="emulateTerminal" value="false" />
+      <option name="backtrace" value="SHORT" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <envs />
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Test syntax::tokenizer::tests::test_simple_op_tokenizer" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
+      <option name="channel" value="DEFAULT" />
+      <option name="command" value="test --package language --lib syntax::tokenizer::tests::test_simple_op_tokenizer -- --exact" />
+      <option name="allFeatures" value="false" />
+      <option name="emulateTerminal" value="false" />
+      <option name="backtrace" value="SHORT" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <envs />
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Test tokenizer" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+      <option name="channel" value="DEFAULT" />
+      <option name="command" value="test --package language --lib syntax::tokenizer" />
+      <option name="allFeatures" value="false" />
+      <option name="emulateTerminal" value="false" />
+      <option name="backtrace" value="SHORT" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <envs />
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Test tokenizer::tests" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
+      <option name="channel" value="DEFAULT" />
+      <option name="command" value="test --package language --lib syntax::tokenizer::tests" />
+      <option name="allFeatures" value="false" />
+      <option name="emulateTerminal" value="false" />
+      <option name="backtrace" value="SHORT" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <envs />
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Cargo Command.Test syntax::tokenizer::tests::hierarchy_tokenizer" />
+        <item itemvalue="Cargo Command.Test syntax::tokenizer::tests::multi_tokens_tokenizer" />
+        <item itemvalue="Cargo Command.Test tokenizer::tests" />
+        <item itemvalue="Cargo Command.Test syntax::tokenizer::tests::test_simple_op_tokenizer" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="RustProjectSettings">
+    <option name="toolchainHomeDirectory" value="$USER_HOME$/.cargo/bin" />
+    <option name="version" value="2" />
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="4b17c99f-758c-48ea-b0b5-e3d26e51a8dc" name="Default Changelist" comment="" />
+      <created>1600055360014</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1600055360014</updated>
+      <workItem from="1600055361253" duration="31961000" />
+      <workItem from="1600320432299" duration="3809000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+    <option name="oldMeFiltersMigrated" value="true" />
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="733" y="388" width="1094" height="717" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1600055397288">
+      <screen x="0" y="30" width="2560" height="1410" />
+    </state>
+    <state x="733" y="388" width="1094" height="717" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600055397288" />
+    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1600225188318">
+      <screen x="0" y="30" width="2560" height="1410" />
+    </state>
+    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600225188318" />
+    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser" timestamp="1600307504975">
+      <screen x="0" y="30" width="2560" height="1410" />
+    </state>
+    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600307504975" />
+    <state x="1059" y="500" key="FileChooserDialogImpl" timestamp="1600055373613">
+      <screen x="0" y="30" width="2560" height="1410" />
+    </state>
+    <state x="1059" y="500" key="FileChooserDialogImpl/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600055373613" />
+    <state width="2515" height="495" key="GridCell.Tab.0.bottom" timestamp="1600384295609">
+      <screen x="0" y="30" width="2560" height="1410" />
+    </state>
+    <state width="1875" height="402" key="GridCell.Tab.0.bottom/0.30.1920.1050@0.30.1920.1050" timestamp="1600113795497" />
+    <state width="2515" height="495" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600384295609" />
+    <state width="2515" height="495" key="GridCell.Tab.0.center" timestamp="1600384295609">
+      <screen x="0" y="30" width="2560" height="1410" />
+    </state>
+    <state width="1875" height="402" key="GridCell.Tab.0.center/0.30.1920.1050@0.30.1920.1050" timestamp="1600113795497" />
+    <state width="2515" height="495" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600384295609" />
+    <state width="2515" height="495" key="GridCell.Tab.0.left" timestamp="1600384295609">
+      <screen x="0" y="30" width="2560" height="1410" />
+    </state>
+    <state width="1875" height="402" key="GridCell.Tab.0.left/0.30.1920.1050@0.30.1920.1050" timestamp="1600113795497" />
+    <state width="2515" height="495" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600384295609" />
+    <state width="2515" height="495" key="GridCell.Tab.0.right" timestamp="1600384295609">
+      <screen x="0" y="30" width="2560" height="1410" />
+    </state>
+    <state width="1875" height="402" key="GridCell.Tab.0.right/0.30.1920.1050@0.30.1920.1050" timestamp="1600113795497" />
+    <state width="2515" height="495" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600384295609" />
+    <state width="2515" height="495" key="GridCell.Tab.1.bottom" timestamp="1600384295610">
+      <screen x="0" y="30" width="2560" height="1410" />
+    </state>
+    <state width="2515" height="495" key="GridCell.Tab.1.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600384295610" />
+    <state width="2515" height="495" key="GridCell.Tab.1.center" timestamp="1600384295610">
+      <screen x="0" y="30" width="2560" height="1410" />
+    </state>
+    <state width="2515" height="495" key="GridCell.Tab.1.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600384295610" />
+    <state width="2515" height="495" key="GridCell.Tab.1.left" timestamp="1600384295610">
+      <screen x="0" y="30" width="2560" height="1410" />
+    </state>
+    <state width="2515" height="495" key="GridCell.Tab.1.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600384295610" />
+    <state width="2515" height="495" key="GridCell.Tab.1.right" timestamp="1600384295610">
+      <screen x="0" y="30" width="2560" height="1410" />
+    </state>
+    <state width="2515" height="495" key="GridCell.Tab.1.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600384295610" />
+    <state x="780" y="378" key="SettingsEditor" timestamp="1600146337543">
+      <screen x="0" y="30" width="2560" height="1410" />
+    </state>
+    <state x="780" y="378" key="SettingsEditor/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600146337543" />
+    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup" timestamp="1600224773022">
+      <screen x="0" y="30" width="2560" height="1410" />
+    </state>
+    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600224773022" />
+  </component>
+</project>
