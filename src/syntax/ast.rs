@@ -1,6 +1,9 @@
-use crate::syntax::{FilePos, Span};
 use std::fmt::Debug;
 use std::sync::atomic::{AtomicUsize, Ordering};
+
+use ordered_float::OrderedFloat;
+
+use crate::syntax::{FilePos, Position, Span};
 
 macro_rules! define_op {
     ($($name:literal => $en:ident), *, $ty:ident) => {
@@ -64,7 +67,7 @@ pub struct Ident {
 #[derive(Debug, Clone)]
 pub enum ExprKind {
     Integer(u64),
-    Float(f64),
+    Float(OrderedFloat<f64>),
     String(String),
     Char(char),
     Name(Identifier),
@@ -120,6 +123,15 @@ impl<Kind: NodeType> AstNode<Kind> {
             id: Self::next_id(),
             span,
             position,
+            kind,
+        }
+    }
+
+    pub fn new_with_position(kind: Kind, position: Position) -> Self {
+        Self {
+            id: Self::next_id(),
+            span: position.span(),
+            position: position.file_pos(),
             kind,
         }
     }

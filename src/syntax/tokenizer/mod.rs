@@ -1,18 +1,16 @@
 use std::str::Chars;
 
 use crate::error::Error;
-use crate::file::FileId;
+use crate::file::{File, FileId};
 use crate::syntax::token::{Control, Keyword, Operator, Token, TokenTree, TokenTreeKind};
 use crate::syntax::{Coord, FilePos, Position, Span};
 use std::convert::TryFrom;
 
 pub struct Lexer<'src> {
-    /// text being tokenized.
-    source: &'src str,
+    /// the file to be processed
+    file: &'src File,
     /// an iterator over the characters in the string.
     chars: Chars<'src>,
-    /// identifies the current file
-    fid: FileId,
     /// current character
     ch: Option<char>,
     /// the accumulated span of the current scan
@@ -24,14 +22,13 @@ pub struct Lexer<'src> {
 }
 
 impl<'src> Lexer<'src> {
-    pub fn new(source: &'src str, fid: FileId) -> Self {
+    pub fn new(file: &'src File) -> Self {
         let mut lexer = Self {
-            source,
-            chars: source.chars(),
+            file,
+            chars: file.content().chars(),
             ch: None,
             span: Span(0, 0),
             file_pos: FilePos::default(),
-            fid,
             level: 0,
         };
         lexer.init();
@@ -40,7 +37,7 @@ impl<'src> Lexer<'src> {
     }
 
     pub fn file(&self) -> FileId {
-        self.fid
+        self.file.id()
     }
 
     fn init(&mut self) {
@@ -85,7 +82,7 @@ impl<'src> Lexer<'src> {
             self.level,
             source,
             TokenTreeKind::Token(token),
-            Position::new(span, file_pos, self.fid),
+            Position::new(span, file_pos, self.file()),
         )
     }
 
@@ -117,7 +114,7 @@ impl<'src> Lexer<'src> {
 
     /// retrieves the sub string of the current span
     fn examine_span(&self) -> &'src str {
-        &self.source[self.span.0..self.span.1]
+        &self.file.content()[self.span.0..self.span.1]
     }
 
     /// If is use this interface, I do not need the Error token.
@@ -202,7 +199,7 @@ impl<'src> Lexer<'src> {
             return Err(Error::unexpected_eof().with_position(Position::new(
                 self.span,
                 self.file_pos,
-                self.fid,
+                self.file(),
             )));
         }
 
@@ -212,7 +209,7 @@ impl<'src> Lexer<'src> {
             '\\' => '\\' as u8,
             _ => {
                 return Err(Error::unknown_escape_character(self.ch.unwrap())
-                    .with_position(Position::new(self.span, self.file_pos, self.fid)))
+                    .with_position(Position::new(self.span, self.file_pos, self.file())))
             }
         };
         Ok(val as char)
@@ -246,7 +243,7 @@ impl<'src> Lexer<'src> {
         if self.ch.is_none() {
             println!("{}", self.level);
             if self.level != 0 {
-                let position = Position::new(self.span, self.file_pos, self.fid);
+                let position = Position::new(self.span, self.file_pos, self.file());
                 Err(Error::uneven_pairs().with_position(position))
             } else {
                 Ok(self.complete_token(Token::Eof))
@@ -299,9 +296,9 @@ impl<'src> Lexer<'src> {
                             let position = Position::new(
                                 Span(span.0, self.span.0),
                                 FilePos::new(file_pos.start, self.file_pos.start),
-                                self.fid,
+                                self.file(),
                             );
-                            let source = &self.source[position.span.0..position.span.1];
+                            let source = &self.file.content()[position.span.0..position.span.1];
                             return Ok(TokenTree::new(
                                 self.level,
                                 source,
@@ -435,7 +432,7 @@ impl<'src> Lexer<'src> {
                     return Err(Error::invalid_character(ch).with_position(Position::new(
                         self.span,
                         self.file_pos,
-                        self.fid,
+                        self.file(),
                     )));
                 }
             };
@@ -451,9 +448,9 @@ pub struct TokenCursor<'src> {
 }
 
 impl<'src> TokenCursor<'src> {
-    pub fn new(source: &'src str, fid: FileId) -> Self {
+    pub fn new(file: &'src File) -> Self {
         Self {
-            lexer: Lexer::new(source, fid),
+            lexer: Lexer::new(file),
             is_eof: false,
         }
     }

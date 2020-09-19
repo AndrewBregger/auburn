@@ -122,6 +122,34 @@ impl<'a> Token<'a> {
     pub fn is_eof(&self) -> bool {
         *self == Token::Eof
     }
+
+    pub fn is_op(&self) -> bool {
+        match self {
+            Self::Op(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_ident(&self) -> bool {
+        match self {
+            Self::Ident(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_literal(&self) -> bool {
+        match self {
+            Self::Float(_) | Self::Integer(_) | Self::String(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_keyword(&self) -> bool {
+        match self {
+            Self::Kw(_) => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -167,8 +195,35 @@ impl<'a> TokenTree<'a> {
         }
     }
 
+    pub fn position(&self) -> Position {
+        self.position
+    }
+
+    pub fn kind(&'a self) -> &TokenTreeKind<'a> {
+        &self.kind
+    }
+
+    pub fn to_kind(self) -> TokenTreeKind<'a> {
+        self.kind
+    }
+
+    pub fn is_pair(&self) -> bool {
+        match self.kind {
+            TokenTreeKind::Pair(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_token(&self) -> bool {
+        !self.is_pair()
+    }
+
     pub fn has_eof(&self) -> bool {
         self.kind.has_eof()
+    }
+
+    pub fn is_eof(&self) -> bool {
+        self.kind.is_eof()
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::syntax::Position;
+use crate::syntax::{Position, Token, TokenTree};
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum ErrorKind {
@@ -16,6 +16,9 @@ pub enum ErrorKind {
 
     #[error("Uneven pair")]
     UnevenPair,
+
+    #[error("unexpected token: expected '{0}' found '{1}'")]
+    UexpectedToken(String, String),
 
     // #[error("expecting keyword '{}' found '{}'", expected.to_string(), found.text())]
     // ExpectedKeyword {
@@ -119,6 +122,13 @@ impl<'src> Error {
         Self {
             position: Position::default(),
             kind: ErrorKind::UnevenPair,
+        }
+    }
+
+    pub fn unexpected_token(expected: Token, found: &TokenTree) -> Self {
+        Self {
+            position: Position::default(),
+            kind: ErrorKind::UexpectedToken(format!("{}", expected), format!("{}", found)),
         }
     }
 
