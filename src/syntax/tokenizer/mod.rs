@@ -480,7 +480,7 @@ impl<'src> std::iter::Iterator for TokenCursor<'src> {
 
 #[cfg(test)]
 mod tests {
-    use crate::file::FileId;
+    use crate::file::{File, FileId};
     use crate::syntax::token::{Control, Operator, TokenTree, TokenTreeKind};
     use crate::syntax::tokenizer::Lexer;
     use crate::syntax::{Coord, FilePos, Position, Span, Token};
@@ -488,7 +488,8 @@ mod tests {
     #[test]
     fn test_simple_op_tokenizer() {
         let input = "+";
-        let mut tokenizer = Lexer::new(input, FileId(0));
+        let input = File::raw_test(input.to_string());
+        let mut tokenizer = Lexer::new(&input);
         assert_eq!(
             tokenizer.scan().unwrap(),
             TokenTree::new(
@@ -507,7 +508,8 @@ mod tests {
     #[test]
     fn test_complex_op_tokenizer() {
         let input = "<<";
-        let mut tokenizer = Lexer::new(input, FileId(0));
+        let input = File::raw_test(input.to_string());
+        let mut tokenizer = Lexer::new(&input);
         assert_eq!(
             tokenizer.scan().unwrap(),
             TokenTree::new(
@@ -526,7 +528,8 @@ mod tests {
     #[test]
     fn test_compound_op_tokenizer() {
         let input = ">>=";
-        let mut tokenizer = Lexer::new(input, FileId(0));
+        let input = File::raw_test(input.to_string());
+        let mut tokenizer = Lexer::new(&input);
         assert_eq!(
             tokenizer.scan().unwrap(),
             TokenTree::new(
@@ -545,7 +548,8 @@ mod tests {
     #[test]
     fn test_integer_tokenizer() {
         let input = "123";
-        let mut tokenizer = Lexer::new(input, FileId(0));
+        let input = File::raw_test(input.to_string());
+        let mut tokenizer = Lexer::new(&input);
         assert_eq!(
             tokenizer.scan().unwrap(),
             TokenTree::new(
@@ -564,7 +568,8 @@ mod tests {
     #[test]
     fn test_float_tokenizer() {
         let input = "1.3";
-        let mut tokenizer = Lexer::new(input, FileId(0));
+        let input = File::raw_test(input.to_string());
+        let mut tokenizer = Lexer::new(&input);
         assert_eq!(
             tokenizer.scan().unwrap(),
             TokenTree::new(
@@ -583,7 +588,8 @@ mod tests {
     #[test]
     fn test_complex_float_tokenizer() {
         let input = "1.3e-5";
-        let mut tokenizer = Lexer::new(input, FileId(0));
+        let input = File::raw_test(input.to_string());
+        let mut tokenizer = Lexer::new(&input);
         assert_eq!(
             tokenizer.scan().unwrap(),
             TokenTree::new(
@@ -602,7 +608,8 @@ mod tests {
     #[test]
     fn test_string_tokenizer() {
         let input = "\"test\"";
-        let mut tokenizer = Lexer::new(input, FileId(0));
+        let input = File::raw_test(input.to_string());
+        let mut tokenizer = Lexer::new(&input);
         assert_eq!(
             tokenizer.scan().unwrap(),
             TokenTree::new(
@@ -621,7 +628,8 @@ mod tests {
     #[test]
     fn test_ident_tokenizer() {
         let input = ">>=";
-        let mut tokenizer = Lexer::new(input, FileId(0));
+        let input = File::raw_test(input.to_string());
+        let mut tokenizer = Lexer::new(&input);
         assert_eq!(
             tokenizer.scan().unwrap(),
             TokenTree::new(
@@ -640,7 +648,8 @@ mod tests {
     #[test]
     fn test_keyword_tokenizer() {
         let input = ">>=";
-        let mut tokenizer = Lexer::new(input, FileId(0));
+        let input = File::raw_test(input.to_string());
+        let mut tokenizer = Lexer::new(&input);
         assert_eq!(
             tokenizer.scan().unwrap(),
             TokenTree::new(
@@ -659,7 +668,8 @@ mod tests {
     #[test]
     fn test_new_line_tokenizer() {
         let input = "\n";
-        let mut tokenizer = Lexer::new(input, FileId(0));
+        let input = File::raw_test(input.to_string());
+        let mut tokenizer = Lexer::new(&input);
         assert_eq!(
             tokenizer.scan().unwrap(),
             TokenTree::new(
@@ -678,7 +688,8 @@ mod tests {
     #[test]
     fn multi_tokens_tokenizer() {
         let input = "+.";
-        let mut tokenizer = Lexer::new(input, FileId(0));
+        let input = File::raw_test(input.to_string());
+        let mut tokenizer = Lexer::new(&input);
         assert_eq!(
             [tokenizer.scan().unwrap(), tokenizer.scan().unwrap()],
             [
@@ -709,7 +720,8 @@ mod tests {
     #[test]
     fn hierarchy_tokenizer() {
         let input = "{+.}";
-        let mut tokenizer = Lexer::new(input, FileId(0));
+        let input = File::raw_test(input.to_string());
+        let mut tokenizer = Lexer::new(&input);
         assert_eq!(
             tokenizer.scan().unwrap(),
             TokenTree::new(

@@ -38,6 +38,15 @@ impl File {
         })
     }
 
+    #[cfg(test)]
+    pub fn raw_test(content: String) -> Self {
+        Self {
+            content,
+            path: PathBuf::new(),
+            fid: FileId(0),
+        }
+    }
+
     pub fn content(&self) -> &str {
         self.content.as_str()
     }

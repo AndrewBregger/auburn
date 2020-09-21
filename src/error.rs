@@ -1,4 +1,4 @@
-use crate::syntax::{Position, Token, TokenTree};
+use crate::syntax::{Position, Token, TokenTree, Operator};
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum ErrorKind {
@@ -18,7 +18,15 @@ pub enum ErrorKind {
     UnevenPair,
 
     #[error("unexpected token: expected '{0}' found '{1}'")]
-    UexpectedToken(String, String),
+    ExpectedToken(String, String),
+
+    #[error("operator is not a valid binary operator: '{}'", op.to_string())]
+    InvalidBinaryOp {
+        op: Operator,
+    },
+
+    #[error("expecting an identifier, found '{0}'")]
+    ExpectingIdentifier(String),
 
     // #[error("expecting keyword '{}' found '{}'", expected.to_string(), found.text())]
     // ExpectedKeyword {
@@ -128,7 +136,21 @@ impl<'src> Error {
     pub fn unexpected_token(expected: Token, found: &TokenTree) -> Self {
         Self {
             position: Position::default(),
-            kind: ErrorKind::UexpectedToken(format!("{}", expected), format!("{}", found)),
+            kind: ErrorKind::ExpectedToken(format!("{}", expected), format!("{}", found)),
+        }
+    }
+
+    pub fn invalid_binary_operator(op: Operator) -> Self {
+        Self {
+            position: Position::default(),
+            kind: ErrorKind::InvalidBinaryOp { op },
+        }
+    }
+
+    pub fn expecting_identifier(token: &TokenTree) -> Self {
+        Self {
+            position: Position::default(),
+            kind: ErrorKind::ExpectingIdentifier(token.to_string()),
         }
     }
 

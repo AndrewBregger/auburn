@@ -3,7 +3,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use ordered_float::OrderedFloat;
 
-use crate::syntax::{FilePos, Position, Span};
+use crate::syntax::{FilePos, Position, Span, Operator};
+use std::convert::TryFrom;
+use crate::error::Error;
 
 macro_rules! define_op {
     ($($name:literal => $en:ident), *, $ty:ident) => {
@@ -45,9 +47,35 @@ define_op!(
     BinaryOp
 );
 
+impl TryFrom<Operator> for BinaryOp {
+    type Error = Error;
+
+    fn try_from(value: Operator) -> Result<Self, Self::Error> {
+        match value {
+            Operator::Plus => Ok(Self::Plus),
+            Operator::Minus => Ok(Self::Minus),
+            Operator::Astrick => Ok(Self::Astrick),
+            Operator::Slash => Ok(Self::Slash),
+            Operator::Less => Ok(Self::Less),
+            Operator::Greater => Ok(Self::Greater),
+            Operator::LessEq => Ok(Self::LessEq),
+            Operator::GreaterEq => Ok(Self::GreaterEq),
+            Operator::Ampersand => Ok(Self::Ampersand),
+            Operator::Pipe => Ok(Self::Pipe),
+            Operator::Percent => Ok(Self::Percent),
+            Operator::LessLess => Ok(Self::LessLess),
+            Operator::GreaterGreater => Ok(Self::GreaterGreater),
+            Operator::EqualEqual => Ok(Self::EqualEqual),
+            Operator::BangEqual => Ok(Self::BangEqual),
+            _ => Err(Error::invalid_binary_operator(value))
+        }
+    }
+}
+
 define_op!(
     "&" => Ampersand,
     "!"  => Bang,
+    "-" => Minus,
     UnaryOp
 );
 
@@ -57,11 +85,28 @@ pub enum AstNodeType {
     Stmt,
     Item,
     Spec,
+    Ident
 }
 
 #[derive(Debug, Clone)]
 pub struct Ident {
     value: String,
+}
+
+impl From<&str> for Ident {
+    fn from(other: &str) -> Self {
+        Self {
+            value: other.to_string(),
+        }
+    }
+}
+
+impl From<String> for Ident {
+    fn from(other: String) -> Self {
+        Self {
+            value: other
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -102,6 +147,8 @@ pub trait Node {
     fn span(&self) -> Span;
 
     fn file_pos(&self) -> FilePos;
+
+    fn position(&self) -> Position;
 }
 
 pub trait NodeType: Debug + Clone {
@@ -112,17 +159,15 @@ pub trait NodeType: Debug + Clone {
 #[derive(Debug, Clone)]
 pub struct AstNode<Kind> {
     id: usize,
-    span: Span,
-    position: FilePos,
+    position: Position,
     kind: Kind,
 }
 
 impl<Kind: NodeType> AstNode<Kind> {
-    pub fn new(kind: Kind, span: Span, position: FilePos) -> Self {
+    pub fn new(kind: Kind) -> Self {
         Self {
             id: Self::next_id(),
-            span,
-            position,
+            position: Position::default(),
             kind,
         }
     }
@@ -130,8 +175,7 @@ impl<Kind: NodeType> AstNode<Kind> {
     pub fn new_with_position(kind: Kind, position: Position) -> Self {
         Self {
             id: Self::next_id(),
-            span: position.span(),
-            position: position.file_pos(),
+            position,
             kind,
         }
     }
@@ -147,12 +191,14 @@ impl<Kind: NodeType> Node for AstNode<Kind> {
     }
 
     fn span(&self) -> Span {
-        self.span
+        self.position.span()
     }
 
     fn file_pos(&self) -> FilePos {
-        self.position
+        self.position.file_pos()
     }
+
+    fn position(&self) -> Position { self.position }
 }
 
 impl NodeType for ExprKind {
@@ -207,6 +253,16 @@ impl NodeType for SpecKind {
 
     fn ty(&self) -> AstNodeType {
         AstNodeType::Spec
+    }
+}
+
+impl NodeType for Ident {
+    fn name(&self) -> &'static str {
+        "Identifier"
+    }
+
+    fn ty(&self) -> AstNodeType {
+        AstNodeType::Ident
     }
 }
 

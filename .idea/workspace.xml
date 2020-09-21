@@ -25,21 +25,17 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4b17c99f-758c-48ea-b0b5-e3d26e51a8dc" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/language.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/examples/lexer/linear_tokens" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/examples/lexer/tree_tokens" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/error.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/file.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/syntax/ast.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/syntax/mod.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/syntax/parse/mod.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/syntax/parse/parser.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/syntax/token.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/syntax/tokenizer/mod.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/tests/mod.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/tests/syntax/mod.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/examples/parser/expr/binary" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/examples/parser/expr/unary" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/bin/main.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/error.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/error.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/file.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/file.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/syntax/ast.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/syntax/ast.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/syntax/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/syntax/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/syntax/parse/parser.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/syntax/parse/parser.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/syntax/token.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/syntax/token.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/syntax/tokenizer/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/syntax/tokenizer/mod.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -84,11 +80,6 @@
     </key>
   </component>
   <component name="RunManager" selected="Cargo Command.Run">
-    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" PASS_PARENT_ENVS_2="true">
-      <method v="2">
-        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
-      </method>
-    </configuration>
     <configuration name="Run" type="CargoCommandRunConfiguration" factoryName="Cargo Command" nameIsGenerated="true">
       <option name="channel" value="DEFAULT" />
       <option name="command" value="run" />
@@ -161,8 +152,28 @@
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
+    <configuration default="true" type="GradleAppRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="com.jetbrains.cidr.cpp.gradle.execution.GradleNativeBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Unittests in tests" type="tests" factoryName="Unittests" temporary="true" nameIsGenerated="true">
+      <module name="language" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/tests" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;$PROJECT_DIR$/src/tests&quot;" />
+      <option name="_new_targetType" value="&quot;PATH&quot;" />
+      <method v="2" />
+    </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python tests.Unittests in tests" />
         <item itemvalue="Cargo Command.Test syntax::tokenizer::tests::hierarchy_tokenizer" />
         <item itemvalue="Cargo Command.Test syntax::tokenizer::tests::multi_tokens_tokenizer" />
         <item itemvalue="Cargo Command.Test tokenizer::tests" />
@@ -184,6 +195,8 @@
       <updated>1600055360014</updated>
       <workItem from="1600055361253" duration="31961000" />
       <workItem from="1600320432299" duration="3809000" />
+      <workItem from="1600534572380" duration="15000" />
+      <workItem from="1600534614476" duration="9652000" />
     </task>
     <servers />
   </component>
@@ -207,38 +220,38 @@
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="733" y="388" width="1094" height="717" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600055397288" />
-    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1600225188318">
+    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1600665713187">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600225188318" />
-    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser" timestamp="1600307504975">
+    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600665713187" />
+    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser" timestamp="1600667880136">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600307504975" />
+    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600667880136" />
     <state x="1059" y="500" key="FileChooserDialogImpl" timestamp="1600055373613">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="1059" y="500" key="FileChooserDialogImpl/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600055373613" />
-    <state width="2515" height="495" key="GridCell.Tab.0.bottom" timestamp="1600384295609">
+    <state width="2515" height="168" key="GridCell.Tab.0.bottom" timestamp="1600667994353">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="402" key="GridCell.Tab.0.bottom/0.30.1920.1050@0.30.1920.1050" timestamp="1600113795497" />
-    <state width="2515" height="495" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600384295609" />
-    <state width="2515" height="495" key="GridCell.Tab.0.center" timestamp="1600384295609">
+    <state width="2515" height="168" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600667994353" />
+    <state width="2515" height="168" key="GridCell.Tab.0.center" timestamp="1600667994352">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="402" key="GridCell.Tab.0.center/0.30.1920.1050@0.30.1920.1050" timestamp="1600113795497" />
-    <state width="2515" height="495" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600384295609" />
-    <state width="2515" height="495" key="GridCell.Tab.0.left" timestamp="1600384295609">
+    <state width="2515" height="168" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600667994352" />
+    <state width="2515" height="168" key="GridCell.Tab.0.left" timestamp="1600667994352">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="402" key="GridCell.Tab.0.left/0.30.1920.1050@0.30.1920.1050" timestamp="1600113795497" />
-    <state width="2515" height="495" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600384295609" />
-    <state width="2515" height="495" key="GridCell.Tab.0.right" timestamp="1600384295609">
+    <state width="2515" height="168" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600667994352" />
+    <state width="2515" height="168" key="GridCell.Tab.0.right" timestamp="1600667994353">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="402" key="GridCell.Tab.0.right/0.30.1920.1050@0.30.1920.1050" timestamp="1600113795497" />
-    <state width="2515" height="495" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600384295609" />
+    <state width="2515" height="168" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600667994353" />
     <state width="2515" height="495" key="GridCell.Tab.1.bottom" timestamp="1600384295610">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
@@ -259,9 +272,9 @@
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="780" y="378" key="SettingsEditor/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600146337543" />
-    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup" timestamp="1600224773022">
+    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup" timestamp="1600666678561">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600224773022" />
+    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600666678561" />
   </component>
 </project>

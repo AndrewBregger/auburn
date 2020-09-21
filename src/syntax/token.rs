@@ -102,6 +102,13 @@ pub enum Control {
     Brace,
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum Associative {
+    Left,
+    Right,
+    None,
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Token<'a> {
     Kw(Keyword),
@@ -150,6 +157,50 @@ impl<'a> Token<'a> {
             _ => false,
         }
     }
+
+    pub fn precedence(&self) -> u8 {
+        match self {
+            Self::Op(op) => match op {
+                Operator::Slash | Operator::Astrick | Operator::Percent => 13,
+                Operator::Plus | Operator::Minus => 12,
+                Operator::LessLess | Operator::GreaterGreater => 11,
+                Operator::Less | Operator::Greater | Operator::EqualEqual| Operator::BangEqual => 10,
+                Operator::Ampersand => 9,
+                // Op::Carrot => 8,
+                // Op::Tilde => 7,
+                Operator::Pipe => 6,
+                // and => 5
+                // or  => 4
+                Operator::Bang => 3,
+                Operator::Equal
+                | Operator::PlusEq
+                | Operator::MinusEq
+                | Operator::SlashEq
+                | Operator::AstriskEq
+                //| Op::AstrickAstrickEq
+                | Operator::PercentEq
+                | Operator::LessEq
+                | Operator::GreaterEq
+                | Operator::PipeEq
+                | Operator::AmpersandEq
+                // | Operator::CarrotEq
+                | Operator::LessLessEq
+                | Operator::GreaterGreaterEq => 2,
+                // Op::Dollar | Op::Question => 1,
+                _ => 0,
+            },
+            _ => 0,
+        }
+    }
+
+    pub fn associativity(&self) -> Associative {
+        match self {
+            Self::Op(op) => match op {
+                _ => Associative::Left,
+            },
+            _ => Associative::None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -175,6 +226,13 @@ impl<'a> TokenTreeKind<'a> {
             _ => false,
         }
     }
+
+    pub fn precedence(&self) -> u8 {
+        match self {
+            Self::Token(token) => token.precedence(),
+            _ => 0
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -192,6 +250,13 @@ impl<'a> TokenTree<'a> {
             source,
             kind,
             position,
+        }
+    }
+
+    pub fn as_token(&self) -> &Token<'a> {
+        match &self.kind {
+            TokenTreeKind::Token(token) => token,
+            _ => panic!("Attempting to get token from non-token tree node"),
         }
     }
 
@@ -224,6 +289,10 @@ impl<'a> TokenTree<'a> {
 
     pub fn is_eof(&self) -> bool {
         self.kind.is_eof()
+    }
+
+    pub fn precedence(&self) -> u8 {
+        self.kind.precedence()
     }
 }
 

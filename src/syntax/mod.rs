@@ -4,11 +4,13 @@ pub mod token;
 mod parse;
 mod tokenizer;
 
+use ast::Node;
 pub use parse::Parser;
 pub use token::{Control, Keyword, Operator, Token, TokenTree, TokenTreeKind};
 pub use tokenizer::TokenCursor;
 
 use crate::file::FileId;
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
 pub struct Span(pub usize, pub usize);
@@ -24,6 +26,16 @@ impl Span {
 
     pub fn as_tuple(&self) -> (usize, usize) {
         (self.0, self.1)
+    }
+
+    pub fn extended_to(&self, other: Self) -> Self {
+        Self(self.0, other.1)
+    }
+}
+
+impl Display for Span {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}-{}", self.0, self.1)
     }
 }
 
@@ -44,6 +56,12 @@ impl Coord {
     }
 }
 
+impl Display for Coord {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.0, self.1)
+    }
+}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
 pub struct FilePos {
     start: Coord,
@@ -53,6 +71,19 @@ pub struct FilePos {
 impl FilePos {
     pub fn new(start: Coord, end: Coord) -> Self {
         Self { start, end }
+    }
+
+    pub fn extended_to(&self, other: Self) -> Self {
+        Self {
+            start: self.start,
+            end: other.end,
+        }
+    }
+}
+
+impl Display for FilePos {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}->{}", self.start, self.end)
     }
 }
 
@@ -70,6 +101,14 @@ impl Position {
             file_pos,
             file_id,
         }
+    }
+
+    pub fn extended_to<N: Node>(&self, node: &N) -> Self {
+        Self::new(
+            self.span.extended_to(node.span()),
+            self.file_pos.extended_to(node.file_pos()),
+            self.file_id,
+        )
     }
 
     pub fn file_id(&self) -> FileId {
@@ -90,6 +129,12 @@ impl Position {
 
     pub fn end(&self) -> Coord {
         self.file_pos.end
+    }
+}
+
+impl Display for Position {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Position(span: {}, pos: {}, fid: {})", self.span, self.file_pos, self.file_id.0)
     }
 }
 

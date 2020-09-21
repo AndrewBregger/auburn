@@ -3,16 +3,15 @@ extern crate language;
 use std::error::Error;
 
 use language::file::File;
-use language::syntax::TokenCursor;
+use language::syntax::{Parser, TokenCursor};
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let file = File::open("examples/lexer/tree_tokens")?;
-    // let file = File::open("examples/lexer/linear_tokens")?;
-    for token in TokenCursor::new(file.content(), file.id()) {
-        match token {
-            Ok(token) => println!("{}", token),
-            Err(e) => println!("{:?}", e),
-        }
+    let file = File::open("examples/parser/expr/binary")?;
+    let mut parser = Parser::new(&file);
+    parser.consume().expect("Initializing the parser");
+    match parser.parse_expr() {
+        Ok(expr) => println!("{:#?}", expr),
+        Err(e) => println!("{:?}", e),
     }
     Ok(())
 }
