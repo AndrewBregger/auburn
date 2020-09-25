@@ -6,7 +6,7 @@ mod tokenizer;
 
 use ast::Node;
 pub use parse::Parser;
-pub use token::{Control, Keyword, Operator, Token, TokenTree, TokenTreeKind};
+pub use token::{Control, Keyword, Operator, PToken, PairKind, Token};
 pub use tokenizer::TokenCursor;
 
 use crate::file::FileId;
@@ -111,6 +111,15 @@ impl Position {
         )
     }
 
+    pub fn extended_to_token(&self, token: PToken) -> Self {
+        let position = token.position();
+        Self::new(
+            self.span.extended_to(position.span()),
+            self.file_pos.extended_to(position.file_pos()),
+            self.file_id,
+        )
+    }
+
     pub fn file_id(&self) -> FileId {
         self.file_id
     }
@@ -134,14 +143,18 @@ impl Position {
 
 impl Display for Position {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Position(span: {}, pos: {}, fid: {})", self.span, self.file_pos, self.file_id.0)
+        write!(
+            f,
+            "Position(span: {}, pos: {}, fid: {})",
+            self.span, self.file_pos, self.file_id.0
+        )
     }
 }
 
 pub struct ParsedFile {
-    file_id: FileId,
+    pub file_id: FileId,
     // imports: Vec<Box<Import>>,
-    stmts: Vec<Box<ast::Stmt>>,
+    pub stmts: Vec<Box<ast::Stmt>>,
 }
 
 impl ParsedFile {

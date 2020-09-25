@@ -103,6 +103,12 @@ pub enum Control {
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum PairKind {
+    Open,
+    Close,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Associative {
     Left,
     Right,
@@ -114,6 +120,7 @@ pub enum Token<'a> {
     Kw(Keyword),
     Op(Operator),
     Ident(&'a str),
+    ControlPair(Control, PairKind),
     Integer(u64),
     Float(OrderedFloat<f64>),
     String(String),
@@ -204,95 +211,39 @@ impl<'a> Token<'a> {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum TokenTreeKind<'a> {
-    Pair(Control, Vec<TokenTree<'a>>),
-    Token(Token<'a>),
-}
-
-impl<'a> TokenTreeKind<'a> {
-    pub fn has_eof(&self) -> bool {
-        match self {
-            Self::Token(token) => token.is_eof(),
-            Self::Pair(_, elements) => elements
-                .iter()
-                .map(|e| e.has_eof())
-                .fold(true, |acc, x| acc && x),
-        }
-    }
-
-    pub fn is_eof(&self) -> bool {
-        match self {
-            Self::Token(token) => token.is_eof(),
-            _ => false,
-        }
-    }
-
-    pub fn precedence(&self) -> u8 {
-        match self {
-            Self::Token(token) => token.precedence(),
-            _ => 0
-        }
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct TokenTree<'a> {
-    level: usize,
+pub struct PToken<'a> {
     source: &'a str,
-    kind: TokenTreeKind<'a>,
+    token: Token<'a>,
     position: Position,
 }
 
-impl<'a> TokenTree<'a> {
-    pub fn new(level: usize, source: &'a str, kind: TokenTreeKind<'a>, position: Position) -> Self {
+impl<'a> PToken<'a> {
+    pub fn new(source: &'a str, token: Token<'a>, position: Position) -> Self {
         Self {
-            level,
             source,
-            kind,
+            token,
             position,
         }
     }
 
-    pub fn as_token(&self) -> &Token<'a> {
-        match &self.kind {
-            TokenTreeKind::Token(token) => token,
-            _ => panic!("Attempting to get token from non-token tree node"),
-        }
+    pub fn token(&self) -> &Token<'a> {
+        &self.token
     }
 
     pub fn position(&self) -> Position {
         self.position
     }
 
-    pub fn kind(&'a self) -> &TokenTreeKind<'a> {
-        &self.kind
-    }
-
-    pub fn to_kind(self) -> TokenTreeKind<'a> {
-        self.kind
-    }
-
-    pub fn is_pair(&self) -> bool {
-        match self.kind {
-            TokenTreeKind::Pair(..) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_token(&self) -> bool {
-        !self.is_pair()
-    }
-
-    pub fn has_eof(&self) -> bool {
-        self.kind.has_eof()
+    pub fn to_token(self) -> Token<'a> {
+        self.token
     }
 
     pub fn is_eof(&self) -> bool {
-        self.kind.is_eof()
+        self.token.is_eof()
     }
 
     pub fn precedence(&self) -> u8 {
-        self.kind.precedence()
+        self.token.precedence()
     }
 }
 
@@ -302,6 +253,7 @@ impl<'a> std::fmt::Display for Token<'a> {
             Token::Kw(kw) => write!(f, "{}", kw.to_string()),
             Token::Op(op) => write!(f, "{}", op.to_string()),
             Token::Ident(val) => write!(f, "{}", val),
+            Token::ControlPair(ctrl, kind) => write!(f, "{:?} {:?}", kind, ctrl),
             Token::Integer(val) => write!(f, "{}", val),
             Token::Float(val) => write!(f, "{}", val),
             Token::String(val) => write!(f, "{}", val),
@@ -311,35 +263,8 @@ impl<'a> std::fmt::Display for Token<'a> {
     }
 }
 
-fn print_control(f: &mut Formatter<'_>, ctrl: Control, elements: &[TokenTree]) -> std::fmt::Result {
-    match ctrl {
-        Control::Paren => writeln!(f, "(")?,
-        Control::Bracket => writeln!(f, "{{")?,
-        Control::Brace => writeln!(f, "[")?,
-    };
-
-    for element in elements {
-        writeln!(f, "{}", element)?;
-    }
-
-    match ctrl {
-        Control::Paren => write!(f, ")"),
-        Control::Bracket => write!(f, "}}"),
-        Control::Brace => write!(f, "]"),
-    }
-}
-
-impl<'a> std::fmt::Display for TokenTreeKind<'a> {
+impl<'a> std::fmt::Display for PToken<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            TokenTreeKind::Pair(ctrl, elements) => print_control(f, *ctrl, elements),
-            TokenTreeKind::Token(token) => write!(f, "{}", token),
-        }
-    }
-}
-
-impl<'a> std::fmt::Display for TokenTree<'a> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.kind)
+        write!(f, "{}", self.token)
     }
 }

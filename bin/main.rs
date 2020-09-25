@@ -6,7 +6,7 @@ use language::file::File;
 use language::syntax::{Parser, TokenCursor};
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let file = File::open("examples/parser/expr/binary")?;
+    let file = File::open("examples/parser/expr/block")?;
     let mut parser = Parser::new(&file);
     parser.consume().expect("Initializing the parser");
     match parser.parse_expr() {

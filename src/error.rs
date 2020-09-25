@@ -1,4 +1,4 @@
-use crate::syntax::{Position, Token, TokenTree, Operator};
+use crate::syntax::{Operator, Position, Token};
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum ErrorKind {
@@ -21,9 +21,7 @@ pub enum ErrorKind {
     ExpectedToken(String, String),
 
     #[error("operator is not a valid binary operator: '{}'", op.to_string())]
-    InvalidBinaryOp {
-        op: Operator,
-    },
+    InvalidBinaryOp { op: Operator },
 
     #[error("expecting an identifier, found '{0}'")]
     ExpectingIdentifier(String),
@@ -133,7 +131,7 @@ impl<'src> Error {
         }
     }
 
-    pub fn unexpected_token(expected: Token, found: &TokenTree) -> Self {
+    pub fn unexpected_token(expected: Token, found: &Token) -> Self {
         Self {
             position: Position::default(),
             kind: ErrorKind::ExpectedToken(format!("{}", expected), format!("{}", found)),
@@ -147,7 +145,7 @@ impl<'src> Error {
         }
     }
 
-    pub fn expecting_identifier(token: &TokenTree) -> Self {
+    pub fn expecting_identifier(token: &Token) -> Self {
         Self {
             position: Position::default(),
             kind: ErrorKind::ExpectingIdentifier(token.to_string()),

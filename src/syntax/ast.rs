@@ -3,9 +3,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use ordered_float::OrderedFloat;
 
-use crate::syntax::{FilePos, Position, Span, Operator};
-use std::convert::TryFrom;
 use crate::error::Error;
+use crate::syntax::{FilePos, Operator, Position, Span};
+use std::convert::TryFrom;
 
 macro_rules! define_op {
     ($($name:literal => $en:ident), *, $ty:ident) => {
@@ -67,7 +67,7 @@ impl TryFrom<Operator> for BinaryOp {
             Operator::GreaterGreater => Ok(Self::GreaterGreater),
             Operator::EqualEqual => Ok(Self::EqualEqual),
             Operator::BangEqual => Ok(Self::BangEqual),
-            _ => Err(Error::invalid_binary_operator(value))
+            _ => Err(Error::invalid_binary_operator(value)),
         }
     }
 }
@@ -85,7 +85,7 @@ pub enum AstNodeType {
     Stmt,
     Item,
     Spec,
-    Ident
+    Ident,
 }
 
 #[derive(Debug, Clone)]
@@ -103,9 +103,7 @@ impl From<&str> for Ident {
 
 impl From<String> for Ident {
     fn from(other: String) -> Self {
-        Self {
-            value: other
-        }
+        Self { value: other }
     }
 }
 
@@ -118,6 +116,18 @@ pub enum ExprKind {
     Name(Identifier),
     Binary(BinaryOp, Box<Expr>, Box<Expr>),
     Unary(UnaryOp, Box<Expr>),
+    Field(Box<Expr>, Box<Identifier>),
+    Call {
+        operand: Box<Expr>,
+        actual: Vec<Box<Expr>>,
+    },
+    Method {
+        operand: Box<Expr>,
+        name: Box<Identifier>,
+        actual: Vec<Box<Expr>>,
+    },
+    Block(Vec<Box<Stmt>>),
+    Tuple(Vec<Box<Expr>>),
 }
 
 #[derive(Debug, Clone)]
@@ -198,7 +208,9 @@ impl<Kind: NodeType> Node for AstNode<Kind> {
         self.position.file_pos()
     }
 
-    fn position(&self) -> Position { self.position }
+    fn position(&self) -> Position {
+        self.position
+    }
 }
 
 impl NodeType for ExprKind {
@@ -211,6 +223,11 @@ impl NodeType for ExprKind {
             Self::Name(_) => "Name",
             Self::Binary(..) => "Binary",
             Self::Unary(..) => "Unary",
+            Self::Field(..) => "Field",
+            Self::Call { .. } => "Call",
+            Self::Method { .. } => "Method",
+            Self::Block(..) => "Block",
+            Self::Tuple(..) => "Tuple",
         }
     }
 

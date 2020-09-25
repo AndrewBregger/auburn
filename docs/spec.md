@@ -56,7 +56,7 @@ let x
 
 ```
 // function id with one parameter x with a returning expression body
-fn id(x f32) f32 = x
+fn id(x f32) f32 = ~~~~x
 
 // function add with multiple parameters x and y of the same type
 // with a returning expression

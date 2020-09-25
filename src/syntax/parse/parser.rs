@@ -2,19 +2,15 @@ use crate::error::Error;
 use crate::file::File;
 use crate::syntax::ast::*;
 use crate::syntax::tokenizer::TokenCursor;
-use crate::syntax::ParsedFile;
-use crate::syntax::{Control, Keyword, Operator, Position, Token, TokenTree, TokenTreeKind};
+use crate::syntax::{Control, Keyword, Operator, PToken, Position, Token};
+use crate::syntax::{PairKind, ParsedFile};
 
-use std::vec::IntoIter;
+use crate::syntax::ast::ExprKind::Call;
+use crate::syntax::token::Token::ControlPair;
 use std::convert::TryFrom;
-
-struct TreeNode<'src> {
-    control: Control,
-    children: IntoIter<TokenTree<'src>>,
-}
+use std::vec::IntoIter;
 
 type Restriction = usize;
-
 const DEFAULT: Restriction = 0;
 // const : Restriction = 0;
 // const : Restriction = 1;
@@ -26,74 +22,50 @@ const DEFAULT: Restriction = 0;
 pub struct Parser<'src> {
     restriction: Restriction,
     cursor: TokenCursor<'src>,
-    tree_stack: Vec<TreeNode<'src>>,
-    current: Option<TokenTree<'src>>,
+    current: Option<PToken<'src>>,
 }
 
 impl<'src> Parser<'src> {
     pub fn new(file: &'src File) -> Self {
         Self {
             restriction: DEFAULT,
-            cursor:  TokenCursor::new(file),
-            tree_stack: vec![],
+            cursor: TokenCursor::new(file),
             current: None,
         }
     }
 
-    pub fn current_token(&self) -> &TokenTree<'src> {
-        self.current.as_ref().expect("Compiler Error: Parser: current token is None")
-
+    pub fn current_token(&self) -> &PToken<'src> {
+        self.current
+            .as_ref()
+            .expect("Compiler Error: Parser: current token is None")
     }
 
     fn current_position(&self) -> Position {
         self.current_token().position()
     }
 
-    fn push_tree_stack(&mut self, control: Control, children: Vec<TokenTree<'src>>) {
-        self.tree_stack.push(TreeNode {
-            control,
-            children: children.into_iter(),
-        });
+    pub fn consume(&mut self) -> Result<Option<PToken<'src>>, Error> {
+        let current = self.current.clone();
+        if let Some(res) = self.cursor.next() {
+            self.current = Some(res?);
+        }
+        Ok(current)
     }
 
-    pub fn consume(&mut self) -> Result<Option<TokenTree<'src>>, Error> {
-        let current = self.current.clone();
-        if self.tree_stack.is_empty() {
-            if let Some(res) = self.cursor.next() {
-                self.current = Some(res?);
-            } else {
-                self.current = None
-            }
-            Ok(current)
-        } else {
-            while let Some(top) = self.tree_stack.last_mut() {
-                if let Some(token) = top.children.next() {
-                    self.current = Some(token);
-                    return Ok(current);
-                } else {
-                    self.tree_stack.pop();
-                }
-            }
-            assert!(self.tree_stack.is_empty());
-            if let Some(res) = self.cursor.next() {
-                self.current = Some(res?);
-            } else {
-                self.current = None
-            }
-            Ok(current)
-        }
+    fn is_end_of_pair(&self) -> bool {
+        self.current == None
     }
 
     fn check_for(&self, token: Token) -> bool {
-        *self.current_token().kind() == TokenTreeKind::Token(token)
+        *self.current_token().token() == token
     }
 
-    fn expect(&mut self, token: Token) -> Result<TokenTree, Error> {
+    fn expect(&mut self, token: Token) -> Result<PToken, Error> {
         if self.check_for(token.clone()) {
             Ok(self.consume()?.unwrap())
         } else {
             Err(
-                Error::unexpected_token(token, self.current.as_ref().unwrap())
+                Error::unexpected_token(token, self.current.as_ref().unwrap().token())
                     .with_position(self.current_position()),
             )
         }
@@ -114,19 +86,22 @@ impl<'src> Parser<'src> {
 
     fn parse_ident(&mut self) -> Result<Identifier, Error> {
         let current = self.current_token().clone();
+        let position = current.position();
 
-        if current.is_token() {
-            self.consume()?;
-            let token = current.as_token();
-            if let Token::Ident(value) = token {
-                return Ok(Identifier::new_with_position(Ident::from(*value), current.position()))
-            }
+        self.consume()?;
+        let token = current.to_token();
+        if let Token::Ident(value) = token {
+            return Ok(Identifier::new_with_position(Ident::from(value), position));
         }
-        Err(Error::expecting_identifier(&current).with_position(current.position()))
+
+        Err(Error::expecting_identifier(&token).with_position(position))
     }
 
     pub fn parse_stmt(&mut self) -> Result<Box<Stmt>, Error> {
-        unimplemented!()
+        let expr = self.parse_expr()?;
+        let position = expr.position();
+        let kind = StmtKind::Expr(expr);
+        Ok(Box::new(Stmt::new_with_position(kind, position)))
     }
 
     pub fn parse_expr(&mut self) -> Result<Box<Expr>, Error> {
@@ -143,14 +118,18 @@ impl<'src> Parser<'src> {
 
     fn parse_assoc_expr(&mut self, min_prec: u8) -> Result<Box<Expr>, Error> {
         let mut expr = self.parse_unary()?;
-        println!("parse_assoc_expr: {} -> {}", self.current_token(), self.current_token().precedence());
+        println!(
+            "parse_assoc_expr: {} -> {}",
+            self.current_token(),
+            self.current_token().precedence()
+        );
         // println!("Position: {}", position);
         while self.current_token().precedence() > min_prec {
             let token_tree = self.current_token().clone();
-            let token = token_tree.as_token();
+            let token = token_tree.to_token();
             let lhs_position = expr.position();
 
-            if let Token::Op(op) =  token {
+            if let Token::Op(op) = token {
                 self.consume()?;
 
                 let rhs = self.parse_assoc_expr(token.precedence() + 1)?;
@@ -166,8 +145,7 @@ impl<'src> Parser<'src> {
                         return Err(e);
                     }
                 }
-            }
-            else {
+            } else {
                 println!("Not An operator")
             }
         }
@@ -178,87 +156,223 @@ impl<'src> Parser<'src> {
     fn parse_unary(&mut self) -> Result<Box<Expr>, Error> {
         let current = self.current_token().clone();
         let position = current.position();
-        match current.to_kind() {
-            TokenTreeKind::Token(token) => match token {
-                Token::Op(Operator::Minus) => {
-                    self.consume()?;
-                    let operand = self.parse_expr()?;
-                    let position = position.extended_to(operand.as_ref());
-                    Ok(Box::new(Expr::new_with_position(
-                        ExprKind::Unary(UnaryOp::Minus, operand),
-                        position,
-                    )))
-                }
-                Token::Op(Operator::Ampersand) => {
-                    self.consume()?;
-                    let operand = self.parse_expr()?;
-                    let operand = self.parse_expr()?;
-                    let position = position.extended_to(operand.as_ref());
-                    Ok(Box::new(Expr::new_with_position(
-                        ExprKind::Unary(UnaryOp::Ampersand, operand),
-                        position,
-                    )))
-                }
-                Token::Op(Operator::Bang) => {
-                    self.consume()?;
-                    let operand = self.parse_expr()?;
-                    let operand = self.parse_expr()?;
-                    let position = position.extended_to(operand.as_ref());
-                    Ok(Box::new(Expr::new_with_position(
-                        ExprKind::Unary(UnaryOp::Bang, operand),
-                        position,
-                    )))
-                }
-                _ => self.parse_primary(),
-            },
+        match current.to_token() {
+            Token::Op(Operator::Minus) => {
+                self.consume()?;
+                let operand = self.parse_expr()?;
+                let position = position.extended_to(operand.as_ref());
+                Ok(Box::new(Expr::new_with_position(
+                    ExprKind::Unary(UnaryOp::Minus, operand),
+                    position,
+                )))
+            }
+            Token::Op(Operator::Ampersand) => {
+                self.consume()?;
+                let operand = self.parse_expr()?;
+                let operand = self.parse_expr()?;
+                let position = position.extended_to(operand.as_ref());
+                Ok(Box::new(Expr::new_with_position(
+                    ExprKind::Unary(UnaryOp::Ampersand, operand),
+                    position,
+                )))
+            }
+            Token::Op(Operator::Bang) => {
+                self.consume()?;
+                let operand = self.parse_expr()?;
+                let operand = self.parse_expr()?;
+                let position = position.extended_to(operand.as_ref());
+                Ok(Box::new(Expr::new_with_position(
+                    ExprKind::Unary(UnaryOp::Bang, operand),
+                    position,
+                )))
+            }
             _ => self.parse_primary(),
         }
     }
 
     fn parse_primary(&mut self) -> Result<Box<Expr>, Error> {
-        self.parse_bottom()
+        let mut operand = self.parse_bottom()?;
+        let position = operand.position();
+
+        loop {
+            let current = self.current_token().clone();
+            match current.token() {
+                Token::Op(Operator::Period) => {
+                    self.consume()?;
+                    let current_token = self.current_token().clone();
+                    match current_token.to_token() {
+                        Token::Ident(_) => {
+                            let name = self.parse_ident()?;
+
+                            if self.check_for(Token::ControlPair(Control::Paren, PairKind::Open)) {
+                                let (actual, end_paren) = self.parse_call_actual()?;
+                                let position = position.extended_to_token(end_paren);
+                                let kind = ExprKind::Method {
+                                    operand: operand.clone(),
+                                    name: Box::new(name),
+                                    actual,
+                                };
+                                operand = Box::new(Expr::new_with_position(kind, position));
+                            } else {
+                                let position = position.extended_to(&name);
+                                let kind = ExprKind::Field(operand.clone(), Box::new(name));
+                                operand = Box::new(Expr::new_with_position(kind, position));
+                            }
+                        }
+                        _ => {
+                            break;
+                        }
+                    }
+                }
+                Token::ControlPair(Control::Paren, PairKind::Open) => {
+                    let (actual, end_paren) = self.parse_call_actual()?;
+                    let position = position.extended_to_token(end_paren);
+                    let kind = ExprKind::Call {
+                        operand: operand.clone(),
+                        actual,
+                    };
+                    operand = Box::new(Expr::new_with_position(kind, position));
+                }
+                _ => {
+                    break;
+                }
+            }
+        }
+        Ok(operand)
     }
 
     fn parse_bottom(&mut self) -> Result<Box<Expr>, Error> {
         let current = self.current_token().clone();
         println!("parse_bottom {}", current);
         let position = current.position();
-        match current.to_kind() {
-            TokenTreeKind::Pair(ctrl, elements) => {
-                self.push_tree_stack(ctrl, elements);
-                self.consume()?;
-                unimplemented!();
+        match current.to_token() {
+            Token::Ident(val) => {
+                let ident = self.parse_ident()?;
+                Ok(Box::new(Expr::new_with_position(
+                    ExprKind::Name(ident),
+                    position,
+                )))
             }
-            TokenTreeKind::Token(token) => {
-                match token {
-                    Token::Ident(val) => {
-                        let ident = self.parse_ident()?;
-                        Ok(Box::new(Expr::new_with_position(ExprKind::Name(ident), position)))
-                    },
-                    Token::Integer(val) => {
-                        self.consume()?;
-                        Ok(Box::new(Expr::new_with_position(
-                            ExprKind::Integer(val),
-                            position,
-                        )))
-                    },
-                    Token::Float(val) => {
-                        self.consume()?;
-                        Ok(Box::new(Expr::new_with_position(
-                            ExprKind::Float(val),
-                            position,
-                        )))
-                    },
-                    Token::String(val) => {
-                        self.consume()?;
-                        Ok(Box::new(Expr::new_with_position(
-                            ExprKind::String(val),
-                            position,
-                        )))
-                    },
-                    _ => todo!("parse_bottom: unexpected token {}", token),
-                }
+            Token::Integer(val) => {
+                self.consume()?;
+                Ok(Box::new(Expr::new_with_position(
+                    ExprKind::Integer(val),
+                    position,
+                )))
+            }
+            Token::Float(val) => {
+                self.consume()?;
+                Ok(Box::new(Expr::new_with_position(
+                    ExprKind::Float(val),
+                    position,
+                )))
+            }
+            Token::String(val) => {
+                self.consume()?;
+                Ok(Box::new(Expr::new_with_position(
+                    ExprKind::String(val),
+                    position,
+                )))
+            }
+            Token::ControlPair(Control::Bracket, PairKind::Open) => {
+                let open = self.consume()?.unwrap();
+                self.allow_newline()?;
+
+                let position = open.position();
+                let stmts = self.parse_inner_pair(
+                    |p| p.parse_stmt(),
+                    Token::Newline,
+                    true,
+                    Control::Bracket,
+                )?;
+
+                let end = self.expect(Token::ControlPair(Control::Bracket, PairKind::Close))?;
+                let position = position.extended_to_token(end);
+
+                let kind = ExprKind::Block(stmts);
+                Ok(Box::new(Expr::new_with_position(kind, position)))
+            }
+            Token::ControlPair(Control::Paren, PairKind::Open) => {
+                let open = self.consume()?.unwrap();
+                self.allow_newline()?;
+
+                let position = open.position();
+                let stmts = self.parse_inner_pair(
+                    |p| p.parse_expr(),
+                    Token::Newline,
+                    true,
+                    Control::Bracket,
+                )?;
+
+                let end = self.expect(Token::ControlPair(Control::Paren, PairKind::Close))?;
+                let position = position.extended_to_token(end);
+
+                let kind = ExprKind::Tuple(stmts);
+                Ok(Box::new(Expr::new_with_position(kind, position)))
+            }
+            e => todo!("parse_bottom: unexpected token {}", e),
+        }
+    }
+
+    fn parse_inner_pair<E, F>(
+        &mut self,
+        element: F,
+        sep: Token,
+        allow_trailing: bool,
+        end_control: Control,
+    ) -> Result<Vec<Box<E>>, Error>
+    where
+        E: Node,
+        F: Fn(&mut Self) -> Result<Box<E>, Error>,
+    {
+        let mut res = Vec::new();
+        let mut expect_following = false;
+        loop {
+            let at_end = self.check_for(Token::ControlPair(end_control, PairKind::Close));
+
+            if expect_following && !allow_trailing && at_end {
+                // error
+                panic!();
+                break;
+            }
+
+            if at_end {
+                break;
+            }
+            expect_following = false;
+
+            let elem = element(self)?;
+            res.push(elem);
+
+            if self.check_for(sep.clone()) {
+                self.consume()?;
+                expect_following = true;
+            } else {
+                break;
             }
         }
+        Ok(res)
+    }
+
+    fn parse_call_actual(&mut self) -> Result<(Vec<Box<Expr>>, PToken), Error> {
+        self.expect(Token::ControlPair(Control::Paren, PairKind::Open))?;
+
+        let actual = self.parse_inner_pair(
+            |p| p.parse_expr(),
+            Token::Op(Operator::Comma),
+            true,
+            Control::Paren,
+        )?;
+
+        let close_paren = self.expect(Token::ControlPair(Control::Paren, PairKind::Close))?;
+
+        Ok((actual, close_paren))
+    }
+
+    fn allow_newline(&mut self) -> Result<(), Error> {
+        while self.check_for(Token::Newline) {
+            self.consume()?;
+        }
+        Ok(())
     }
 }

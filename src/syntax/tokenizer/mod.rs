@@ -2,8 +2,8 @@ use std::str::Chars;
 
 use crate::error::Error;
 use crate::file::{File, FileId};
-use crate::syntax::token::{Control, Keyword, Operator, Token, TokenTree, TokenTreeKind};
-use crate::syntax::{Coord, FilePos, Position, Span};
+use crate::syntax::token::{Control, Keyword, Operator, PToken, Token};
+use crate::syntax::{Coord, FilePos, PairKind, Position, Span};
 use std::convert::TryFrom;
 
 pub struct Lexer<'src> {
@@ -17,8 +17,6 @@ pub struct Lexer<'src> {
     span: Span,
     // the file position
     file_pos: FilePos,
-    // the current depth of the token tree
-    level: usize,
 }
 
 impl<'src> Lexer<'src> {
@@ -29,7 +27,6 @@ impl<'src> Lexer<'src> {
             ch: None,
             span: Span(0, 0),
             file_pos: FilePos::default(),
-            level: 0,
         };
         lexer.init();
 
@@ -67,7 +64,7 @@ impl<'src> Lexer<'src> {
         self.file_pos.end.1 += 1;
     }
 
-    fn complete_token(&mut self, token: Token<'src>) -> TokenTree<'src> {
+    fn complete_token(&mut self, token: Token<'src>) -> PToken<'src> {
         let span = self.span;
         let file_pos = FilePos::new(self.file_pos.start, self.file_pos.end);
 
@@ -78,12 +75,7 @@ impl<'src> Lexer<'src> {
         };
         self.file_pos.start = self.file_pos.end;
         self.span.0 = self.span.1;
-        TokenTree::new(
-            self.level,
-            source,
-            TokenTreeKind::Token(token),
-            Position::new(span, file_pos, self.file()),
-        )
+        PToken::new(source, token, Position::new(span, file_pos, self.file()))
     }
 
     fn skip_whitespace(&mut self) {
@@ -118,7 +110,7 @@ impl<'src> Lexer<'src> {
     }
 
     /// If is use this interface, I do not need the Error token.
-    pub fn next(&mut self) -> Result<TokenTree<'src>, Error> {
+    pub fn next(&mut self) -> Result<PToken<'src>, Error> {
         self.scan()
     }
 
@@ -238,16 +230,10 @@ impl<'src> Lexer<'src> {
         Ok(kind)
     }
 
-    fn scan(&mut self) -> Result<TokenTree<'src>, Error> {
+    fn scan(&mut self) -> Result<PToken<'src>, Error> {
         self.skip_whitespace();
         if self.ch.is_none() {
-            println!("{}", self.level);
-            if self.level != 0 {
-                let position = Position::new(self.span, self.file_pos, self.file());
-                Err(Error::uneven_pairs().with_position(position))
-            } else {
-                Ok(self.complete_token(Token::Eof))
-            }
+            Ok(self.complete_token(Token::Eof))
         } else if self.check(char::is_alphabetic) {
             let t = self.scan_ident_or_keyword()?;
             Ok(self.complete_token(t))
@@ -260,55 +246,12 @@ impl<'src> Lexer<'src> {
 
             let kind = match ch {
                 '\n' => Token::Newline,
-                '{' | '(' | '[' => {
-                    let ctrl = match ch {
-                        '{' => Some(Control::Bracket),
-                        '(' => Some(Control::Paren),
-                        '[' => Some(Control::Brace),
-                        _ => None,
-                    };
-
-                    match ctrl {
-                        Some(ctrl) => {
-                            self.level += 1;
-                            let span = self.span;
-                            let file_pos = self.file_pos;
-
-                            self.advance();
-                            let mut elements = Vec::new();
-                            while let Some(ch) = self.ch {
-                                match ch {
-                                    ')' | ']' | '}' => {
-                                        self.level -= 1;
-                                        self.advance();
-                                        break;
-                                    }
-                                    _ => {
-                                        elements.push(self.scan()?);
-                                        self.skip_whitespace();
-                                    }
-                                }
-                            }
-
-                            self.file_pos.start = self.file_pos.end;
-                            self.span.0 = self.span.1;
-
-                            let position = Position::new(
-                                Span(span.0, self.span.0),
-                                FilePos::new(file_pos.start, self.file_pos.start),
-                                self.file(),
-                            );
-                            let source = &self.file.content()[position.span.0..position.span.1];
-                            return Ok(TokenTree::new(
-                                self.level,
-                                source,
-                                TokenTreeKind::Pair(ctrl, elements),
-                                position,
-                            ));
-                        }
-                        _ => unreachable!(),
-                    }
-                }
+                '{' => Token::ControlPair(Control::Bracket, PairKind::Open),
+                '}' => Token::ControlPair(Control::Bracket, PairKind::Close),
+                '(' => Token::ControlPair(Control::Paren, PairKind::Open),
+                ')' => Token::ControlPair(Control::Paren, PairKind::Close),
+                '[' => Token::ControlPair(Control::Brace, PairKind::Open),
+                ']' => Token::ControlPair(Control::Brace, PairKind::Close),
                 '"' => self.scan_string()?,
                 '.' => Token::Op(Operator::Period),
                 ',' => Token::Op(Operator::Comma),
@@ -461,7 +404,7 @@ impl<'src> TokenCursor<'src> {
 }
 
 impl<'src> std::iter::Iterator for TokenCursor<'src> {
-    type Item = Result<TokenTree<'src>, Error>;
+    type Item = Result<PToken<'src>, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.is_eof {
@@ -469,7 +412,7 @@ impl<'src> std::iter::Iterator for TokenCursor<'src> {
         } else {
             let token = self.lexer.next();
             if token.is_ok() {
-                if token.as_ref().unwrap().has_eof() {
+                if token.as_ref().unwrap().is_eof() {
                     self.is_eof = true;
                 }
             }
@@ -481,9 +424,9 @@ impl<'src> std::iter::Iterator for TokenCursor<'src> {
 #[cfg(test)]
 mod tests {
     use crate::file::{File, FileId};
-    use crate::syntax::token::{Control, Operator, TokenTree, TokenTreeKind};
+    use crate::syntax::token::{Control, Operator, PToken, PairKind};
     use crate::syntax::tokenizer::Lexer;
-    use crate::syntax::{Coord, FilePos, Position, Span, Token};
+    use crate::syntax::{Coord, FilePos, Keyword, Position, Span, Token};
 
     #[test]
     fn test_simple_op_tokenizer() {
@@ -492,10 +435,9 @@ mod tests {
         let mut tokenizer = Lexer::new(&input);
         assert_eq!(
             tokenizer.scan().unwrap(),
-            TokenTree::new(
-                0,
+            PToken::new(
                 "+",
-                TokenTreeKind::Token(Token::Op(Operator::Plus)),
+                Token::Op(Operator::Plus),
                 Position::new(
                     Span(0, 1),
                     FilePos::new(Coord(1, 1), Coord(1, 2)),
@@ -512,10 +454,9 @@ mod tests {
         let mut tokenizer = Lexer::new(&input);
         assert_eq!(
             tokenizer.scan().unwrap(),
-            TokenTree::new(
-                0,
+            PToken::new(
                 "<<",
-                TokenTreeKind::Token(Token::Op(Operator::LessLess)),
+                Token::Op(Operator::LessLess),
                 Position::new(
                     Span(0, 2),
                     FilePos::new(Coord(1, 1), Coord(1, 3)),
@@ -532,10 +473,9 @@ mod tests {
         let mut tokenizer = Lexer::new(&input);
         assert_eq!(
             tokenizer.scan().unwrap(),
-            TokenTree::new(
-                0,
+            PToken::new(
                 ">>=",
-                TokenTreeKind::Token(Token::Op(Operator::GreaterGreaterEq)),
+                Token::Op(Operator::GreaterGreaterEq),
                 Position::new(
                     Span(0, 3),
                     FilePos::new(Coord(1, 1), Coord(1, 4)),
@@ -552,10 +492,9 @@ mod tests {
         let mut tokenizer = Lexer::new(&input);
         assert_eq!(
             tokenizer.scan().unwrap(),
-            TokenTree::new(
-                0,
+            PToken::new(
                 "123",
-                TokenTreeKind::Token(Token::Integer(123)),
+                Token::Integer(123),
                 Position::new(
                     Span(0, 3),
                     FilePos::new(Coord(1, 1), Coord(1, 4)),
@@ -572,10 +511,9 @@ mod tests {
         let mut tokenizer = Lexer::new(&input);
         assert_eq!(
             tokenizer.scan().unwrap(),
-            TokenTree::new(
-                0,
+            PToken::new(
                 "1.3",
-                TokenTreeKind::Token(Token::Float(1.3.into())),
+                Token::Float(1.3.into()),
                 Position::new(
                     Span(0, 3),
                     FilePos::new(Coord(1, 1), Coord(1, 4)),
@@ -592,10 +530,9 @@ mod tests {
         let mut tokenizer = Lexer::new(&input);
         assert_eq!(
             tokenizer.scan().unwrap(),
-            TokenTree::new(
-                0,
+            PToken::new(
                 "1.3e-5",
-                TokenTreeKind::Token(Token::Float(0.000013.into())),
+                Token::Float(0.000013.into()),
                 Position::new(
                     Span(0, 6),
                     FilePos::new(Coord(1, 1), Coord(1, 7)),
@@ -612,10 +549,9 @@ mod tests {
         let mut tokenizer = Lexer::new(&input);
         assert_eq!(
             tokenizer.scan().unwrap(),
-            TokenTree::new(
-                0,
+            PToken::new(
                 "\"test\"",
-                TokenTreeKind::Token(Token::String("test".to_string())),
+                Token::String("test".to_string()),
                 Position::new(
                     Span(0, 6),
                     FilePos::new(Coord(1, 1), Coord(1, 7)),
@@ -632,10 +568,9 @@ mod tests {
         let mut tokenizer = Lexer::new(&input);
         assert_eq!(
             tokenizer.scan().unwrap(),
-            TokenTree::new(
-                0,
+            PToken::new(
                 ">>=",
-                TokenTreeKind::Token(Token::Op(Operator::GreaterGreaterEq)),
+                Token::Op(Operator::GreaterGreaterEq),
                 Position::new(
                     Span(0, 3),
                     FilePos::new(Coord(1, 1), Coord(1, 4)),
@@ -647,15 +582,14 @@ mod tests {
 
     #[test]
     fn test_keyword_tokenizer() {
-        let input = ">>=";
+        let input = "let";
         let input = File::raw_test(input.to_string());
         let mut tokenizer = Lexer::new(&input);
         assert_eq!(
             tokenizer.scan().unwrap(),
-            TokenTree::new(
-                0,
-                ">>=",
-                TokenTreeKind::Token(Token::Op(Operator::GreaterGreaterEq)),
+            PToken::new(
+                "let",
+                Token::Kw(Keyword::Let),
                 Position::new(
                     Span(0, 3),
                     FilePos::new(Coord(1, 1), Coord(1, 4)),
@@ -672,10 +606,9 @@ mod tests {
         let mut tokenizer = Lexer::new(&input);
         assert_eq!(
             tokenizer.scan().unwrap(),
-            TokenTree::new(
-                0,
+            PToken::new(
                 "\\n",
-                TokenTreeKind::Token(Token::Newline),
+                Token::Newline,
                 Position::new(
                     Span(0, 1),
                     FilePos::new(Coord(1, 1), Coord(2, 1)),
@@ -693,20 +626,18 @@ mod tests {
         assert_eq!(
             [tokenizer.scan().unwrap(), tokenizer.scan().unwrap()],
             [
-                TokenTree::new(
-                    0,
+                PToken::new(
                     "+",
-                    TokenTreeKind::Token(Token::Op(Operator::Plus)),
+                    Token::Op(Operator::Plus),
                     Position::new(
                         Span(0, 1),
                         FilePos::new(Coord(1, 1), Coord(1, 2)),
                         FileId(0)
                     )
                 ),
-                TokenTree::new(
-                    0,
+                PToken::new(
                     ".",
-                    TokenTreeKind::Token(Token::Op(Operator::Period)),
+                    Token::Op(Operator::Period),
                     Position::new(
                         Span(1, 2),
                         FilePos::new(Coord(1, 2), Coord(1, 3)),
@@ -717,48 +648,51 @@ mod tests {
         );
     }
 
-    #[test]
-    fn hierarchy_tokenizer() {
-        let input = "{+.}";
-        let input = File::raw_test(input.to_string());
-        let mut tokenizer = Lexer::new(&input);
-        assert_eq!(
-            tokenizer.scan().unwrap(),
-            TokenTree::new(
-                0,
-                "{+.}",
-                TokenTreeKind::Pair(
-                    Control::Bracket,
-                    [
-                        TokenTree::new(
-                            1,
-                            "+",
-                            TokenTreeKind::Token(Token::Op(Operator::Plus)),
-                            Position::new(
-                                Span(1, 2),
-                                FilePos::new(Coord(1, 2), Coord(1, 3)),
-                                FileId(0)
-                            )
-                        ),
-                        TokenTree::new(
-                            1,
-                            ".",
-                            TokenTreeKind::Token(Token::Op(Operator::Period)),
-                            Position::new(
-                                Span(2, 3),
-                                FilePos::new(Coord(1, 3), Coord(1, 4)),
-                                FileId(0)
-                            )
-                        )
-                    ]
-                    .to_vec()
-                ),
-                Position::new(
-                    Span(0, 4),
-                    FilePos::new(Coord(1, 1), Coord(1, 5)),
-                    FileId(0)
-                )
-            )
-        );
-    }
+    // #[test]
+    // fn hierarchy_tokenizer() {
+    //     let input = "{+.}";
+    //     let input = File::raw_test(input.to_string());
+    //     let mut tokenizer = Lexer::new(&input);
+    //     assert_eq!(
+    //         tokenizer.
+    //         [
+    //             PToken::new(
+    //                 "{",
+    //                 Token::ControlPair(Control::Bracket, PairKind::Open),
+    //                 Position::new(
+    //                     Span(0, 1),
+    //                     FilePos::new(Coord(1, 1), Coord(1, 2)),
+    //                     FileId(0)
+    //                 )
+    //             ),
+    //             PToken::new(
+    //                 "+",
+    //                 Token::Op(Operator::Plus),
+    //                 Position::new(
+    //                     Span(1, 2),
+    //                     FilePos::new(Coord(1, 2), Coord(1, 3)),
+    //                     FileId(0)
+    //                 )
+    //             ),
+    //             PToken::new(
+    //                     ".",
+    //                     Token::Op(Operator::Period),
+    //                     Position::new(
+    //                         Span(2, 3),
+    //                         FilePos::new(Coord(1, 3), Coord(1, 4)),
+    //                         FileId(0)
+    //                     )
+    //             ),
+    //             PToken::new(
+    //                 "{",
+    //                 Token::ControlPair(Control::Bracket, PairKind::Open),
+    //                 Position::new(
+    //                     Span(3, 4),
+    //                     FilePos::new(Coord(1, 4), Coord(1, 5)),
+    //                     FileId(0)
+    //                 )
+    //             ),
+    //         ]
+    //     );
+    // }
 }
