@@ -57,6 +57,7 @@ string_mapping!(
     "while" => While,
     "loop" => Loop,
     "for" => For,
+    "in" => In,
     "stack_alloc" => StackAlloc,
     Keyword
 );
@@ -253,7 +254,20 @@ impl<'a> std::fmt::Display for Token<'a> {
             Token::Kw(kw) => write!(f, "{}", kw.to_string()),
             Token::Op(op) => write!(f, "{}", op.to_string()),
             Token::Ident(val) => write!(f, "{}", val),
-            Token::ControlPair(ctrl, kind) => write!(f, "{:?} {:?}", kind, ctrl),
+            Token::ControlPair(ctrl, kind) => match ctrl {
+                Control::Paren => match kind {
+                    PairKind::Open => write!(f, "("),
+                    PairKind::Close => write!(f, ")"),
+                },
+                Control::Bracket => match kind {
+                    PairKind::Open => write!(f, "{{"),
+                    PairKind::Close => write!(f, "}}"),
+                },
+                Control::Brace => match kind {
+                    PairKind::Open => write!(f, "["),
+                    PairKind::Close => write!(f, "]"),
+                },
+            },
             Token::Integer(val) => write!(f, "{}", val),
             Token::Float(val) => write!(f, "{}", val),
             Token::String(val) => write!(f, "{}", val),

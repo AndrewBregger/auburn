@@ -424,7 +424,7 @@ impl<'src> std::iter::Iterator for TokenCursor<'src> {
 #[cfg(test)]
 mod tests {
     use crate::file::{File, FileId};
-    use crate::syntax::token::{Control, Operator, PToken, PairKind};
+    use crate::syntax::token::{Operator, PToken};
     use crate::syntax::tokenizer::Lexer;
     use crate::syntax::{Coord, FilePos, Keyword, Position, Span, Token};
 

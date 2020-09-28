@@ -25,16 +25,16 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4b17c99f-758c-48ea-b0b5-e3d26e51a8dc" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/examples/parser/expr/block" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/examples/parser/expr/call" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/examples/parser/expr/field" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/examples/parser/expr/method" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/examples/parser/item/function" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/examples/parser/item/methods" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/examples/parser/item/struct" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/examples/parser/item/variables" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/examples/parser/item/variables_init" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/examples/parser/item/variables_spec" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/bin/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/bin/main.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/spec.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/spec.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/error.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/error.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/syntax/ast.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/syntax/ast.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/syntax/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/syntax/mod.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/syntax/parse/parser.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/syntax/parse/parser.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/syntax/token.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/syntax/token.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/syntax/tokenizer/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/syntax/tokenizer/mod.rs" afterDir="false" />
@@ -71,22 +71,21 @@
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="cf.first.check.clang-format" value="false" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/examples/parser/item" />
     <property name="org.rust.cargo.project.model.PROJECT_DISCOVERY" value="true" />
     <property name="settings.editor.selected.configurable" value="language.rust" />
   </component>
   <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="D:\Projects\language\examples\parser\item" />
+    </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\Projects\language\examples\parser" />
       <recent name="D:\Projects\language\src" />
       <recent name="D:\Projects\language\bin" />
     </key>
   </component>
   <component name="RunManager" selected="Cargo.Run">
-    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" PASS_PARENT_ENVS_2="true">
-      <method v="2">
-        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
-      </method>
-    </configuration>
     <configuration name="Run" type="CargoCommandRunConfiguration" factoryName="Cargo Command" nameIsGenerated="true">
       <option name="channel" value="DEFAULT" />
       <option name="command" value="run" />
@@ -159,6 +158,11 @@
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
+    <configuration default="true" type="GradleAppRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="com.jetbrains.cidr.cpp.gradle.execution.GradleNativeBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="Unittests in tests" type="tests" factoryName="Unittests" temporary="true" nameIsGenerated="true">
       <module name="language" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -200,8 +204,17 @@
       <workItem from="1600534572380" duration="15000" />
       <workItem from="1600534614476" duration="9652000" />
       <workItem from="1600835032116" duration="56000" />
-      <workItem from="1600835104316" duration="16963000" />
+      <workItem from="1600835104316" duration="24199000" />
+      <workItem from="1601238524364" duration="15574000" />
     </task>
+    <task id="LOCAL-00001" summary="Implemented block and tuple expressions.">
+      <created>1601015341655</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1601015341655</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -219,43 +232,47 @@
     </option>
     <option name="oldMeFiltersMigrated" value="true" />
   </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Implemented block and tuple expressions." />
+    <option name="LAST_COMMIT_MESSAGE" value="Implemented block and tuple expressions." />
+  </component>
   <component name="WindowStateProjectService">
     <state x="733" y="388" width="1094" height="717" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1600055397288">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="733" y="388" width="1094" height="717" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600055397288" />
-    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1601014808119">
+    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1601262389933">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601014808119" />
-    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser" timestamp="1600667880136">
+    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601262389933" />
+    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser" timestamp="1601243992278">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600667880136" />
+    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601243992278" />
     <state x="1059" y="500" key="FileChooserDialogImpl" timestamp="1600055373613">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="1059" y="500" key="FileChooserDialogImpl/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600055373613" />
-    <state width="2515" height="160" key="GridCell.Tab.0.bottom" timestamp="1601014864591">
+    <state width="2515" height="472" key="GridCell.Tab.0.bottom" timestamp="1601266752720">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="402" key="GridCell.Tab.0.bottom/0.30.1920.1050@0.30.1920.1050" timestamp="1600113795497" />
-    <state width="2515" height="160" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601014864591" />
-    <state width="2515" height="160" key="GridCell.Tab.0.center" timestamp="1601014864590">
+    <state width="2515" height="472" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601266752720" />
+    <state width="2515" height="472" key="GridCell.Tab.0.center" timestamp="1601266752720">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="402" key="GridCell.Tab.0.center/0.30.1920.1050@0.30.1920.1050" timestamp="1600113795497" />
-    <state width="2515" height="160" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601014864590" />
-    <state width="2515" height="160" key="GridCell.Tab.0.left" timestamp="1601014864590">
+    <state width="2515" height="472" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601266752720" />
+    <state width="2515" height="472" key="GridCell.Tab.0.left" timestamp="1601266752720">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="402" key="GridCell.Tab.0.left/0.30.1920.1050@0.30.1920.1050" timestamp="1600113795497" />
-    <state width="2515" height="160" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601014864590" />
-    <state width="2515" height="160" key="GridCell.Tab.0.right" timestamp="1601014864590">
+    <state width="2515" height="472" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601266752720" />
+    <state width="2515" height="472" key="GridCell.Tab.0.right" timestamp="1601266752720">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="402" key="GridCell.Tab.0.right/0.30.1920.1050@0.30.1920.1050" timestamp="1600113795497" />
-    <state width="2515" height="160" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601014864590" />
+    <state width="2515" height="472" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601266752720" />
     <state width="2515" height="495" key="GridCell.Tab.1.bottom" timestamp="1600384295610">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
@@ -280,13 +297,13 @@
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="987" y="468" width="585" height="592" key="find.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600883637164" />
-    <state x="936" y="348" key="run.anything.popup" timestamp="1600892425183">
+    <state x="936" y="348" key="run.anything.popup" timestamp="1601014929703">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="936" y="348" key="run.anything.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600892425183" />
-    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup" timestamp="1601014825403">
+    <state x="936" y="348" key="run.anything.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601014929703" />
+    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup" timestamp="1601263306928">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601014825403" />
+    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601263306928" />
   </component>
 </project>

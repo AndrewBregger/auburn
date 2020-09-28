@@ -128,22 +128,79 @@ pub enum ExprKind {
     },
     Block(Vec<Box<Stmt>>),
     Tuple(Vec<Box<Expr>>),
+    Loop(Box<Expr>),
+    While(Box<Expr>, Box<Expr>),
+    For {
+        element: Identifier,
+        expr: Box<Expr>,
+        body: Box<Expr>,
+    },
+    If {
+        cond: Box<Expr>,
+        body: Box<Expr>,
+        else_if: Option<Box<Expr>>,
+    },
 }
 
 #[derive(Debug, Clone)]
 pub enum StmtKind {
     Expr(Box<Expr>),
     Item(Box<Item>),
+    Empty,
+}
+
+#[derive(Debug, Clone)]
+pub enum FunctionBody {
+    Block(Box<Expr>),
+    Expression(Box<Expr>),
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Visability {
+    Private,
+    Public,
 }
 
 #[derive(Debug, Clone)]
 pub enum ItemKind {
-    Variable(Identifier, Option<Box<Expr>>, Option<Box<Spec>>),
+    Variable {
+        vis: Visability,
+        mutable: bool,
+        name: Identifier,
+        init: Option<Box<Expr>>,
+        spec: Option<Box<Spec>>,
+    },
+    Struct {
+        vis: Visability,
+        name: Identifier,
+        fields: Vec<Box<Item>>,
+    },
+    Function {
+        vis: Visability,
+        name: Identifier,
+        params: Vec<Box<Item>>,
+        ret: Box<Spec>,
+        body: FunctionBody,
+    },
+    Param {
+        names: Vec<Identifier>,
+        spec: Option<Box<Spec>>,
+        init: Option<Box<Expr>>,
+    },
+    Field {
+        vis: Visability,
+        names: Vec<Identifier>,
+        spec: Option<Box<Spec>>,
+        init: Option<Box<Expr>>,
+    },
 }
 
 #[derive(Debug, Clone)]
 pub enum SpecKind {
     Named(Box<Expr>),
+    Tuple(Vec<Box<Spec>>),
+    Unit,
+    Infer,
 }
 
 pub trait Node {
@@ -228,6 +285,10 @@ impl NodeType for ExprKind {
             Self::Method { .. } => "Method",
             Self::Block(..) => "Block",
             Self::Tuple(..) => "Tuple",
+            Self::Loop(..) => "Loop",
+            Self::While(..) => "While",
+            Self::For { .. } => "For",
+            Self::If { .. } => "If",
         }
     }
 
@@ -241,6 +302,7 @@ impl NodeType for StmtKind {
         match self {
             Self::Expr(_) => "Expr Stmt",
             Self::Item(_) => "Item Stmt",
+            Self::Empty => "Empty Stmt",
         }
     }
 
@@ -252,7 +314,11 @@ impl NodeType for StmtKind {
 impl NodeType for ItemKind {
     fn name(&self) -> &'static str {
         match self {
-            Self::Variable(..) => "Variable",
+            Self::Variable { .. } => "Variable",
+            Self::Function { .. } => "Function",
+            Self::Struct { .. } => "Struct",
+            Self::Param { .. } => "Param",
+            Self::Field { .. } => "Field",
         }
     }
 
@@ -265,6 +331,9 @@ impl NodeType for SpecKind {
     fn name(&self) -> &'static str {
         match self {
             Self::Named(_) => "Named",
+            Self::Tuple(_) => "Tuple",
+            Self::Unit => "Unit",
+            Self::Infer => "Infer",
         }
     }
 

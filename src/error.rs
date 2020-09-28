@@ -1,4 +1,5 @@
 use crate::syntax::{Operator, Position, Token};
+use std::fmt::{Display, Formatter};
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum ErrorKind {
@@ -20,11 +21,20 @@ pub enum ErrorKind {
     #[error("unexpected token: expected '{0}' found '{1}'")]
     ExpectedToken(String, String),
 
+    #[error("unexpected token: expected '{}', found '{}'", expected.join(", "), found)]
+    UnexpectedTokenMulti {
+        expected: Vec<String>,
+        found: String,
+    },
+
     #[error("operator is not a valid binary operator: '{}'", op.to_string())]
     InvalidBinaryOp { op: Operator },
 
     #[error("expecting an identifier, found '{0}'")]
     ExpectingIdentifier(String),
+
+    #[error("invalid token '{0}' in type expression")]
+    InvalidTypeExpression(String),
 
     // #[error("expecting keyword '{}' found '{}'", expected.to_string(), found.text())]
     // ExpectedKeyword {
@@ -96,6 +106,13 @@ impl<'src> Error {
     //     }
     // }
 
+    fn new_default(kind: ErrorKind) -> Self {
+        Self {
+            position: Position::default(),
+            kind,
+        }
+    }
+
     pub fn with_position(self, position: Position) -> Self {
         Self {
             position,
@@ -104,52 +121,45 @@ impl<'src> Error {
     }
 
     pub fn unknown_escape_character(ch: char) -> Self {
-        Self {
-            position: Position::default(),
-            kind: ErrorKind::UnknownEscapedCharacter(ch),
-        }
+        Self::new_default(ErrorKind::UnknownEscapedCharacter(ch))
     }
 
     pub fn unexpected_eof() -> Self {
-        Self {
-            position: Position::default(),
-            kind: ErrorKind::UnexpectedEOF,
-        }
+        Self::new_default(ErrorKind::UnexpectedEOF)
     }
 
     pub fn invalid_character(ch: char) -> Self {
-        Self {
-            position: Position::default(),
-            kind: ErrorKind::InvalidCharacter { ch },
-        }
+        Self::new_default(ErrorKind::InvalidCharacter { ch })
     }
 
     pub fn uneven_pairs() -> Self {
-        Self {
-            position: Position::default(),
-            kind: ErrorKind::UnevenPair,
-        }
+        Self::new_default(ErrorKind::UnevenPair)
     }
 
     pub fn unexpected_token(expected: Token, found: &Token) -> Self {
-        Self {
-            position: Position::default(),
-            kind: ErrorKind::ExpectedToken(format!("{}", expected), format!("{}", found)),
-        }
+        Self::new_default(ErrorKind::ExpectedToken(
+            format!("{}", expected),
+            format!("{}", found),
+        ))
+    }
+
+    pub fn unexpected_token_multi(expected: Vec<Token>, found: &Token) -> Self {
+        Self::new_default(ErrorKind::UnexpectedTokenMulti {
+            expected: expected.iter().map(|t| format!("{}", t)).collect(),
+            found: format!("{}", found),
+        })
     }
 
     pub fn invalid_binary_operator(op: Operator) -> Self {
-        Self {
-            position: Position::default(),
-            kind: ErrorKind::InvalidBinaryOp { op },
-        }
+        Self::new_default(ErrorKind::InvalidBinaryOp { op })
     }
 
     pub fn expecting_identifier(token: &Token) -> Self {
-        Self {
-            position: Position::default(),
-            kind: ErrorKind::ExpectingIdentifier(token.to_string()),
-        }
+        Self::new_default(ErrorKind::ExpectingIdentifier(token.to_string()))
+    }
+
+    pub fn invalid_type_expression(token: &Token) -> Self {
+        Self::new_default(ErrorKind::InvalidTypeExpression(format!("{}", token)))
     }
 
     // fn execpted_keyword(expected: token::Kw, token: &Token) -> Self {
@@ -205,9 +215,12 @@ impl<'src> Error {
     // }
 
     pub fn other(err: String) -> Self {
-        Self {
-            position: Position::default(),
-            kind: ErrorKind::Other(err),
-        }
+        Self::new_default(ErrorKind::Other(err))
+    }
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.kind)
     }
 }
