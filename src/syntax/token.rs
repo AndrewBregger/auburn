@@ -49,7 +49,7 @@ string_mapping!(
     "trait" => Trait,
     "extend" => Expand,
     "mut" => Mut,
-    "type" => Ty,
+    "types" => Ty,
     "Type" => TyLit,
     "if" => If,
     "else" => Else,
@@ -58,6 +58,8 @@ string_mapping!(
     "loop" => Loop,
     "for" => For,
     "in" => In,
+    "Self" => SelfType,
+    "self" => SelfLit,
     "stack_alloc" => StackAlloc,
     Keyword
 );

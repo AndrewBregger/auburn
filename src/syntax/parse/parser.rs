@@ -1,16 +1,16 @@
 use crate::error::Error;
-use crate::file::File;
 use crate::syntax::ast::*;
 use crate::syntax::tokenizer::TokenCursor;
 use crate::syntax::{Control, Keyword, Operator, PToken, Position, Token};
 use crate::syntax::{PairKind, ParsedFile};
+use crate::system::File;
 
 use std::convert::TryFrom;
 
 type Restriction = usize;
 const DEFAULT: Restriction = 0;
 const TYPE_EXPR: Restriction = 1 << 0;
-// const : Restriction = 0;
+const NO_STRUCT_EXPR: Restriction = 1 << 1;
 // const : Restriction = 1;
 // const : Restriction = 2;
 // const : Restriction = 4;
@@ -19,17 +19,27 @@ const TYPE_EXPR: Restriction = 1 << 0;
 
 pub struct Parser<'src> {
     restriction: Restriction,
+    file: &'src File,
     cursor: TokenCursor<'src>,
     current: Option<PToken<'src>>,
+    peek: Option<PToken<'src>>,
 }
 
 impl<'src> Parser<'src> {
     pub fn new(file: &'src File) -> Self {
         Self {
             restriction: DEFAULT,
+            file,
             cursor: TokenCursor::new(file),
             current: None,
+            peek: None,
         }
+    }
+
+    pub fn init(&mut self) -> Result<(), Error> {
+        self.consume()?;
+        self.consume()?;
+        Ok(())
     }
 
     pub fn current_token(&self) -> &PToken<'src> {
@@ -44,9 +54,14 @@ impl<'src> Parser<'src> {
 
     pub fn consume(&mut self) -> Result<Option<PToken<'src>>, Error> {
         let current = self.current.clone();
+        self.current = self.peek.clone();
+
         if let Some(res) = self.cursor.next() {
-            self.current = Some(res?);
+            self.peek = Some(res?);
+        } else {
+            self.peek = None;
         }
+
         Ok(current)
     }
 
@@ -76,6 +91,10 @@ impl<'src> Parser<'src> {
         }
     }
 
+    fn peek_for(&self, token: Token) -> bool {
+        self.peek.as_ref().map(|t| t.token()) == Some(&token)
+    }
+
     fn check_for_res(&self, res: Restriction) -> bool {
         (self.restriction & res) == res
     }
@@ -95,15 +114,18 @@ impl<'src> Parser<'src> {
 
     //----------------------------------------------------------------------------------------------
 
-    pub fn parse_file(&mut self, file: &File) -> Result<ParsedFile, Error> {
-        let mut parsed_file = ParsedFile::new(file.id());
+    pub fn parse_file(&mut self) -> Result<ParsedFile, Error> {
+        let mut parsed_file = ParsedFile::new(self.file.id());
         while let Some(current) = self.current.clone() {
+            println!("{}", current);
             if current.is_eof() {
                 break;
             }
 
             let stmt = self.parse_stmt()?;
-            parsed_file.push_stmt(stmt);
+            if !stmt.kind().is_empty() {
+                parsed_file.push_stmt(stmt);
+            }
         }
         Ok(parsed_file)
     }
@@ -276,12 +298,59 @@ impl<'src> Parser<'src> {
                     };
                     operand = Box::new(Expr::new_with_position(kind, position));
                 }
+                Token::ControlPair(Control::Bracket, PairKind::Open) => {
+                    if self.check_for_res(NO_STRUCT_EXPR) {
+                        let err = Error::invalid_context_struct_expr()
+                            .with_position(self.current_position());
+                        return Err(err);
+                    }
+
+                    self.consume()?;
+
+                    let mut fields = vec![];
+                    loop {
+                        if self.check_for(Token::ControlPair(Control::Bracket, PairKind::Close)) {
+                            break;
+                        }
+
+                        let field = self.parse_struct_expr_field()?;
+                        fields.push(field);
+
+                        if self.check_for(Token::Op(Operator::Comma)) {
+                            self.consume()?;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    let end = self.expect(Token::ControlPair(Control::Bracket, PairKind::Close))?;
+
+                    operand = Box::new(Expr::new_with_position(
+                        ExprKind::StructExpr {
+                            name: operand.clone(),
+                            fields,
+                        },
+                        position.extended_to_token(end),
+                    ))
+                }
                 _ => {
                     break;
                 }
             }
         }
         Ok(operand)
+    }
+
+    fn parse_struct_expr_field(&mut self) -> Result<StructExprField, Error> {
+        if self.peek_for(Token::Op(Operator::Colon)) {
+            let ident = self.parse_ident()?;
+            self.expect(Token::Op(Operator::Colon))?;
+            let expr = self.parse_expr()?;
+            Ok(StructExprField::Bind(ident, expr))
+        } else {
+            let expr = self.parse_expr()?;
+            Ok(StructExprField::Field(expr))
+        }
     }
 
     fn parse_bottom(&mut self) -> Result<Box<Expr>, Error> {
@@ -383,6 +452,22 @@ impl<'src> Parser<'src> {
                 let kind = ExprKind::Tuple(stmts);
                 Ok(Box::new(Expr::new_with_position(kind, position)))
             }
+            Token::Kw(Keyword::SelfType) => {
+                let position = self.current_position();
+                self.consume()?;
+                Ok(Box::new(Expr::new_with_position(
+                    ExprKind::SelfType,
+                    position,
+                )))
+            }
+            Token::Kw(Keyword::SelfLit) => {
+                let position = self.current_position();
+                self.consume()?;
+                Ok(Box::new(Expr::new_with_position(
+                    ExprKind::SelfLit,
+                    position,
+                )))
+            }
             t @ Token::Kw(Keyword::If)
             | t @ Token::Kw(Keyword::While)
             | t @ Token::Kw(Keyword::Loop)
@@ -400,10 +485,9 @@ impl<'src> Parser<'src> {
         end_control: Control,
     ) -> Result<Vec<Box<E>>, Error>
     where
-        E: Node,
         F: Fn(&mut Self) -> Result<Box<E>, Error>,
     {
-        let mut res = Vec::new();
+        let mut res = vec![];
         let mut expect_following = false;
         loop {
             let at_end = self.check_for(Token::ControlPair(end_control, PairKind::Close));
@@ -500,7 +584,7 @@ impl<'src> Parser<'src> {
 
         self.expect(Token::Kw(Keyword::In))?;
 
-        let expr = self.parse_expr()?;
+        let expr = self.parse_expr_with_res(NO_STRUCT_EXPR)?;
 
         self.expected(Token::ControlPair(Control::Bracket, PairKind::Open))?;
         self.allow_newline()?;
@@ -592,6 +676,13 @@ impl<'src> Parser<'src> {
                     position.extended_to_token(end),
                 )))
             }
+            Token::Kw(Keyword::SelfType) => {
+                self.consume()?;
+                Ok(Box::new(Spec::new_with_position(
+                    SpecKind::SelfType,
+                    position,
+                )))
+            }
             _ => Ok(Box::new(Spec::new_with_position(SpecKind::Infer, position))),
         }
     }
@@ -618,16 +709,16 @@ impl<'src> Parser<'src> {
         }
     }
 
-    fn parse_possible_vis(&mut self) -> Result<Visability, Error> {
+    fn parse_possible_vis(&mut self) -> Result<Visibility, Error> {
         if self.check_for(Token::Kw(Keyword::Pub)) {
             self.consume()?;
-            Ok(Visability::Public)
+            Ok(Visibility::Public)
         } else {
-            Ok(Visability::Private)
+            Ok(Visibility::Private)
         }
     }
 
-    fn parse_struct(&mut self, vis: Visability) -> Result<Box<Item>, Error> {
+    fn parse_struct(&mut self, vis: Visibility) -> Result<Box<Item>, Error> {
         let position = self.current_position();
         self.expect(Token::Kw(Keyword::Struct))?;
 
@@ -655,7 +746,7 @@ impl<'src> Parser<'src> {
         )))
     }
 
-    fn parse_function(&mut self, vis: Visability) -> Result<Box<Item>, Error> {
+    fn parse_function(&mut self, vis: Visibility) -> Result<Box<Item>, Error> {
         let position = self.current_position();
         self.expect(Token::Kw(Keyword::Fn))?;
         let name = self.parse_ident()?;
@@ -704,6 +795,7 @@ impl<'src> Parser<'src> {
             ret,
             body,
         };
+
         Ok(Box::new(Item::new_with_position(kind, position)))
     }
 
@@ -718,16 +810,20 @@ impl<'src> Parser<'src> {
 
     fn parse_field(&mut self) -> Result<Box<Item>, Error> {
         let vis = self.parse_possible_vis()?;
-        let (names, spec, init, position) = self.parse_field_param()?;
-        Ok(Box::new(Item::new_with_position(
-            ItemKind::Field {
-                vis,
-                names,
-                spec,
-                init,
-            },
-            position,
-        )))
+        if self.check_for(Token::Kw(Keyword::Fn)) {
+            self.parse_function(vis)
+        } else {
+            let (names, spec, init, position) = self.parse_field_param()?;
+            Ok(Box::new(Item::new_with_position(
+                ItemKind::Field {
+                    vis,
+                    names,
+                    spec,
+                    init,
+                },
+                position,
+            )))
+        }
     }
 
     fn parse_field_param(
@@ -741,7 +837,7 @@ impl<'src> Parser<'src> {
         ),
         Error,
     > {
-        let mut names = Vec::new();
+        let mut names = vec![];
         let mut position = self.current_position();
         loop {
             let ident = self.parse_ident()?;
@@ -774,7 +870,7 @@ impl<'src> Parser<'src> {
         Ok((names, spec, init, position))
     }
 
-    fn parse_variable(&mut self, vis: Visability) -> Result<Box<Item>, Error> {
+    fn parse_variable(&mut self, vis: Visibility) -> Result<Box<Item>, Error> {
         let mutable = self.check_for(Token::Kw(Keyword::Mut));
 
         if !self.check_for(Token::Kw(Keyword::Mut)) && !self.check_for(Token::Kw(Keyword::Let)) {

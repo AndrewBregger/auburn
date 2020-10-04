@@ -25,19 +25,31 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4b17c99f-758c-48ea-b0b5-e3d26e51a8dc" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/examples/parser/item/function" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/examples/parser/item/methods" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/examples/parser/item/struct" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/examples/parser/item/variables" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/examples/parser/item/variables_init" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/examples/parser/item/variables_spec" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/examples/analysis/expr" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/analysis/analysis.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/analysis/entity.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/analysis/mod.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/analysis/scope.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/analysis/typer.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/mir/mod.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/system/file_map.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/system/mod.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/types/mod.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/types/ty.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/types/type_map.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/bin/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/bin/main.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/parser/item/methods" beforeDir="false" afterPath="$PROJECT_DIR$/examples/parser/item/methods" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/error.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/error.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/file.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/system/file.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/lib.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/syntax/ast.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/syntax/ast.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/syntax/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/syntax/mod.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/syntax/parse/parser.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/syntax/parse/parser.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/syntax/token.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/syntax/token.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/syntax/tokenizer/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/syntax/tokenizer/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/mod.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/syntax/mod.rs" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -73,13 +85,14 @@
     <property name="cf.first.check.clang-format" value="false" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$/examples/parser/item" />
     <property name="org.rust.cargo.project.model.PROJECT_DISCOVERY" value="true" />
-    <property name="settings.editor.selected.configurable" value="language.rust" />
+    <property name="settings.editor.selected.configurable" value="language.rust.rustfmt" />
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="D:\Projects\language\examples\parser\item" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\Projects\language\src\system" />
       <recent name="D:\Projects\language\examples\parser" />
       <recent name="D:\Projects\language\src" />
       <recent name="D:\Projects\language\bin" />
@@ -163,7 +176,7 @@
         <option name="com.jetbrains.cidr.cpp.gradle.execution.GradleNativeBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="Unittests in tests" type="tests" factoryName="Unittests" temporary="true" nameIsGenerated="true">
+    <configuration name="Unittests in D:/Projects/language/src/tests" type="tests" factoryName="Unittests" temporary="true" nameIsGenerated="true">
       <module name="language" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -179,7 +192,7 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python tests.Unittests in tests" />
+        <item itemvalue="Python tests.Unittests in D:/Projects/language/src/tests" />
         <item itemvalue="Cargo.Test tokenizer::tests" />
         <item itemvalue="Cargo.Test syntax::tokenizer::tests::test_simple_op_tokenizer" />
         <item itemvalue="Cargo.Test syntax::tokenizer::tests::multi_tokens_tokenizer" />
@@ -188,6 +201,7 @@
     </recent_temporary>
   </component>
   <component name="RustProjectSettings">
+    <option name="runRustfmtOnSave" value="true" />
     <option name="toolchainHomeDirectory" value="$USER_HOME$/.cargo/bin" />
     <option name="version" value="2" />
   </component>
@@ -205,7 +219,7 @@
       <workItem from="1600534614476" duration="9652000" />
       <workItem from="1600835032116" duration="56000" />
       <workItem from="1600835104316" duration="24199000" />
-      <workItem from="1601238524364" duration="15574000" />
+      <workItem from="1601238524364" duration="72864000" />
     </task>
     <task id="LOCAL-00001" summary="Implemented block and tuple expressions.">
       <created>1601015341655</created>
@@ -214,7 +228,14 @@
       <option name="project" value="LOCAL" />
       <updated>1601015341655</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="implement function, struct, for, while, if, and loop.">
+      <created>1601266967095</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1601266967095</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -234,45 +255,46 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Implemented block and tuple expressions." />
-    <option name="LAST_COMMIT_MESSAGE" value="Implemented block and tuple expressions." />
+    <MESSAGE value="implement function, struct, for, while, if, and loop." />
+    <option name="LAST_COMMIT_MESSAGE" value="implement function, struct, for, while, if, and loop." />
   </component>
   <component name="WindowStateProjectService">
     <state x="733" y="388" width="1094" height="717" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1600055397288">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="733" y="388" width="1094" height="717" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600055397288" />
-    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1601262389933">
+    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1601355383053">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601262389933" />
-    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser" timestamp="1601243992278">
+    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601355383053" />
+    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser" timestamp="1601790695034">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601243992278" />
+    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601790695034" />
     <state x="1059" y="500" key="FileChooserDialogImpl" timestamp="1600055373613">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="1059" y="500" key="FileChooserDialogImpl/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600055373613" />
-    <state width="2515" height="472" key="GridCell.Tab.0.bottom" timestamp="1601266752720">
+    <state width="2515" height="255" key="GridCell.Tab.0.bottom" timestamp="1601798366429">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="402" key="GridCell.Tab.0.bottom/0.30.1920.1050@0.30.1920.1050" timestamp="1600113795497" />
-    <state width="2515" height="472" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601266752720" />
-    <state width="2515" height="472" key="GridCell.Tab.0.center" timestamp="1601266752720">
+    <state width="2515" height="255" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601798366429" />
+    <state width="2515" height="255" key="GridCell.Tab.0.center" timestamp="1601798366429">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="402" key="GridCell.Tab.0.center/0.30.1920.1050@0.30.1920.1050" timestamp="1600113795497" />
-    <state width="2515" height="472" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601266752720" />
-    <state width="2515" height="472" key="GridCell.Tab.0.left" timestamp="1601266752720">
+    <state width="2515" height="255" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601798366429" />
+    <state width="2515" height="255" key="GridCell.Tab.0.left" timestamp="1601798366429">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="402" key="GridCell.Tab.0.left/0.30.1920.1050@0.30.1920.1050" timestamp="1600113795497" />
-    <state width="2515" height="472" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601266752720" />
-    <state width="2515" height="472" key="GridCell.Tab.0.right" timestamp="1601266752720">
+    <state width="2515" height="255" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601798366429" />
+    <state width="2515" height="255" key="GridCell.Tab.0.right" timestamp="1601798366429">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="402" key="GridCell.Tab.0.right/0.30.1920.1050@0.30.1920.1050" timestamp="1600113795497" />
-    <state width="2515" height="472" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601266752720" />
+    <state width="2515" height="255" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601798366429" />
     <state width="2515" height="495" key="GridCell.Tab.1.bottom" timestamp="1600384295610">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
@@ -289,21 +311,25 @@
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="2515" height="495" key="GridCell.Tab.1.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600384295610" />
-    <state x="780" y="378" key="SettingsEditor" timestamp="1600146337543">
+    <state x="709" y="220" key="SettingsEditor" timestamp="1601428636765">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="780" y="378" key="SettingsEditor/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600146337543" />
-    <state x="987" y="468" width="585" height="592" key="find.popup" timestamp="1600883637164">
+    <state x="709" y="220" key="SettingsEditor/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601428636765" />
+    <state x="871" y="466" key="Vcs.Push.Dialog.v2" timestamp="1601266970748">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="987" y="468" width="585" height="592" key="find.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600883637164" />
-    <state x="936" y="348" key="run.anything.popup" timestamp="1601014929703">
+    <state x="871" y="466" key="Vcs.Push.Dialog.v2/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601266970748" />
+    <state x="987" y="468" width="585" height="592" key="find.popup" timestamp="1601435378203">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="936" y="348" key="run.anything.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601014929703" />
-    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup" timestamp="1601263306928">
+    <state x="987" y="468" width="585" height="592" key="find.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601435378203" />
+    <state x="936" y="348" key="run.anything.popup" timestamp="1601355640712">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601263306928" />
+    <state x="936" y="348" key="run.anything.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601355640712" />
+    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup" timestamp="1601794640338">
+      <screen x="0" y="30" width="2560" height="1410" />
+    </state>
+    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601794640338" />
   </component>
 </project>

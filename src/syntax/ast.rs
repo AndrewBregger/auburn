@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::fmt::{Debug, Display, Formatter};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use ordered_float::OrderedFloat;
@@ -16,11 +16,11 @@ macro_rules! define_op {
             )*
         }
 
-        impl ToString for $ty {
-            fn to_string(&self) -> String {
+        impl Display for $ty {
+            fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
                 match self {
                     $(
-                        Self::$en => $name.to_string(),
+                        Self::$en => write!(f, $name),
                     )*
                 }
             }
@@ -90,7 +90,7 @@ pub enum AstNodeType {
 
 #[derive(Debug, Clone)]
 pub struct Ident {
-    value: String,
+    pub value: String,
 }
 
 impl From<&str> for Ident {
@@ -105,6 +105,12 @@ impl From<String> for Ident {
     fn from(other: String) -> Self {
         Self { value: other }
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum StructExprField {
+    Bind(Identifier, Box<Expr>),
+    Field(Box<Expr>),
 }
 
 #[derive(Debug, Clone)]
@@ -140,6 +146,12 @@ pub enum ExprKind {
         body: Box<Expr>,
         else_if: Option<Box<Expr>>,
     },
+    StructExpr {
+        name: Box<Expr>,
+        fields: Vec<StructExprField>,
+    },
+    SelfLit,
+    SelfType,
 }
 
 #[derive(Debug, Clone)]
@@ -149,6 +161,15 @@ pub enum StmtKind {
     Empty,
 }
 
+impl StmtKind {
+    pub fn is_empty(&self) -> bool {
+        match self {
+            StmtKind::Empty => true,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum FunctionBody {
     Block(Box<Expr>),
@@ -156,7 +177,7 @@ pub enum FunctionBody {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum Visability {
+pub enum Visibility {
     Private,
     Public,
 }
@@ -164,19 +185,19 @@ pub enum Visability {
 #[derive(Debug, Clone)]
 pub enum ItemKind {
     Variable {
-        vis: Visability,
+        vis: Visibility,
         mutable: bool,
         name: Identifier,
         init: Option<Box<Expr>>,
         spec: Option<Box<Spec>>,
     },
     Struct {
-        vis: Visability,
+        vis: Visibility,
         name: Identifier,
         fields: Vec<Box<Item>>,
     },
     Function {
-        vis: Visability,
+        vis: Visibility,
         name: Identifier,
         params: Vec<Box<Item>>,
         ret: Box<Spec>,
@@ -188,7 +209,7 @@ pub enum ItemKind {
         init: Option<Box<Expr>>,
     },
     Field {
-        vis: Visability,
+        vis: Visibility,
         names: Vec<Identifier>,
         spec: Option<Box<Spec>>,
         init: Option<Box<Expr>>,
@@ -201,15 +222,21 @@ pub enum SpecKind {
     Tuple(Vec<Box<Spec>>),
     Unit,
     Infer,
+    SelfType,
+}
+
+#[derive(Debug, Clone, Copy, Hash, Ord, PartialOrd, Eq, PartialEq)]
+pub struct NodeId(pub usize);
+
+impl NodeId {
+    pub(crate) fn next() -> NodeId {
+        static TOKEN: AtomicUsize = AtomicUsize::new(0);
+        NodeId(TOKEN.fetch_add(1, Ordering::SeqCst))
+    }
 }
 
 pub trait Node {
-    fn next_id() -> usize {
-        static TOKEN: AtomicUsize = AtomicUsize::new(0);
-        TOKEN.fetch_add(1, Ordering::SeqCst)
-    }
-
-    fn id(&self) -> usize;
+    fn id(&self) -> NodeId;
 
     fn span(&self) -> Span;
 
@@ -225,7 +252,7 @@ pub trait NodeType: Debug + Clone {
 
 #[derive(Debug, Clone)]
 pub struct AstNode<Kind> {
-    id: usize,
+    id: NodeId,
     position: Position,
     kind: Kind,
 }
@@ -233,7 +260,7 @@ pub struct AstNode<Kind> {
 impl<Kind: NodeType> AstNode<Kind> {
     pub fn new(kind: Kind) -> Self {
         Self {
-            id: Self::next_id(),
+            id: NodeId::next(),
             position: Position::default(),
             kind,
         }
@@ -241,7 +268,7 @@ impl<Kind: NodeType> AstNode<Kind> {
 
     pub fn new_with_position(kind: Kind, position: Position) -> Self {
         Self {
-            id: Self::next_id(),
+            id: NodeId::next(),
             position,
             kind,
         }
@@ -253,7 +280,7 @@ impl<Kind: NodeType> AstNode<Kind> {
 }
 
 impl<Kind: NodeType> Node for AstNode<Kind> {
-    fn id(&self) -> usize {
+    fn id(&self) -> NodeId {
         self.id
     }
 
@@ -289,6 +316,9 @@ impl NodeType for ExprKind {
             Self::While(..) => "While",
             Self::For { .. } => "For",
             Self::If { .. } => "If",
+            Self::StructExpr { .. } => "Struct Expr",
+            Self::SelfType => "Self Type",
+            Self::SelfLit => "Self Literal",
         }
     }
 
@@ -334,6 +364,7 @@ impl NodeType for SpecKind {
             Self::Tuple(_) => "Tuple",
             Self::Unit => "Unit",
             Self::Infer => "Infer",
+            Self::SelfType => "Self",
         }
     }
 

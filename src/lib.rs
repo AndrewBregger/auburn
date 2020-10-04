@@ -1,8 +1,8 @@
 extern crate ordered_float;
 
-mod error;
-pub mod file;
+pub mod analysis;
+pub mod error;
+pub mod mir;
 pub mod syntax;
-
-#[cfg(test)]
-mod tests;
+pub mod system;
+pub mod types;

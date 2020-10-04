@@ -1,7 +1,7 @@
 use std::str::Chars;
 
 use crate::error::Error;
-use crate::file::{File, FileId};
+use crate::system::{File, FileId};
 use crate::syntax::token::{Control, Keyword, Operator, PToken, Token};
 use crate::syntax::{Coord, FilePos, PairKind, Position, Span};
 use std::convert::TryFrom;
@@ -423,7 +423,7 @@ impl<'src> std::iter::Iterator for TokenCursor<'src> {
 
 #[cfg(test)]
 mod tests {
-    use crate::file::{File, FileId};
+    use crate::system::{File, FileId};
     use crate::syntax::token::{Operator, PToken};
     use crate::syntax::tokenizer::Lexer;
     use crate::syntax::{Coord, FilePos, Keyword, Position, Span, Token};

@@ -1,4 +1,6 @@
+use crate::syntax::ast::{BinaryOp, UnaryOp};
 use crate::syntax::{Operator, Position, Token};
+use crate::types::Type;
 use std::fmt::{Display, Formatter};
 
 #[derive(thiserror::Error, Debug, Clone)]
@@ -33,8 +35,29 @@ pub enum ErrorKind {
     #[error("expecting an identifier, found '{0}'")]
     ExpectingIdentifier(String),
 
-    #[error("invalid token '{0}' in type expression")]
+    #[error("invalid token '{0}' in types expression")]
     InvalidTypeExpression(String),
+
+    #[error("invalid context for structure expression")]
+    InvalidStructInContext,
+
+    #[error(
+        "incompatible types for operator '{}': left '{}', right '{}'",
+        op,
+        left,
+        right
+    )]
+    IncompatibleBinaryOpTypes {
+        op: BinaryOp,
+        left: Type,
+        right: Type,
+    },
+
+    #[error("incompatible types for operator '{}' for type '{}'", op, expr)]
+    IncompatibleUnaryOpTypes { op: UnaryOp, expr: Type },
+
+    #[error("use of undeclared identifier '{0}'")]
+    UndeclaredIdentifier(String),
 
     // #[error("expecting keyword '{}' found '{}'", expected.to_string(), found.text())]
     // ExpectedKeyword {
@@ -60,19 +83,19 @@ pub enum ErrorKind {
     //     found: OwnedToken,
     // },
 
-    // #[error("expected type specification following '{}', found '{}'", following.text(), found.text())]
+    // #[error("expected types specification following '{}', found '{}'", following.text(), found.text())]
     // ExpectedTypeSpec {
     //     following: OwnedToken,
     //     found: OwnedToken,
     // },
     //
-    // #[error("unable to determine type of {}, missing type or initializing expression", if *is_param { "parameter" } else { "local"})]
+    // #[error("unable to determine types of {}, missing types or initializing expression", if *is_param { "parameter" } else { "local"})]
     // InvalidLocalItem { is_param: bool },
     //
     // #[error("'self' must be the first parameter")]
     // InvalidSelfParam,
     //
-    // #[error("invalid context for type parameters")]
+    // #[error("invalid context for types parameters")]
     // InvalidTypeParameter,
     //
     #[error("Other: {0}")]
@@ -160,6 +183,29 @@ impl<'src> Error {
 
     pub fn invalid_type_expression(token: &Token) -> Self {
         Self::new_default(ErrorKind::InvalidTypeExpression(format!("{}", token)))
+    }
+
+    pub fn invalid_context_struct_expr() -> Self {
+        Self::new_default(ErrorKind::InvalidStructInContext)
+    }
+
+    pub fn incompatible_operands_for_binary_op(op: BinaryOp, left: &Type, right: &Type) -> Self {
+        Self::new_default(ErrorKind::IncompatibleBinaryOpTypes {
+            op,
+            left: left.clone(),
+            right: right.clone(),
+        })
+    }
+
+    pub fn incompatible_operands_for_unary_op(op: UnaryOp, expr: &Type) -> Self {
+        Self::new_default(ErrorKind::IncompatibleUnaryOpTypes {
+            op,
+            expr: expr.clone(),
+        })
+    }
+
+    pub fn undeclared_identifier(name: String) -> Self {
+        Self::new_default(ErrorKind::UndeclaredIdentifier(name))
     }
 
     // fn execpted_keyword(expected: token::Kw, token: &Token) -> Self {

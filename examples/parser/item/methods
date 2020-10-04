@@ -1,0 +1,7 @@
+struct Vec2 {
+    x, y f32
+
+    fn new(x, y f32) Self {
+        Self { x, y }
+    }
+}

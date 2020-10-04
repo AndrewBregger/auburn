@@ -9,7 +9,8 @@ pub use parse::Parser;
 pub use token::{Control, Keyword, Operator, PToken, PairKind, Token};
 pub use tokenizer::TokenCursor;
 
-use crate::file::FileId;
+use crate::syntax::ast::Stmt;
+use crate::system::FileId;
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
@@ -161,12 +162,12 @@ impl ParsedFile {
     pub fn new(file_id: FileId) -> Self {
         Self {
             file_id,
-            // imports: Vec::new(),
-            stmts: Vec::new(),
+            // imports: vec![],
+            stmts: vec![],
         }
     }
 
-    pub fn push_stmt(&mut self, stmt: Box<ast::Stmt>) {
+    pub fn push_stmt(&mut self, stmt: Box<Stmt>) {
         self.stmts.push(stmt)
     }
 }
