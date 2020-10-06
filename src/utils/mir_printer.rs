@@ -1,0 +1,113 @@
+use crate::mir::{
+    MirExpr, MirExprKind, MirItem, MirItemKind, MirNode, MirNodeBase, MirSpec, MirStmt, MirStmtKind,
+};
+use crate::syntax::ast::NodeType;
+
+pub struct MirPrinter;
+
+impl MirPrinter {
+    fn indent(indent: usize) -> String {
+        (0..indent).map(|_| '\t').collect()
+    }
+
+    pub fn print_stmt(stmt: &MirStmt) {
+        Self::print_stmt_inner(stmt, 0);
+    }
+
+    fn print_header<N: NodeType>(base: &MirNodeBase<N>, indent: usize) {
+        println!(
+            "{}{} - {}",
+            Self::indent(indent),
+            base.inner().name(),
+            base.ty()
+        );
+    }
+
+    fn print_stmt_inner(stmt: &MirStmt, indent: usize) {
+        Self::print_header(stmt, indent);
+        match stmt.inner() {
+            MirStmtKind::Expr(expr) => Self::print_expr_inner(expr.as_ref(), indent + 1),
+            MirStmtKind::Item(item) => Self::print_item_inner(item.as_ref(), indent + 1),
+        }
+    }
+
+    pub fn print_expr(expr: &MirExpr) {
+        Self::print_expr_inner(expr, 0);
+    }
+
+    fn print_expr_inner(expr: &MirExpr, indent: usize) {
+        Self::print_header(expr, indent);
+        match expr.inner() {
+            MirExprKind::Name(_) => {}
+            MirExprKind::Binary(binary_expr) => {
+                Self::print_expr_inner(binary_expr.left.as_ref(), indent + 1);
+                Self::print_expr_inner(binary_expr.right.as_ref(), indent + 1);
+            }
+            MirExprKind::Unary(unary_expr) => {
+                Self::print_expr_inner(unary_expr.operand.as_ref(), indent + 1);
+            }
+            MirExprKind::Field(field_expr) => {
+                Self::print_expr_inner(field_expr.operand.as_ref(), indent + 1);
+                println!("{}| {}", Self::indent(indent + 1), field_expr.field_idx);
+            }
+            MirExprKind::Call(call_expr) => {
+                Self::print_expr_inner(call_expr.operand.as_ref(), indent + 1);
+                for actual in &call_expr.actuals {
+                    Self::print_expr_inner(actual.as_ref(), indent + 1);
+                }
+            }
+            MirExprKind::Method(method_expr) => {}
+            MirExprKind::Block(block_expr) => {}
+            MirExprKind::Tuple(tuple_expr) => {}
+            MirExprKind::Loop(loop_expr) => {}
+            MirExprKind::While(while_expr) => {}
+            MirExprKind::For(for_expr) => {}
+            MirExprKind::If(if_expr) => {}
+            MirExprKind::StructExpr(struct_expr) => {}
+            MirExprKind::SelfLit => {}
+            MirExprKind::SelfType => {}
+
+            MirExprKind::Integer(_)
+            | MirExprKind::Float(_)
+            | MirExprKind::String(_)
+            | MirExprKind::Char(_) => {}
+        }
+    }
+
+    pub fn print_spec(stmt: &MirSpec) {
+        Self::print_spec_inner(stmt, 0);
+    }
+
+    fn print_spec_inner(spec: &MirSpec, indent: usize) {
+        Self::print_header(spec, indent);
+        // match spec.inner() {
+        //     MirSpecKind::Named => {}
+        //     MirSpecKind::Tuple => {}
+        //     MirSpecKind::Unit => {}
+        //     MirSpecKind::SelfType => {}
+        // }
+    }
+
+    pub fn print_item(stmt: &MirItem) {
+        Self::print_item_inner(stmt, 0);
+    }
+
+    fn print_item_inner(item: &MirItem, indent: usize) {
+        Self::print_header(item, indent);
+        match item.inner() {
+            MirItemKind::Variable(variable) => {
+                variable
+                    .spec
+                    .as_ref()
+                    .map(|spec| Self::print_spec_inner(spec.as_ref(), indent + 1));
+
+                variable
+                    .init
+                    .as_ref()
+                    .map(|init| Self::print_expr_inner(init.as_ref(), indent + 1));
+            }
+            MirItemKind::Struct(_) => {}
+            MirItemKind::Function(_) => {}
+        }
+    }
+}

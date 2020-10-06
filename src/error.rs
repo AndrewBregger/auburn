@@ -59,6 +59,14 @@ pub enum ErrorKind {
     #[error("use of undeclared identifier '{0}'")]
     UndeclaredIdentifier(String),
 
+    #[error("declaration of duplicate name '{0}'")]
+    DuplicateName(String),
+
+    #[error("incompatible types '{}' and '{}'", left, right)]
+    IncompatibleTypes { left: Type, right: Type },
+
+    #[error("variable must have initialization expression or type annotation")]
+    InvalidVariableItem,
     // #[error("expecting keyword '{}' found '{}'", expected.to_string(), found.text())]
     // ExpectedKeyword {
     //     expected: Keyword,
@@ -206,6 +214,21 @@ impl<'src> Error {
 
     pub fn undeclared_identifier(name: String) -> Self {
         Self::new_default(ErrorKind::UndeclaredIdentifier(name))
+    }
+
+    pub fn duplicate_name(name: String) -> Self {
+        Self::new_default(ErrorKind::DuplicateName(name))
+    }
+
+    pub fn incompatible_types(left: &Type, right: &Type) -> Self {
+        Self::new_default(ErrorKind::IncompatibleTypes {
+            left: left.clone(),
+            right: right.clone(),
+        })
+    }
+
+    pub fn invalid_variable_item() -> Self {
+        Self::new_default(ErrorKind::InvalidVariableItem)
     }
 
     // fn execpted_keyword(expected: token::Kw, token: &Token) -> Self {

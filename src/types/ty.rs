@@ -27,6 +27,7 @@ pub enum TypeKind {
     Bool,
     Char,
     String,
+    Unit,
     // Struct {
     // },
     // Function {
@@ -100,11 +101,30 @@ impl Type {
     pub fn is_struct(&self) -> bool {
         false
     }
+
+    pub fn is_arithmetic(&self) -> bool {
+        self.is_integer() || self.is_float()
+    }
+
+    pub fn is_signed(&self) -> bool {
+        match self.kind {
+            TypeKind::I8
+            | TypeKind::I16
+            | TypeKind::I32
+            | TypeKind::I64
+            | TypeKind::F32
+            | TypeKind::F64 => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_unsigned(&self) -> bool {
+        !self.is_signed()
+    }
 }
 
 impl Display for Type {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        println!("Display Type: {:?}", self);
         match self.kind {
             TypeKind::Invalid => write!(f, "invalid"),
             TypeKind::U8 => write!(f, "u8"),

@@ -219,14 +219,14 @@ pub struct Variable {
 pub struct Structure {
     pub vis: Visibility,
     pub name: Identifier,
-    pub fields: Vec<Box<Field>>,
+    pub fields: Vec<Box<MirField>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Function {
     pub vis: Visibility,
     pub name: Identifier,
-    pub params: Vec<Box<Param>>,
+    pub params: Vec<Box<MirParam>>,
     pub ret: Box<MirSpec>,
     pub body: Box<MirExpr>,
 }
@@ -302,6 +302,8 @@ pub type MirExpr = MirNodeBase<MirExprKind>;
 pub type MirStmt = MirNodeBase<MirStmtKind>;
 pub type MirSpec = MirNodeBase<MirSpecKind>;
 pub type MirItem = MirNodeBase<MirItemKind>;
+pub type MirParam = MirNodeBase<Param>;
+pub type MirField = MirNodeBase<Field>;
 
 #[derive(Debug, Clone)]
 pub struct MirFile {
@@ -325,5 +327,17 @@ impl MirFile {
 
     pub fn entities(&self) -> &[EntityRef] {
         self.entities.as_slice()
+    }
+}
+
+impl MirExpr {
+    pub fn is_literal(&self) -> bool {
+        match self.inner() {
+            MirExprKind::Integer(_)
+            | MirExprKind::Float(_)
+            | MirExprKind::String(_)
+            | MirExprKind::Char(_) => true,
+            _ => false,
+        }
     }
 }

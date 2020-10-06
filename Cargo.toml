@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 thiserror = "1.0.20"
 ordered-float = "2.0.0"
+debug-cell = "0.1.1"
 
 [[bin]]
 name = "compiler"

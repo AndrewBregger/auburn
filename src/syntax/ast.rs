@@ -245,7 +245,7 @@ pub trait Node {
     fn position(&self) -> Position;
 }
 
-pub trait NodeType: Debug + Clone {
+pub trait NodeType: Clone {
     fn name(&self) -> &'static str;
     fn ty(&self) -> AstNodeType;
 }
@@ -388,3 +388,12 @@ pub type Item = AstNode<ItemKind>;
 pub type Stmt = AstNode<StmtKind>;
 pub type Spec = AstNode<SpecKind>;
 pub type Identifier = AstNode<Ident>;
+
+impl Spec {
+    pub fn is_infer(&self) -> bool {
+        match self.kind() {
+            SpecKind::Infer => true,
+            _ => false,
+        }
+    }
+}

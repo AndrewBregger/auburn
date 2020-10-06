@@ -14,25 +14,39 @@ impl TypeMap {
     }
 
     pub fn init_primitives(&mut self) {
-        self.create_primitive(Type::new(TypeKind::Invalid));
-        self.create_primitive(Type::new(TypeKind::U8));
-        self.create_primitive(Type::new(TypeKind::U16));
-        self.create_primitive(Type::new(TypeKind::U32));
-        self.create_primitive(Type::new(TypeKind::U64));
+        self.create_type(Type::new(TypeKind::Invalid));
+        self.create_type(Type::new(TypeKind::U8));
+        self.create_type(Type::new(TypeKind::U16));
+        self.create_type(Type::new(TypeKind::U32));
+        self.create_type(Type::new(TypeKind::U64));
 
-        self.create_primitive(Type::new(TypeKind::I8));
-        self.create_primitive(Type::new(TypeKind::I16));
-        self.create_primitive(Type::new(TypeKind::I32));
-        self.create_primitive(Type::new(TypeKind::I64));
-        self.create_primitive(Type::new(TypeKind::F32));
+        self.create_type(Type::new(TypeKind::I8));
+        self.create_type(Type::new(TypeKind::I16));
+        self.create_type(Type::new(TypeKind::I32));
+        self.create_type(Type::new(TypeKind::I64));
 
-        self.create_primitive(Type::new(TypeKind::F64));
+        self.create_type(Type::new(TypeKind::F32));
+        self.create_type(Type::new(TypeKind::F64));
 
-        self.create_primitive(Type::new(TypeKind::Bool));
-        self.create_primitive(Type::new(TypeKind::Char));
+        self.create_type(Type::new(TypeKind::Bool));
+        self.create_type(Type::new(TypeKind::Char));
+        self.create_type(Type::new(TypeKind::Unit));
     }
 
-    fn create_primitive(&mut self, ty: Type) {
+    pub fn insert_type(&mut self, kind: TypeKind) -> Rc<Type> {
+        for ty in self.map.values() {
+            if ty.kind() == kind {
+                return ty.clone();
+            }
+        }
+
+        let new_type = Rc::new(Type::new(kind));
+        let id = new_type.id();
+        self.map.insert(id, new_type.clone());
+        new_type
+    }
+
+    fn create_type(&mut self, ty: Type) {
         let id = ty.id();
         self.map.insert(id, Rc::new(ty));
     }
@@ -104,6 +118,11 @@ impl TypeMap {
 
     pub fn get_invalid(&self) -> Rc<Type> {
         let id = TypeId(0);
+        self.map[&id].clone()
+    }
+
+    pub fn get_unit(&self) -> Rc<Type> {
+        let id = TypeId(13);
         self.map[&id].clone()
     }
 }

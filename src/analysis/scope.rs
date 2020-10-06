@@ -1,16 +1,17 @@
 use crate::analysis::EntityRef;
 use crate::system::FileId;
+use crate::utils::{new_ptr, Ptr};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-pub type Ptr<T> = Rc<RefCell<T>>;
-pub type ScopeRef = Ptr<Scope>;
+pub type ScopeRef = Rc<Scope>;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum ScopeKind {
     Prelude,
     File(FileId),
+    Param(String),
 }
 
 #[derive(Debug, Clone)]
@@ -22,7 +23,7 @@ pub struct Scope {
 }
 
 impl Scope {
-    pub fn new(kind: ScopeKind, parent: Option<Ptr<Scope>>) -> Self {
+    pub fn new(kind: ScopeKind, parent: Option<ScopeRef>) -> Self {
         Self {
             kind,
             elements: HashMap::new(),
@@ -39,15 +40,19 @@ impl Scope {
         &self.kind
     }
 
-    pub fn add_child(&mut self, child: Ptr<Scope>) {
+    pub fn add_child(&mut self, child: ScopeRef) {
         self.children.push(child)
     }
 
     pub fn new_ref(kind: ScopeKind, parent: Option<ScopeRef>) -> ScopeRef {
-        Ptr::new(RefCell::new(Scope::new(kind, parent)))
+        Rc::new(Scope::new(kind, parent))
     }
 
     pub fn shallow_lookup(&self, name: &str) -> Option<EntityRef> {
-        self.elements.get(name).map(|entity| entity.clone())
+        self.elements.get(name).map(Ptr::clone)
+    }
+
+    pub fn add_element(&mut self, name: &str, entity: EntityRef) {
+        self.elements.insert(name.to_string(), entity);
     }
 }

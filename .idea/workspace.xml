@@ -25,31 +25,25 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4b17c99f-758c-48ea-b0b5-e3d26e51a8dc" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/examples/analysis/expr" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/analysis/analysis.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/analysis/entity.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/analysis/mod.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/analysis/scope.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/analysis/typer.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/mir/mod.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/system/file_map.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/system/mod.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/types/mod.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/types/ty.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/types/type_map.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/examples/analysis/variable" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils/entity_printer.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils/mir_printer.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils/mod.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.toml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/bin/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/bin/main.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/parser/item/methods" beforeDir="false" afterPath="$PROJECT_DIR$/examples/parser/item/methods" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/analysis/expr" beforeDir="false" afterPath="$PROJECT_DIR$/examples/analysis/expr" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/analysis/analysis.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/analysis/analysis.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/analysis/entity.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/analysis/entity.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/analysis/scope.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/analysis/scope.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/analysis/typer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/analysis/typer.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/error.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/error.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/file.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/system/file.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/lib.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mir/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/mir/mod.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/syntax/ast.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/syntax/ast.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/syntax/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/syntax/mod.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/syntax/parse/parser.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/syntax/parse/parser.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/syntax/token.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/syntax/token.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/syntax/tokenizer/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/syntax/tokenizer/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/mod.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/syntax/mod.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types/ty.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/ty.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types/type_map.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/type_map.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -219,7 +213,9 @@
       <workItem from="1600534614476" duration="9652000" />
       <workItem from="1600835032116" duration="56000" />
       <workItem from="1600835104316" duration="24199000" />
-      <workItem from="1601238524364" duration="72864000" />
+      <workItem from="1601238524364" duration="93206000" />
+      <workItem from="1601957120449" duration="1485000" />
+      <workItem from="1601958629037" duration="8162000" />
     </task>
     <task id="LOCAL-00001" summary="Implemented block and tuple expressions.">
       <created>1601015341655</created>
@@ -235,7 +231,14 @@
       <option name="project" value="LOCAL" />
       <updated>1601266967095</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="Began implementation for semantic analysis.&#10;Includes:&#10;- Scopes&#10;- Entities&#10;- Mir">
+      <created>1601798443764</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1601798443764</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -256,45 +259,46 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Implemented block and tuple expressions." />
     <MESSAGE value="implement function, struct, for, while, if, and loop." />
-    <option name="LAST_COMMIT_MESSAGE" value="implement function, struct, for, while, if, and loop." />
+    <MESSAGE value="Began implementation for semantic analysis.&#10;Includes:&#10;- Scopes&#10;- Entities&#10;- Mir" />
+    <option name="LAST_COMMIT_MESSAGE" value="Began implementation for semantic analysis.&#10;Includes:&#10;- Scopes&#10;- Entities&#10;- Mir" />
   </component>
   <component name="WindowStateProjectService">
     <state x="733" y="388" width="1094" height="717" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1600055397288">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="733" y="388" width="1094" height="717" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600055397288" />
-    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1601355383053">
+    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1601907834488">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601355383053" />
-    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser" timestamp="1601790695034">
+    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601907834488" />
+    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser" timestamp="1601959970397">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601790695034" />
+    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601959970397" />
     <state x="1059" y="500" key="FileChooserDialogImpl" timestamp="1600055373613">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="1059" y="500" key="FileChooserDialogImpl/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600055373613" />
-    <state width="2515" height="255" key="GridCell.Tab.0.bottom" timestamp="1601798366429">
+    <state width="2515" height="182" key="GridCell.Tab.0.bottom" timestamp="1601963480571">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="402" key="GridCell.Tab.0.bottom/0.30.1920.1050@0.30.1920.1050" timestamp="1600113795497" />
-    <state width="2515" height="255" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601798366429" />
-    <state width="2515" height="255" key="GridCell.Tab.0.center" timestamp="1601798366429">
+    <state width="2515" height="182" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601963480571" />
+    <state width="2515" height="182" key="GridCell.Tab.0.center" timestamp="1601963480571">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="402" key="GridCell.Tab.0.center/0.30.1920.1050@0.30.1920.1050" timestamp="1600113795497" />
-    <state width="2515" height="255" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601798366429" />
-    <state width="2515" height="255" key="GridCell.Tab.0.left" timestamp="1601798366429">
+    <state width="2515" height="182" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601963480571" />
+    <state width="2515" height="182" key="GridCell.Tab.0.left" timestamp="1601963480571">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="402" key="GridCell.Tab.0.left/0.30.1920.1050@0.30.1920.1050" timestamp="1600113795497" />
-    <state width="2515" height="255" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601798366429" />
-    <state width="2515" height="255" key="GridCell.Tab.0.right" timestamp="1601798366429">
+    <state width="2515" height="182" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601963480571" />
+    <state width="2515" height="182" key="GridCell.Tab.0.right" timestamp="1601963480571">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="402" key="GridCell.Tab.0.right/0.30.1920.1050@0.30.1920.1050" timestamp="1600113795497" />
-    <state width="2515" height="255" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601798366429" />
+    <state width="2515" height="182" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601963480571" />
     <state width="2515" height="495" key="GridCell.Tab.1.bottom" timestamp="1600384295610">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
@@ -315,10 +319,10 @@
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="709" y="220" key="SettingsEditor/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601428636765" />
-    <state x="871" y="466" key="Vcs.Push.Dialog.v2" timestamp="1601266970748">
+    <state x="871" y="466" key="Vcs.Push.Dialog.v2" timestamp="1601798448159">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="871" y="466" key="Vcs.Push.Dialog.v2/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601266970748" />
+    <state x="871" y="466" key="Vcs.Push.Dialog.v2/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601798448159" />
     <state x="987" y="468" width="585" height="592" key="find.popup" timestamp="1601435378203">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
@@ -327,9 +331,9 @@
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="936" y="348" key="run.anything.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601355640712" />
-    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup" timestamp="1601794640338">
+    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup" timestamp="1601959341224">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601794640338" />
+    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601959341224" />
   </component>
 </project>

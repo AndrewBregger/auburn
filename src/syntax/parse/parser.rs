@@ -117,7 +117,6 @@ impl<'src> Parser<'src> {
     pub fn parse_file(&mut self) -> Result<ParsedFile, Error> {
         let mut parsed_file = ParsedFile::new(self.file.id());
         while let Some(current) = self.current.clone() {
-            println!("{}", current);
             if current.is_eof() {
                 break;
             }
@@ -125,6 +124,12 @@ impl<'src> Parser<'src> {
             let stmt = self.parse_stmt()?;
             if !stmt.kind().is_empty() {
                 parsed_file.push_stmt(stmt);
+            }
+
+            if self.check_for(Token::Newline) {
+                self.consume()?;
+            } else {
+                break;
             }
         }
         Ok(parsed_file)
@@ -134,7 +139,11 @@ impl<'src> Parser<'src> {
         let current = self.current_token().clone();
         let position = current.position();
         match current.to_token() {
-            Token::Kw(Keyword::Pub) | Token::Kw(Keyword::Struct) | Token::Kw(Keyword::Fn) => {
+            Token::Kw(Keyword::Pub)
+            | Token::Kw(Keyword::Struct)
+            | Token::Kw(Keyword::Fn)
+            | Token::Kw(Keyword::Let)
+            | Token::Kw(Keyword::Mut) => {
                 let item = self.parse_item()?;
                 let position = item.position();
                 let kind = StmtKind::Item(item);
