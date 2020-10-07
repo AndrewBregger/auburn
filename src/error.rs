@@ -62,7 +62,7 @@ pub enum ErrorKind {
     #[error("declaration of duplicate name '{0}'")]
     DuplicateName(String),
 
-    #[error("incompatible types '{}' and '{}'", left, right)]
+    #[error("incompatible types, expected '{}' and found '{}'", left, right)]
     IncompatibleTypes { left: Type, right: Type },
 
     #[error("variable must have initialization expression or type annotation")]

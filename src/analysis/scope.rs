@@ -7,11 +7,17 @@ use std::rc::Rc;
 
 pub type ScopeRef = Rc<Scope>;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ScopeKind {
     Prelude,
     File(FileId),
     Param(String),
+    Block,
+}
+
+#[derive(Debug, Clone)]
+pub struct PossibleEntity {
+    entity: Option<EntityRef>,
 }
 
 #[derive(Debug, Clone)]
@@ -34,6 +40,10 @@ impl Scope {
 
     pub fn parent(&self) -> Option<ScopeRef> {
         self.parent.clone()
+    }
+
+    pub fn children(&self) -> &[ScopeRef] {
+        self.children.as_slice()
     }
 
     pub fn kind(&self) -> &ScopeKind {

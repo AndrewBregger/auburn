@@ -35,7 +35,7 @@ impl TypeMap {
 
     pub fn insert_type(&mut self, kind: TypeKind) -> Rc<Type> {
         for ty in self.map.values() {
-            if ty.kind() == kind {
+            if *ty.kind() == kind {
                 return ty.clone();
             }
         }

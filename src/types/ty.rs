@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash)]
@@ -30,8 +31,10 @@ pub enum TypeKind {
     Unit,
     // Struct {
     // },
-    // Function {
-    // }
+    Function {
+        params: Vec<Rc<Type>>,
+        return_type: Rc<Type>,
+    },
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -46,6 +49,10 @@ impl Type {
             id: TypeId::next(),
             kind,
         }
+    }
+
+    pub fn kind(&self) -> &TypeKind {
+        &self.kind
     }
 
     pub fn id(&self) -> TypeId {
@@ -125,7 +132,7 @@ impl Type {
 
 impl Display for Type {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self.kind {
+        match self.kind() {
             TypeKind::Invalid => write!(f, "invalid"),
             TypeKind::U8 => write!(f, "u8"),
             TypeKind::U16 => write!(f, "u16"),
@@ -140,6 +147,20 @@ impl Display for Type {
             TypeKind::Bool => write!(f, "bool"),
             TypeKind::Char => write!(f, "char"),
             TypeKind::String => write!(f, "String"),
+            TypeKind::Unit => write!(f, "<>"),
+            TypeKind::Function {
+                params,
+                return_type,
+            } => write!(
+                f,
+                "({}) {}",
+                params
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<String>>()
+                    .join(", "),
+                return_type
+            ),
         }
     }
 }

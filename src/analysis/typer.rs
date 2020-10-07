@@ -3,9 +3,10 @@ use crate::analysis::scope::{Scope, ScopeKind, ScopeRef};
 use crate::analysis::Entity;
 use crate::error::Error;
 use crate::mir::{
-    BinaryExpr, Function, MirExpr, MirExprKind, MirFile, MirItem, MirItemKind, MirNode,
+    BinaryExpr, BlockExpr, Function, MirExpr, MirExprKind, MirFile, MirItem, MirItemKind, MirNode,
     MirNodeBase, MirParam, MirSpec, MirSpecKind, MirStmt, MirStmtKind, Param, UnaryExpr, Variable,
 };
+use crate::syntax::ast::FunctionBody::Expression;
 use crate::syntax::ast::{
     BinaryOp, Expr, ExprKind, FunctionBody, Identifier, Item, ItemKind, Node, NodeType, Spec,
     SpecKind, Stmt, StmtKind, UnaryOp, Visibility,
@@ -15,11 +16,21 @@ use crate::types::{Type, TypeKind, TypeMap};
 use std::ops::Deref;
 use std::rc::Rc;
 
+type State = u64;
+const DEFAULT: State = 0;
+const BLOCK: State = 1 << 0;
+const EXPR_RESULT_USED: State = 1 << 1;
+const STRUCT: State = 1 << 2;
+const FUNCTION: State = 1 << 3;
+const FUNCTION_PARAM: State = 1 << 4;
+const FUNCTION_BODY: State = 1 << 5;
+
 pub(crate) struct Typer<'a> {
     type_map: &'a mut TypeMap,
     item_stack: &'a mut Vec<Box<Item>>,
     scope_stack: &'a mut Vec<Scope>,
     entities: Vec<EntityRef>,
+    state: State,
 }
 
 impl<'a> Typer<'a> {
@@ -33,7 +44,23 @@ impl<'a> Typer<'a> {
             item_stack,
             scope_stack,
             entities: vec![],
+            state: DEFAULT,
         }
+    }
+
+    fn check_state(&self, state: State) -> bool {
+        (self.state & state) == state
+    }
+
+    fn process_with_state<F, R>(&mut self, state: State, mut process: F) -> Result<R, Error>
+    where
+        F: FnMut(&mut Self) -> Result<R, Error>,
+    {
+        let old_state = self.state;
+        self.state |= state;
+        let res = process(self);
+        self.state = old_state;
+        res
     }
 
     fn push_scope(&mut self, kind: ScopeKind) {
@@ -42,12 +69,15 @@ impl<'a> Typer<'a> {
     }
 
     fn insert_entity(&mut self, name: &str, entity: EntityRef) {
+        self.entities.push(entity.clone());
         self.current_scope_mut().add_element(name, entity);
     }
 
-    fn pop_scope(&mut self) {
+    fn pop_scope(&mut self) -> ScopeRef {
         let mut last_scope = self.scope_stack.pop().unwrap();
-        self.current_scope_mut().add_child(Rc::new(last_scope));
+        let last_scope = Rc::new(last_scope);
+        self.current_scope_mut().add_child(last_scope.clone());
+        last_scope
     }
 
     fn insert_type(&mut self, kind: TypeKind) -> Rc<Type> {
@@ -95,7 +125,10 @@ impl<'a> Typer<'a> {
 
         match stmt.kind() {
             StmtKind::Expr(expr) => {
+                let old_state = self.state;
+                self.state &= !EXPR_RESULT_USED;
                 let expr = self.resolve_expr(expr.as_ref(), None)?;
+                self.state = old_state;
                 let position = expr.position();
                 let ty = expr.ty();
                 Ok(Box::new(MirStmt::new(
@@ -105,7 +138,10 @@ impl<'a> Typer<'a> {
                 )))
             }
             StmtKind::Item(item) => {
+                self.item_stack.push(item.clone());
                 let item = self.resolve_item(item.as_ref())?;
+                self.item_stack.pop();
+
                 let position = item.position();
                 let ty = item.ty();
                 Ok(Box::new(MirStmt::new(
@@ -158,16 +194,44 @@ impl<'a> Typer<'a> {
                 *op,
                 left.as_ref(),
                 right.as_ref(),
-                expected_type,
+                expected_type.clone(),
                 expr.position(),
             )?,
             ExprKind::Unary(op, expr) => {
-                self.resolve_unary(*op, expr.as_ref(), expected_type, expr.position())?
+                self.resolve_unary(*op, expr.as_ref(), expected_type.clone(), expr.position())?
+            }
+            ExprKind::Block(stmts) => {
+                self.push_scope(ScopeKind::Block);
+                let stmts = self.process_with_state(BLOCK, |typer| {
+                    let mut mir_stmts = vec![];
+                    for stmt in stmts {
+                        let mir_stmt = typer.resolve_stmt(stmt.as_ref())?;
+                        mir_stmts.push(mir_stmt);
+                    }
+
+                    Ok(mir_stmts)
+                })?;
+
+                self.pop_scope();
+
+                let return_type = stmts
+                    .last()
+                    .map_or(self.type_map.get_unit(), |stmt| stmt.ty());
+
+                let block_expr = BlockExpr {
+                    stmts,
+                    return_used: self.check_state(EXPR_RESULT_USED),
+                };
+
+                Box::new(MirExpr::new(
+                    MirExprKind::Block(block_expr),
+                    expr.position(),
+                    return_type,
+                ))
             }
             _ => unimplemented!(), /*            ExprKind::Field(_, _) => {}
                                                ExprKind::Call { .. } => {}
                                                ExprKind::Method { .. } => {}
-                                               ExprKind::Block(_) => {}
                                                ExprKind::Tuple(_) => {}
                                                ExprKind::Loop(_) => {}
                                                ExprKind::While(_, _) => {}
@@ -178,6 +242,20 @@ impl<'a> Typer<'a> {
                                                ExprKind::SelfType => {}
                                    */
         };
+
+        if let Some(expected_type) = &expected_type {
+            println!(
+                "Has Expected Type: {}, Found Type: {}",
+                expected_type,
+                expr.ty()
+            );
+            if *expected_type != expr.ty() {
+                return Err(
+                    Error::incompatible_types(expected_type.as_ref(), expr.ty().as_ref())
+                        .with_position(expr.position()),
+                );
+            }
+        }
 
         // expr.as_ref().ty()
         Ok(expr)
@@ -208,15 +286,17 @@ impl<'a> Typer<'a> {
                 params,
                 ret,
                 body,
-            } => self.resolve_function(
-                *vis,
-                name,
-                params.as_slice(),
-                ret.as_ref(),
-                body,
-                item.position(),
-            ),
-            ItemKind::Param { .. } | ItemKind::Field { .. } | _ => todo!(),
+            } => self.process_with_state(FUNCTION, |typer| {
+                typer.resolve_function(
+                    *vis,
+                    name,
+                    params.as_slice(),
+                    ret.as_ref(),
+                    body,
+                    item.position(),
+                )
+            }),
+            ItemKind::Param { .. } | ItemKind::Field { .. } => todo!(),
         }
     }
 
@@ -304,7 +384,8 @@ impl<'a> Typer<'a> {
         fields: &[Box<Item>],
         position: Position,
     ) -> Result<Box<MirItem>, Error> {
-        unimplemented!()
+        self.check_duplicate_item_name(name)?;
+        todo!()
     }
 
     fn resolve_function(
@@ -318,66 +399,95 @@ impl<'a> Typer<'a> {
     ) -> Result<Box<MirItem>, Error> {
         self.check_duplicate_item_name(name)?;
 
-        let mut mir_items = vec![];
-        self.push_scope(ScopeKind::Param(name.kind().value.clone()));
-        for param in params {
-            if let ItemKind::Param { names, spec, init } = param.kind() {
-                let param =
-                    self.resolve_param(names, spec.as_ref(), init.as_ref(), param.position())?;
-                mir_items.extend(param);
+        let mir_items = self.process_with_state(FUNCTION_PARAM, |typer| {
+            let mut mir_items = vec![];
+            typer.push_scope(ScopeKind::Param(name.kind().value.clone()));
+            for param in params {
+                if let ItemKind::Param { names, spec, init } = param.kind() {
+                    let param = typer.resolve_param(
+                        names,
+                        spec.as_ref(),
+                        init.as_ref(),
+                        param.position(),
+                    )?;
+                    mir_items.extend(param);
+                }
             }
-        }
+            Ok(mir_items)
+        })?;
 
         let function_params: Vec<Rc<Type>> = mir_items.iter().map(|item| item.ty()).collect();
 
-        let (return_type, mir_expr) = match body {
-            FunctionBody::Block(expr) => {
-                let mir_spec = if return_spec.is_infer() {
-                    Box::new(MirSpec::new(
-                        MirSpecKind::Infer,
-                        position,
-                        self.type_map.get_unit(),
-                    ))
-                } else {
-                    self.resolve_spec(spec)?
-                };
+        let (return_type, mir_spec, mir_expr) =
+            self.process_with_state(FUNCTION_BODY | EXPR_RESULT_USED, |typer| match body {
+                FunctionBody::Block(expr) => {
+                    let mir_spec = if return_spec.is_infer() {
+                        Box::new(MirSpec::new(
+                            MirSpecKind::Infer,
+                            position,
+                            typer.type_map.get_unit(),
+                        ))
+                    } else {
+                        typer.resolve_spec(return_spec)?
+                    };
 
-                let mir_expr = self.resolve_expr(expr.as_ref(), Some(mir_spec.ty()))?;
-                (expected_type, mir_expr)
-            }
-            FunctionBody::Expression(expr) => {
-                let mir_spec = if return_spec.is_infer() {
-                    None
-                } else {
-                    Some(self.resolve_spec(spec)?)
-                };
+                    let mir_expr = typer.resolve_expr(expr.as_ref(), Some(mir_spec.ty()))?;
+                    Ok((mir_spec.ty(), mir_spec, mir_expr))
+                }
+                FunctionBody::Expression(expr) => {
+                    let mir_spec = if return_spec.is_infer() {
+                        None
+                    } else {
+                        Some(typer.resolve_spec(return_spec)?)
+                    };
 
-                let mir_expr =
-                    self.resolve_expr(expr.as_ref(), mir_spec.as_ref().map(|spec| spec.ty()))?;
+                    let mir_expr = typer
+                        .resolve_expr(expr.as_ref(), mir_spec.as_ref().map(|spec| spec.ty()))?;
 
-                let return_type = match mir_spec {
-                    Some(ty) => ty,
-                    None => mir_expr.ty(),
-                };
+                    let return_spec = match mir_spec {
+                        Some(ty) => ty,
+                        None => Box::new(MirSpec::new(MirSpecKind::Infer, position, mir_expr.ty())),
+                    };
 
-                (return_type, mir_expr)
-            }
+                    Ok((return_spec.ty(), return_spec, mir_expr))
+                }
+            })?;
+
+        let params_scope = self.pop_scope();
+
+        let function_kind = TypeKind::Function {
+            params: function_params,
+            return_type: return_type.clone(),
         };
 
-        self.pop_scope();
-
-        let function_kind = TypeKind::Function(function_params, return_type);
         let function_type = self.insert_type(function_kind);
 
         let function = Function {
             vis,
             name: name.clone(),
             params: mir_items,
-            ret: return_type,
+            ret: mir_spec,
             body: mir_expr,
         };
 
-        unimplemented!()
+        let body_scope = params_scope.children().first().map(Rc::clone);
+
+        let entity = Entity::new_ref(
+            name.kind().value.clone(),
+            function_type.clone(),
+            EntityInfo::Function {
+                params: params_scope,
+                body: body_scope,
+            },
+        );
+
+        self.insert_entity(name.kind().value.as_str(), entity);
+
+        Ok(Box::new(MirItem::new(
+            MirItemKind::Function(function),
+            position,
+            function_type,
+        )))
     }
 
     fn resolve_param(

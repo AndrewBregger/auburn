@@ -1,7 +1,9 @@
 use crate::mir::{
-    MirExpr, MirExprKind, MirItem, MirItemKind, MirNode, MirNodeBase, MirSpec, MirStmt, MirStmtKind,
+    MirExpr, MirExprKind, MirItem, MirItemKind, MirNode, MirNodeBase, MirParam, MirSpec, MirStmt,
+    MirStmtKind,
 };
 use crate::syntax::ast::NodeType;
+use std::borrow::Borrow;
 
 pub struct MirPrinter;
 
@@ -56,8 +58,13 @@ impl MirPrinter {
                     Self::print_expr_inner(actual.as_ref(), indent + 1);
                 }
             }
+            MirExprKind::Block(block_expr) => {
+                block_expr
+                    .stmts
+                    .iter()
+                    .for_each(|stmt| Self::print_stmt_inner(stmt, indent + 1));
+            }
             MirExprKind::Method(method_expr) => {}
-            MirExprKind::Block(block_expr) => {}
             MirExprKind::Tuple(tuple_expr) => {}
             MirExprKind::Loop(loop_expr) => {}
             MirExprKind::While(while_expr) => {}
@@ -107,7 +114,29 @@ impl MirPrinter {
                     .map(|init| Self::print_expr_inner(init.as_ref(), indent + 1));
             }
             MirItemKind::Struct(_) => {}
-            MirItemKind::Function(_) => {}
+            MirItemKind::Function(function) => {
+                function
+                    .params
+                    .iter()
+                    .for_each(|param| Self::print_param_inner(param.as_ref(), indent + 1));
+
+                Self::print_spec_inner(function.ret.as_ref(), indent + 1);
+                Self::print_expr_inner(function.body.as_ref(), indent + 1);
+            }
         }
+    }
+
+    fn print_param_inner(param: &MirParam, indent: usize) {
+        let param_inner = param.inner();
+
+        param_inner
+            .spec
+            .as_ref()
+            .map(|spec| Self::print_spec_inner(spec.as_ref(), indent + 1));
+
+        param_inner
+            .init
+            .as_ref()
+            .map(|init| Self::print_expr_inner(init.as_ref(), indent + 1));
     }
 }

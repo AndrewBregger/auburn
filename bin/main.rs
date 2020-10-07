@@ -30,7 +30,7 @@ fn compile(root: &File) -> Result<(), language::error::Error> {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut file_map = FileMap::new();
-    let file = file_map.open_file("examples/analysis/variable")?;
+    let file = file_map.open_file("examples/analysis/function")?;
 
     match compile(file) {
         Ok(_) => {}

@@ -173,6 +173,7 @@ impl NodeType for MirSpecKind {
             Self::Tuple => "Tuple",
             Self::Unit => "Unit",
             Self::SelfType => "Self",
+            Self::Infer => "Infer",
         }
     }
 
@@ -204,6 +205,7 @@ pub enum MirSpecKind {
     Tuple,
     Unit,
     SelfType,
+    Infer,
 }
 
 #[derive(Debug, Clone)]

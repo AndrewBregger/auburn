@@ -309,9 +309,10 @@ impl<'src> Parser<'src> {
                 }
                 Token::ControlPair(Control::Bracket, PairKind::Open) => {
                     if self.check_for_res(NO_STRUCT_EXPR) {
-                        let err = Error::invalid_context_struct_expr()
-                            .with_position(self.current_position());
-                        return Err(err);
+                        break;
+                        // let err = Error::invalid_context_struct_expr()
+                        //     .with_position(self.current_position());
+                        // return Err(err);
                     }
 
                     self.consume()?;
@@ -664,7 +665,7 @@ impl<'src> Parser<'src> {
         match current.token() {
             Token::Ident(_) => {
                 std::mem::forget(current);
-                let expr = self.parse_expr_with_res(TYPE_EXPR)?;
+                let expr = self.parse_expr_with_res(TYPE_EXPR | NO_STRUCT_EXPR)?;
                 let position = expr.position();
                 let kind = SpecKind::Named(expr);
                 Ok(Box::new(Spec::new_with_position(kind, position)))
