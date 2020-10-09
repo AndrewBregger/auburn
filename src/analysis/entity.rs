@@ -1,6 +1,7 @@
+use crate::analysis::entity::ResolveState::{Resolved, Resolving};
 use crate::analysis::scope::ScopeRef;
 use crate::mir::MirExpr;
-use crate::types::Type;
+use crate::types::{Type, TypeKind};
 use crate::utils::{new_ptr, Ptr};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -9,6 +10,7 @@ pub type EntityRef = Ptr<Entity>;
 
 #[derive(Debug, Clone)]
 pub enum EntityInfo {
+    Invalid,
     Primitive,
     Structure {
         scope: ScopeRef,
@@ -28,16 +30,47 @@ pub enum EntityInfo {
     },
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum ResolveState {
+    Unresolved,
+    Resolving,
+    Resolved,
+}
+
 #[derive(Debug, Clone)]
 pub struct Entity {
     name: String,
     ty: Rc<Type>,
     kind: EntityInfo,
+    state: ResolveState,
 }
 
 impl Entity {
+    pub fn unresolved(name: String) -> Self {
+        Self {
+            name,
+            ty: Rc::new(Type::new(TypeKind::Invalid)),
+            kind: EntityInfo::Invalid,
+            state: ResolveState::Unresolved,
+        }
+    }
+
+    pub fn to_resolving(self) -> Self {
+        Self {
+            name: self.name,
+            ty: self.ty,
+            kind: self.kind,
+            state: ResolveState::Resolved,
+        }
+    }
+
     pub fn new(name: String, ty: Rc<Type>, kind: EntityInfo) -> Self {
-        Self { name, ty, kind }
+        Self {
+            name,
+            ty,
+            kind,
+            state: ResolveState::Resolved,
+        }
     }
 
     pub fn new_ref(name: String, ty: Rc<Type>, kind: EntityInfo) -> EntityRef {

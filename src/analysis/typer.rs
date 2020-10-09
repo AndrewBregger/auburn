@@ -13,6 +13,7 @@ use crate::syntax::ast::{
 };
 use crate::syntax::{ParsedFile, Position};
 use crate::types::{Type, TypeKind, TypeMap};
+use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;
 
@@ -109,6 +110,22 @@ impl<'a> Typer<'a> {
         self.push_scope(ScopeKind::File(parsed_file.file_id));
         println!("Stmts: {}", parsed_file.stmts.len());
         let mut stmts = vec![];
+
+        for stmt in &parsed_file.stmts {
+            match stmt.kind() {
+                StmtKind::Item(item) => match item.kind() {
+                    ItemKind::Variable { name, .. }
+                    | ItemKind::Struct { name, .. }
+                    | ItemKind::Function { name, .. } => {
+                        let entity =
+                            Rc::new(RefCell::new(Entity::unresolved(name.kind().value.clone())));
+                        self.insert_entity(name.kind().value.as_str(), entity);
+                    }
+                    _ => {}
+                },
+                _ => {}
+            }
+        }
 
         for stmt in &parsed_file.stmts {
             let stmt = self.resolve_stmt(stmt.as_ref())?;
@@ -261,7 +278,21 @@ impl<'a> Typer<'a> {
         Ok(expr)
     }
 
-    fn resolve_item(&mut self, item: &Item) -> Result<Box<MirItem>, Error> {
+    fn resolve_top_level_item(&mut self, item: &Item) -> Result<Box<MirExpr>, Error> {
+        let name = item.get_name();
+        if let Some(entity) = self.shallow_lookup(name.kind().value.as_str()) {
+        } else {
+            let err = Error::other(
+                "Compiler Error: attempting to resolve top level item but failed to find entity"
+                    .to_string(),
+            );
+            return Err(err.with_position(name.position()));
+        }
+    }
+
+    fn resolve_item(&mut self, item: &Item) -> Result<Box<MirExpr>, Error> {}
+
+    fn resolve_item_impl(&mut self, item: &Item, entity: EntityRef) -> Result<Box<MirItem>, Error> {
         match item.kind() {
             ItemKind::Variable {
                 vis,
@@ -270,6 +301,7 @@ impl<'a> Typer<'a> {
                 init,
                 spec,
             } => self.resolve_variable(
+                entity,
                 *vis,
                 *mutable,
                 name.clone(),
@@ -281,6 +313,7 @@ impl<'a> Typer<'a> {
                 self.resolve_struct(*vis, name, fields.as_slice(), item.position())
             }
             ItemKind::Function {
+                entity,
                 vis,
                 name,
                 params,
@@ -288,6 +321,7 @@ impl<'a> Typer<'a> {
                 body,
             } => self.process_with_state(FUNCTION, |typer| {
                 typer.resolve_function(
+                    entity,
                     *vis,
                     name,
                     params.as_slice(),
@@ -390,6 +424,7 @@ impl<'a> Typer<'a> {
 
     fn resolve_function(
         &mut self,
+        entity: EntityRef,
         vis: Visibility,
         name: &Identifier,
         params: &[Box<Item>],
@@ -472,7 +507,7 @@ impl<'a> Typer<'a> {
 
         let body_scope = params_scope.children().first().map(Rc::clone);
 
-        let entity = Entity::new_ref(
+        let new_entity = Entity::new(
             name.kind().value.clone(),
             function_type.clone(),
             EntityInfo::Function {
@@ -481,7 +516,9 @@ impl<'a> Typer<'a> {
             },
         );
 
-        self.insert_entity(name.kind().value.as_str(), entity);
+        *entity.borrow_mut() = new_entity;
+
+        // self.insert_entity(name.kind().value.as_str(), entity);
 
         Ok(Box::new(MirItem::new(
             MirItemKind::Function(function),
