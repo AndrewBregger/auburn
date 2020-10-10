@@ -27,7 +27,6 @@ const FUNCTION: State = 1 << 3;
 const FUNCTION_PARAM: State = 1 << 4;
 const FUNCTION_BODY: State = 1 << 5;
 
-
 macro_rules! with_state {
     ($typer:expr, $state:expr, $body:tt) => {{
         let old_state = $typer.state;
@@ -35,7 +34,7 @@ macro_rules! with_state {
         let res = $body;
         $typer.state = old_state;
         res
-    }}
+    }};
 }
 
 pub(crate) struct Typer<'a> {
@@ -129,8 +128,22 @@ impl<'a> Typer<'a> {
         }
 
         for stmt in &parsed_file.stmts {
-            let stmt = self.resolve_stmt(stmt.as_ref())?;
-            stmts.push(stmt);
+            let stmt = match stmt.kind() {
+                StmtKind::Expr(expr) => {
+                    let expr = self.resolve_expr(expr.as_ref(), None)?;
+                    let ty = expr.ty();
+                    let position = expr.position();
+                    MirStmt::new(MirStmtKind::Expr(expr), position, ty)
+                }
+                StmtKind::Item(item) => {
+                    let item = self.resolve_top_level_item(item.as_ref())?;
+                    let ty = item.ty();
+                    let position = item.position();
+                    MirStmt::new(MirStmtKind::Item(item), position, ty)
+                }
+                _ => unreachable!(),
+            };
+            stmts.push(Box::new(stmt));
         }
 
         self.pop_scope();
@@ -445,12 +458,8 @@ impl<'a> Typer<'a> {
             self.push_scope(ScopeKind::Param(name.kind().value.clone()));
             for param in params {
                 if let ItemKind::Param { names, spec, init } = param.kind() {
-                    let param = self.resolve_param(
-                        names,
-                        spec.as_ref(),
-                        init.as_ref(),
-                        param.position(),
-                    )?;
+                    let param =
+                        self.resolve_param(names, spec.as_ref(), init.as_ref(), param.position())?;
                     mir_items.extend(param);
                 }
             }
@@ -488,7 +497,9 @@ impl<'a> Typer<'a> {
 
                         let return_spec = match mir_spec {
                             Some(ty) => ty,
-                            None => Box::new(MirSpec::new(MirSpecKind::Infer, position, mir_expr.ty())),
+                            None => {
+                                Box::new(MirSpec::new(MirSpecKind::Infer, position, mir_expr.ty()))
+                            }
                         };
 
                         Ok((return_spec.ty(), return_spec, mir_expr))
