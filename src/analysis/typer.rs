@@ -13,6 +13,7 @@ use crate::syntax::ast::{
 };
 use crate::syntax::{ParsedFile, Position};
 use crate::types::{Type, TypeKind, TypeMap};
+use crate::utils::Ptr;
 use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -25,6 +26,17 @@ const STRUCT: State = 1 << 2;
 const FUNCTION: State = 1 << 3;
 const FUNCTION_PARAM: State = 1 << 4;
 const FUNCTION_BODY: State = 1 << 5;
+
+
+macro_rules! with_state {
+    ($typer:expr, $state:expr, $body:tt) => {{
+        let old_state = $typer.state;
+        $typer.state |= $state;
+        let res = $body;
+        $typer.state = old_state;
+        res
+    }}
+}
 
 pub(crate) struct Typer<'a> {
     type_map: &'a mut TypeMap,
@@ -51,17 +63,6 @@ impl<'a> Typer<'a> {
 
     fn check_state(&self, state: State) -> bool {
         (self.state & state) == state
-    }
-
-    fn process_with_state<F, R>(&mut self, state: State, mut process: F) -> Result<R, Error>
-    where
-        F: FnMut(&mut Self) -> Result<R, Error>,
-    {
-        let old_state = self.state;
-        self.state |= state;
-        let res = process(self);
-        self.state = old_state;
-        res
     }
 
     fn push_scope(&mut self, kind: ScopeKind) {
@@ -219,10 +220,10 @@ impl<'a> Typer<'a> {
             }
             ExprKind::Block(stmts) => {
                 self.push_scope(ScopeKind::Block);
-                let stmts = self.process_with_state(BLOCK, |typer| {
+                let stmts = with_state!(self, BLOCK, {
                     let mut mir_stmts = vec![];
                     for stmt in stmts {
-                        let mir_stmt = typer.resolve_stmt(stmt.as_ref())?;
+                        let mir_stmt = self.resolve_stmt(stmt.as_ref())?;
                         mir_stmts.push(mir_stmt);
                     }
 
@@ -274,13 +275,13 @@ impl<'a> Typer<'a> {
             }
         }
 
-        // expr.as_ref().ty()
         Ok(expr)
     }
 
-    fn resolve_top_level_item(&mut self, item: &Item) -> Result<Box<MirExpr>, Error> {
+    fn resolve_top_level_item(&mut self, item: &Item) -> Result<Box<MirItem>, Error> {
         let name = item.get_name();
         if let Some(entity) = self.shallow_lookup(name.kind().value.as_str()) {
+            self.resolve_item_impl(item, entity)
         } else {
             let err = Error::other(
                 "Compiler Error: attempting to resolve top level item but failed to find entity"
@@ -290,7 +291,11 @@ impl<'a> Typer<'a> {
         }
     }
 
-    fn resolve_item(&mut self, item: &Item) -> Result<Box<MirExpr>, Error> {}
+    fn resolve_item(&mut self, item: &Item) -> Result<Box<MirItem>, Error> {
+        let name = item.get_name();
+        let entity = Ptr::new(RefCell::new(Entity::unresolved(name.kind().value.clone())));
+        self.resolve_item_impl(item, entity)
+    }
 
     fn resolve_item_impl(&mut self, item: &Item, entity: EntityRef) -> Result<Box<MirItem>, Error> {
         match item.kind() {
@@ -310,17 +315,16 @@ impl<'a> Typer<'a> {
                 item.position(),
             ),
             ItemKind::Struct { vis, name, fields } => {
-                self.resolve_struct(*vis, name, fields.as_slice(), item.position())
+                self.resolve_struct(entity, *vis, name, fields.as_slice(), item.position())
             }
             ItemKind::Function {
-                entity,
                 vis,
                 name,
                 params,
                 ret,
                 body,
-            } => self.process_with_state(FUNCTION, |typer| {
-                typer.resolve_function(
+            } => with_state!(self, FUNCTION, {
+                self.resolve_function(
                     entity,
                     *vis,
                     name,
@@ -346,6 +350,7 @@ impl<'a> Typer<'a> {
 
     fn resolve_variable(
         &mut self,
+        entity: EntityRef,
         vis: Visibility,
         mutable: bool,
         name: Identifier,
@@ -413,6 +418,7 @@ impl<'a> Typer<'a> {
 
     fn resolve_struct(
         &mut self,
+        entity: EntityRef,
         vis: Visibility,
         name: &Identifier,
         fields: &[Box<Item>],
@@ -434,12 +440,12 @@ impl<'a> Typer<'a> {
     ) -> Result<Box<MirItem>, Error> {
         self.check_duplicate_item_name(name)?;
 
-        let mir_items = self.process_with_state(FUNCTION_PARAM, |typer| {
+        let mir_items = with_state!(self, FUNCTION_PARAM, {
             let mut mir_items = vec![];
-            typer.push_scope(ScopeKind::Param(name.kind().value.clone()));
+            self.push_scope(ScopeKind::Param(name.kind().value.clone()));
             for param in params {
                 if let ItemKind::Param { names, spec, init } = param.kind() {
-                    let param = typer.resolve_param(
+                    let param = self.resolve_param(
                         names,
                         spec.as_ref(),
                         init.as_ref(),
@@ -454,37 +460,39 @@ impl<'a> Typer<'a> {
         let function_params: Vec<Rc<Type>> = mir_items.iter().map(|item| item.ty()).collect();
 
         let (return_type, mir_spec, mir_expr) =
-            self.process_with_state(FUNCTION_BODY | EXPR_RESULT_USED, |typer| match body {
-                FunctionBody::Block(expr) => {
-                    let mir_spec = if return_spec.is_infer() {
-                        Box::new(MirSpec::new(
-                            MirSpecKind::Infer,
-                            position,
-                            typer.type_map.get_unit(),
-                        ))
-                    } else {
-                        typer.resolve_spec(return_spec)?
-                    };
+            with_state!(self, FUNCTION_BODY | EXPR_RESULT_USED, {
+                match body {
+                    FunctionBody::Block(expr) => {
+                        let mir_spec = if return_spec.is_infer() {
+                            Box::new(MirSpec::new(
+                                MirSpecKind::Infer,
+                                position,
+                                self.type_map.get_unit(),
+                            ))
+                        } else {
+                            self.resolve_spec(return_spec)?
+                        };
 
-                    let mir_expr = typer.resolve_expr(expr.as_ref(), Some(mir_spec.ty()))?;
-                    Ok((mir_spec.ty(), mir_spec, mir_expr))
-                }
-                FunctionBody::Expression(expr) => {
-                    let mir_spec = if return_spec.is_infer() {
-                        None
-                    } else {
-                        Some(typer.resolve_spec(return_spec)?)
-                    };
+                        let mir_expr = self.resolve_expr(expr.as_ref(), Some(mir_spec.ty()))?;
+                        Ok((mir_spec.ty(), mir_spec, mir_expr))
+                    }
+                    FunctionBody::Expression(expr) => {
+                        let mir_spec = if return_spec.is_infer() {
+                            None
+                        } else {
+                            Some(self.resolve_spec(return_spec)?)
+                        };
 
-                    let mir_expr = typer
-                        .resolve_expr(expr.as_ref(), mir_spec.as_ref().map(|spec| spec.ty()))?;
+                        let mir_expr = self
+                            .resolve_expr(expr.as_ref(), mir_spec.as_ref().map(|spec| spec.ty()))?;
 
-                    let return_spec = match mir_spec {
-                        Some(ty) => ty,
-                        None => Box::new(MirSpec::new(MirSpecKind::Infer, position, mir_expr.ty())),
-                    };
+                        let return_spec = match mir_spec {
+                            Some(ty) => ty,
+                            None => Box::new(MirSpec::new(MirSpecKind::Infer, position, mir_expr.ty())),
+                        };
 
-                    Ok((return_spec.ty(), return_spec, mir_expr))
+                        Ok((return_spec.ty(), return_spec, mir_expr))
+                    }
                 }
             })?;
 

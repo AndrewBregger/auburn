@@ -397,3 +397,34 @@ impl Spec {
         }
     }
 }
+
+impl Item {
+    pub fn get_name(&self) -> &Identifier {
+        match self.kind() {
+            ItemKind::Variable {
+                vis,
+                mutable,
+                name,
+                init,
+                spec,
+            } => name,
+            ItemKind::Struct {
+                vis,
+                name,
+                fields,
+            } => name,
+            ItemKind::Function {
+                name,
+                ..
+            } => name,
+            ItemKind::Param {
+                names,
+                ..
+            } => names.first().unwrap(),
+            ItemKind::Field {
+                names,
+                ..
+            } => names.first().unwrap(),
+        }
+    }
+}
