@@ -1,0 +1,6 @@
+struct Foo {
+    x f32
+    y, w i32
+}
+
+fn foo(x f32, y, w i32) Foo = Foo { x, y, w }

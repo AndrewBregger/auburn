@@ -11,6 +11,7 @@ type Restriction = usize;
 const DEFAULT: Restriction = 0;
 const TYPE_EXPR: Restriction = 1 << 0;
 const NO_STRUCT_EXPR: Restriction = 1 << 1;
+const NAMED_FIELD_EXPR: Restriction = 1 << 2;
 // const : Restriction = 1;
 // const : Restriction = 2;
 // const : Restriction = 4;
@@ -266,8 +267,23 @@ impl<'src> Parser<'src> {
 
     fn parse_primary(&mut self) -> Result<Box<Expr>, Error> {
         let mut operand = self.parse_bottom()?;
-        let position = operand.position();
 
+        if self.check_for_res(NAMED_FIELD_EXPR) {
+            if self.check_for(Token::Op(Operator::Comma))
+                || self.check_for(Token::ControlPair(Control::Bracket, PairKind::Close))
+            {
+                return Ok(operand);
+            } else {
+                let err = Error::unexpected_token(
+                    Token::Op(Operator::Comma),
+                    self.current_token().token(),
+                )
+                .with_position(self.current_position());
+                return Err(err);
+            }
+        }
+
+        let position = operand.position();
         loop {
             let current = self.current_token().clone();
             match current.token() {
@@ -358,7 +374,7 @@ impl<'src> Parser<'src> {
             let expr = self.parse_expr()?;
             Ok(StructExprField::Bind(ident, expr))
         } else {
-            let expr = self.parse_expr()?;
+            let expr = self.parse_expr_with_res(NAMED_FIELD_EXPR)?;
             Ok(StructExprField::Field(expr))
         }
     }
@@ -367,6 +383,15 @@ impl<'src> Parser<'src> {
         let current = self.current_token().clone();
         println!("parse_bottom {}", current);
         let position = current.position();
+        if self.check_for_res(NAMED_FIELD_EXPR) {
+            match current.token() {
+                Token::Ident(_) => {}
+                t => {
+                    let err = Error::expecting_identifier(t).with_position(current.position());
+                    return Err(err);
+                }
+            }
+        }
         match current.to_token() {
             Token::Ident(_) => {
                 let ident = self.parse_ident()?;
@@ -739,8 +764,14 @@ impl<'src> Parser<'src> {
 
         let fields = self.parse_inner_pair(
             |p| {
-                p.allow_newline()?;
-                p.parse_field()
+                if (p.check_for(Token::Kw(Keyword::Pub)) && p.peek_for(Token::Kw(Keyword::Fn)))
+                    || p.check_for(Token::Kw(Keyword::Fn))
+                {
+                    let vis = p.parse_possible_vis()?;
+                    p.parse_function(vis)
+                } else {
+                    p.parse_field()
+                }
             },
             Token::Newline,
             true,

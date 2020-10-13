@@ -1,7 +1,7 @@
 use crate::analysis::EntityRef;
 use crate::system::FileId;
-use crate::utils::{new_ptr, Ptr};
-use std::cell::RefCell;
+use crate::utils::Ptr;
+use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -13,6 +13,7 @@ pub enum ScopeKind {
     File(FileId),
     Param(String),
     Block,
+    StructMembers(String),
 }
 
 #[derive(Debug, Clone)]
@@ -36,6 +37,10 @@ impl Scope {
             parent,
             children: vec![],
         }
+    }
+
+    pub fn elements(&self) -> &HashMap<String, EntityRef> {
+        self.elements.borrow()
     }
 
     pub fn parent(&self) -> Option<ScopeRef> {

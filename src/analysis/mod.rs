@@ -4,4 +4,4 @@ mod scope;
 mod typer;
 
 pub use analysis::Analysis;
-pub use entity::{Entity, EntityRef};
+pub use entity::{Entity, EntityInfo, EntityRef};

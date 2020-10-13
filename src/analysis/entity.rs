@@ -1,80 +1,106 @@
-use crate::analysis::entity::ResolveState::{Resolved, Resolving};
 use crate::analysis::scope::ScopeRef;
-use crate::mir::MirExpr;
-use crate::types::{Type, TypeKind};
+use crate::mir::{MirExpr, MirItem};
+use crate::syntax::ast::{Item, Visibility};
+use crate::types::Type;
 use crate::utils::{new_ptr, Ptr};
-use std::cell::RefCell;
 use std::rc::Rc;
 
 pub type EntityRef = Ptr<Entity>;
 
 #[derive(Debug, Clone)]
 pub enum EntityInfo {
-    Invalid,
+    Unresolved(Box<Item>),
+    Resolving,
     Primitive,
     Structure {
         scope: ScopeRef,
+        mir: Rc<MirItem>,
     },
     Function {
         params: ScopeRef,
         body: Option<ScopeRef>,
+        mir: Rc<MirItem>,
     },
     Variable {
-        default: Option<Box<MirExpr>>,
+        default: Option<Rc<MirExpr>>,
+        mir: Rc<MirItem>,
     },
     Param {
-        default: Option<Box<MirExpr>>,
+        index: usize,
+        default: Option<Rc<MirExpr>>,
     },
     Field {
-        default: Option<Box<MirExpr>>,
+        index: usize,
+        default: Option<Rc<MirExpr>>,
     },
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum ResolveState {
-    Unresolved,
-    Resolving,
-    Resolved,
 }
 
 #[derive(Debug, Clone)]
 pub struct Entity {
+    visibility: Visibility,
     name: String,
     ty: Rc<Type>,
     kind: EntityInfo,
-    state: ResolveState,
 }
 
 impl Entity {
-    pub fn unresolved(name: String) -> Self {
+    pub fn unresolved(
+        visibility: Visibility,
+        name: String,
+        item: Box<Item>,
+        invalid_type: Rc<Type>,
+    ) -> Self {
         Self {
+            visibility,
             name,
-            ty: Rc::new(Type::new(TypeKind::Invalid)),
-            kind: EntityInfo::Invalid,
-            state: ResolveState::Unresolved,
+            ty: invalid_type,
+            kind: EntityInfo::Unresolved(item),
         }
+    }
+
+    pub fn resolving(visibility: Visibility, name: String, invalid_type: Rc<Type>) -> Self {
+        Self {
+            visibility,
+            name,
+            ty: invalid_type,
+            kind: EntityInfo::Resolving,
+        }
+    }
+
+    pub fn resolve(&mut self, ty: Rc<Type>, kind: EntityInfo) {
+        self.ty = ty;
+        self.kind = kind;
+    }
+
+    pub fn set_visibility(&mut self, visibility: Visibility) {
+        self.visibility = visibility;
     }
 
     pub fn to_resolving(self) -> Self {
         Self {
+            visibility: self.visibility,
             name: self.name,
             ty: self.ty,
-            kind: self.kind,
-            state: ResolveState::Resolved,
+            kind: EntityInfo::Resolving,
         }
     }
 
-    pub fn new(name: String, ty: Rc<Type>, kind: EntityInfo) -> Self {
+    pub fn new(visibility: Visibility, name: String, ty: Rc<Type>, kind: EntityInfo) -> Self {
         Self {
+            visibility,
             name,
             ty,
             kind,
-            state: ResolveState::Resolved,
         }
     }
 
-    pub fn new_ref(name: String, ty: Rc<Type>, kind: EntityInfo) -> EntityRef {
-        new_ptr(Self::new(name, ty, kind))
+    pub fn new_ref(
+        visibility: Visibility,
+        name: String,
+        ty: Rc<Type>,
+        kind: EntityInfo,
+    ) -> EntityRef {
+        new_ptr(Self::new(visibility, name, ty, kind))
     }
 
     pub fn name(&self) -> &str {
@@ -92,6 +118,34 @@ impl Entity {
     pub fn is_type(&self) -> bool {
         match self.kind {
             EntityInfo::Primitive | EntityInfo::Structure { .. } => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_struct(&self) -> bool {
+        match self.kind {
+            EntityInfo::Structure { .. } => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_resolved(&self) -> bool {
+        match self.kind {
+            EntityInfo::Unresolved(_) | EntityInfo::Resolving => false,
+            _ => true,
+        }
+    }
+
+    pub fn is_resolving(&self) -> bool {
+        match self.kind {
+            EntityInfo::Resolving => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_unresolved(&self) -> bool {
+        match self.kind {
+            EntityInfo::Unresolved(_) => true,
             _ => false,
         }
     }

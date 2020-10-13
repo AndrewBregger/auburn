@@ -88,7 +88,7 @@ pub enum AstNodeType {
     Ident,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Ident {
     pub value: String,
 }
@@ -107,13 +107,13 @@ impl From<String> for Ident {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum StructExprField {
     Bind(Identifier, Box<Expr>),
     Field(Box<Expr>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ExprKind {
     Integer(u64),
     Float(OrderedFloat<f64>),
@@ -154,7 +154,7 @@ pub enum ExprKind {
     SelfType,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum StmtKind {
     Expr(Box<Expr>),
     Item(Box<Item>),
@@ -170,19 +170,19 @@ impl StmtKind {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum FunctionBody {
     Block(Box<Expr>),
     Expression(Box<Expr>),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Visibility {
     Private,
     Public,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ItemKind {
     Variable {
         vis: Visibility,
@@ -216,7 +216,7 @@ pub enum ItemKind {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum SpecKind {
     Named(Box<Expr>),
     Tuple(Vec<Box<Spec>>),
@@ -243,6 +243,8 @@ pub trait Node {
     fn file_pos(&self) -> FilePos;
 
     fn position(&self) -> Position;
+
+    fn name(&self) -> &'static str;
 }
 
 pub trait NodeType: Clone {
@@ -250,7 +252,7 @@ pub trait NodeType: Clone {
     fn ty(&self) -> AstNodeType;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct AstNode<Kind> {
     id: NodeId,
     position: Position,
@@ -294,6 +296,10 @@ impl<Kind: NodeType> Node for AstNode<Kind> {
 
     fn position(&self) -> Position {
         self.position
+    }
+
+    fn name(&self) -> &'static str {
+        self.kind.name()
     }
 }
 
@@ -401,30 +407,21 @@ impl Spec {
 impl Item {
     pub fn get_name(&self) -> &Identifier {
         match self.kind() {
-            ItemKind::Variable {
-                vis,
-                mutable,
-                name,
-                init,
-                spec,
-            } => name,
-            ItemKind::Struct {
-                vis,
-                name,
-                fields,
-            } => name,
-            ItemKind::Function {
-                name,
-                ..
-            } => name,
-            ItemKind::Param {
-                names,
-                ..
-            } => names.first().unwrap(),
-            ItemKind::Field {
-                names,
-                ..
-            } => names.first().unwrap(),
+            ItemKind::Variable { name, .. } => name,
+            ItemKind::Struct { name, .. } => name,
+            ItemKind::Function { name, .. } => name,
+            ItemKind::Param { names, .. } => names.first().unwrap(),
+            ItemKind::Field { names, .. } => names.first().unwrap(),
+        }
+    }
+
+    pub fn get_visibility(&self) -> Visibility {
+        match self.kind() {
+            ItemKind::Variable { vis, .. } => *vis,
+            ItemKind::Struct { vis, .. } => *vis,
+            ItemKind::Function { vis, .. } => *vis,
+            ItemKind::Param { .. } => Visibility::Private,
+            ItemKind::Field { vis, .. } => *vis,
         }
     }
 }

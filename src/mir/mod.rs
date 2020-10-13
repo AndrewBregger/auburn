@@ -1,6 +1,6 @@
 use crate::analysis::EntityRef;
 use crate::syntax::ast::{
-    AstNodeType, BinaryOp, Identifier, NodeId, NodeType, Stmt, UnaryOp, Visibility,
+    AstNodeType, BinaryOp, Identifier, NodeId, NodeType, UnaryOp, Visibility,
 };
 use crate::syntax::Position;
 use crate::system::FileId;
@@ -12,76 +12,76 @@ use std::rc::Rc;
 #[derive(Debug, Clone)]
 pub struct BinaryExpr {
     pub op: BinaryOp,
-    pub left: Box<MirExpr>,
-    pub right: Box<MirExpr>,
+    pub left: Rc<MirExpr>,
+    pub right: Rc<MirExpr>,
 }
 
 #[derive(Debug, Clone)]
 pub struct UnaryExpr {
     pub op: UnaryOp,
-    pub operand: Box<MirExpr>,
+    pub operand: Rc<MirExpr>,
 }
 
 #[derive(Debug, Clone)]
 pub struct FieldExpr {
-    pub operand: Box<MirExpr>,
+    pub operand: Rc<MirExpr>,
     pub field_idx: usize,
 }
 
 #[derive(Debug, Clone)]
 pub struct CallExpr {
-    pub operand: Box<MirExpr>,
+    pub operand: Rc<MirExpr>,
     pub function_type: Rc<Type>,
-    pub actuals: Vec<Box<MirExpr>>,
+    pub actuals: Vec<Rc<MirExpr>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct MethodExpr {
-    pub operand: Box<MirExpr>,
+    pub operand: Rc<MirExpr>,
     pub function_type: Rc<Type>,
-    pub actuals: Vec<Box<MirExpr>>,
+    pub actuals: Vec<Rc<MirExpr>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct BlockExpr {
-    pub stmts: Vec<Box<MirStmt>>,
+    pub stmts: Vec<Rc<MirStmt>>,
     pub return_used: bool,
 }
 
 #[derive(Debug, Clone)]
 pub struct TupleExpr {
-    pub elements: Vec<Box<MirExpr>>,
+    pub elements: Vec<Rc<MirExpr>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct LoopExpr {
-    pub body: Box<MirExpr>,
+    pub body: Rc<MirExpr>,
 }
 
 #[derive(Debug, Clone)]
 pub struct WhileExpr {
-    pub cond: Box<MirExpr>,
-    pub body: Box<MirExpr>,
+    pub cond: Rc<MirExpr>,
+    pub body: Rc<MirExpr>,
 }
 
 #[derive(Debug, Clone)]
 pub struct ForExpr {
     pub element: Identifier,
-    pub expr: Box<MirExpr>,
-    pub body: Box<MirExpr>,
+    pub expr: Rc<MirExpr>,
+    pub body: Rc<MirExpr>,
 }
 
 #[derive(Debug, Clone)]
 pub struct IfExpr {
-    pub cond: Box<MirExpr>,
-    pub body: Box<MirExpr>,
-    pub else_if: Option<Box<MirExpr>>,
+    pub cond: Rc<MirExpr>,
+    pub body: Rc<MirExpr>,
+    pub else_if: Option<Rc<MirExpr>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct StructExpr {
-    pub name: Box<MirExpr>,
-    pub fields: Vec<(usize, Box<MirExpr>)>,
+    pub struct_type: Rc<Type>,
+    pub fields: Vec<(usize, Rc<MirExpr>)>,
 }
 
 #[derive(Debug, Clone)]
@@ -194,8 +194,8 @@ impl NodeType for MirSpecKind {
 
 #[derive(Debug, Clone)]
 pub enum MirStmtKind {
-    Expr(Box<MirExpr>),
-    Item(Box<MirItem>),
+    Expr(Rc<MirExpr>),
+    Item(Rc<MirItem>),
 }
 
 // the actual type will be the ty() of MirNode
@@ -213,39 +213,40 @@ pub struct Variable {
     pub vis: Visibility,
     pub mutable: bool,
     pub name: Identifier,
-    pub init: Option<Box<MirExpr>>,
-    pub spec: Option<Box<MirSpec>>,
+    pub init: Option<Rc<MirExpr>>,
+    pub spec: Option<Rc<MirSpec>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Structure {
     pub vis: Visibility,
     pub name: Identifier,
-    pub fields: Vec<Box<MirField>>,
+    pub fields: Vec<Rc<MirField>>,
+    pub methods: Vec<Rc<MirItem>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Function {
     pub vis: Visibility,
     pub name: Identifier,
-    pub params: Vec<Box<MirParam>>,
-    pub ret: Box<MirSpec>,
-    pub body: Box<MirExpr>,
+    pub params: Vec<Rc<MirParam>>,
+    pub ret: Rc<MirSpec>,
+    pub body: Rc<MirExpr>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Param {
-    pub names: Identifier,
-    pub spec: Option<Box<MirSpec>>,
-    pub init: Option<Box<MirExpr>>,
+    pub name: Identifier,
+    pub spec: Option<Rc<MirSpec>>,
+    pub init: Option<Rc<MirExpr>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Field {
     pub vis: Visibility,
-    pub names: Identifier,
-    pub spec: Option<Box<MirSpec>>,
-    pub init: Option<Box<MirExpr>>,
+    pub name: Identifier,
+    pub spec: Option<Rc<MirSpec>>,
+    pub init: Option<Rc<MirExpr>>,
 }
 
 #[derive(Debug, Clone)]
@@ -310,12 +311,12 @@ pub type MirField = MirNodeBase<Field>;
 #[derive(Debug, Clone)]
 pub struct MirFile {
     id: FileId,
-    stmts: Vec<Box<MirStmt>>,
+    stmts: Vec<Rc<MirStmt>>,
     entities: Vec<EntityRef>,
 }
 
 impl MirFile {
-    pub(crate) fn new(id: FileId, stmts: Vec<Box<MirStmt>>, entities: Vec<EntityRef>) -> Self {
+    pub(crate) fn new(id: FileId, stmts: Vec<Rc<MirStmt>>, entities: Vec<EntityRef>) -> Self {
         Self {
             id,
             stmts,
@@ -323,7 +324,7 @@ impl MirFile {
         }
     }
 
-    pub fn stmts(&self) -> &[Box<MirStmt>] {
+    pub fn stmts(&self) -> &[Rc<MirStmt>] {
         self.stmts.as_slice()
     }
 

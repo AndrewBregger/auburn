@@ -1,3 +1,4 @@
+use crate::syntax::ast::Identifier;
 use std::fmt::{Display, Formatter};
 use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -29,11 +30,14 @@ pub enum TypeKind {
     Char,
     String,
     Unit,
-    // Struct {
-    // },
     Function {
         params: Vec<Rc<Type>>,
         return_type: Rc<Type>,
+    },
+
+    Struct {
+        name: Identifier,
+        fields: Vec<Rc<Type>>,
     },
 }
 
@@ -161,6 +165,7 @@ impl Display for Type {
                     .join(", "),
                 return_type
             ),
+            TypeKind::Struct { name, .. } => write!(f, "{}", name.kind().value),
         }
     }
 }

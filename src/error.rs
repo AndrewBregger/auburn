@@ -65,8 +65,19 @@ pub enum ErrorKind {
     #[error("incompatible types, expected '{}' and found '{}'", left, right)]
     IncompatibleTypes { left: Type, right: Type },
 
-    #[error("variable must have initialization expression or type annotation")]
-    InvalidVariableItem,
+    #[error("must have initialization expression or type annotation")]
+    InvalidLocalItem,
+
+    #[error("type must be a struct, found '{}'", ty)]
+    MustBeStruct { ty: Type },
+
+    #[error(
+        "undefined name '{}' in name binding of struct expression of type '{}'",
+        name,
+        ty
+    )]
+    UndefinedFieldInStructBinding { name: String, ty: Type },
+
     // #[error("expecting keyword '{}' found '{}'", expected.to_string(), found.text())]
     // ExpectedKeyword {
     //     expected: Keyword,
@@ -227,8 +238,19 @@ impl<'src> Error {
         })
     }
 
-    pub fn invalid_variable_item() -> Self {
-        Self::new_default(ErrorKind::InvalidVariableItem)
+    pub fn invalid_local_item() -> Self {
+        Self::new_default(ErrorKind::InvalidLocalItem)
+    }
+
+    pub fn expected_struct_type(ty: &Type) -> Self {
+        Self::new_default(ErrorKind::MustBeStruct { ty: ty.clone() })
+    }
+
+    pub fn undeclared_field_in_struct_binding(name: &str, ty: &Type) -> Self {
+        Self::new_default(ErrorKind::UndefinedFieldInStructBinding {
+            name: name.to_owned(),
+            ty: ty.clone(),
+        })
     }
 
     // fn execpted_keyword(expected: token::Kw, token: &Token) -> Self {

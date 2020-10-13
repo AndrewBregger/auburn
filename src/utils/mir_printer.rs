@@ -3,8 +3,6 @@ use crate::mir::{
     MirStmtKind,
 };
 use crate::syntax::ast::NodeType;
-use std::borrow::Borrow;
-
 pub struct MirPrinter;
 
 impl MirPrinter {
@@ -37,7 +35,7 @@ impl MirPrinter {
         Self::print_expr_inner(expr, 0);
     }
 
-    fn print_expr_inner(expr: &MirExpr, indent: usize) {
+    pub(crate) fn print_expr_inner(expr: &MirExpr, indent: usize) {
         Self::print_header(expr, indent);
         match expr.inner() {
             MirExprKind::Name(_) => {}
@@ -70,7 +68,12 @@ impl MirPrinter {
             MirExprKind::While(while_expr) => {}
             MirExprKind::For(for_expr) => {}
             MirExprKind::If(if_expr) => {}
-            MirExprKind::StructExpr(struct_expr) => {}
+            MirExprKind::StructExpr(struct_expr) => {
+                struct_expr.fields.iter().for_each(|(index, mir)| {
+                    println!("{}Index: {}", Self::indent(indent + 1), index);
+                    Self::print_expr_inner(mir.as_ref(), indent + 1);
+                })
+            }
             MirExprKind::SelfLit => {}
             MirExprKind::SelfType => {}
 

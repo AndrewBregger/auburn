@@ -1,10 +1,10 @@
 use crate::analysis::entity::EntityInfo;
-use crate::analysis::scope::{Scope, ScopeKind, ScopeRef};
+use crate::analysis::scope::{Scope, ScopeKind};
 use crate::analysis::typer::Typer;
 use crate::analysis::Entity;
 use crate::error::Error;
 use crate::mir::MirFile;
-use crate::syntax::ast::Item;
+use crate::syntax::ast::{Item, Visibility};
 use crate::syntax::ParsedFile;
 use crate::types::TypeMap;
 
@@ -35,7 +35,12 @@ impl Analysis {
             ($scope:expr, $name:literal, $ty:expr) => {
                 $scope.add_element(
                     $name,
-                    Entity::new_ref($name.to_string(), $ty, EntityInfo::Primitive),
+                    Entity::new_ref(
+                        Visibility::Public,
+                        $name.to_string(),
+                        $ty,
+                        EntityInfo::Primitive,
+                    ),
                 );
             };
         }

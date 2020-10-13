@@ -14,13 +14,15 @@ fn compile(root: &File) -> Result<(), language::error::Error> {
 
     parser.init()?;
 
+    println!("Parsing");
     let parsed_file = parser.parse_file()?;
+    println!("Checking");
     let checked = analysis.check(parsed_file)?;
 
     for stmt in checked.stmts() {
         MirPrinter::print_stmt(stmt.as_ref());
     }
-
+    println!("{}", checked.entities().len());
     for entity in checked.entities() {
         EntityPrinter::print(&entity.deref().borrow());
     }
@@ -30,7 +32,7 @@ fn compile(root: &File) -> Result<(), language::error::Error> {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut file_map = FileMap::new();
-    let file = file_map.open_file("examples/analysis/function")?;
+    let file = file_map.open_file("examples/test")?;
 
     match compile(file) {
         Ok(_) => {}

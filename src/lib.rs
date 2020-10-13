@@ -1,4 +1,5 @@
 extern crate debug_cell;
+extern crate itertools;
 extern crate ordered_float;
 
 pub mod analysis;
