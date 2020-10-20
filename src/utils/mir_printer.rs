@@ -1,8 +1,11 @@
 use crate::mir::{
-    MirExpr, MirExprKind, MirItem, MirItemKind, MirNode, MirNodeBase, MirParam, MirSpec, MirStmt,
-    MirStmtKind,
+    MirExpr, MirExprKind, MirField, MirItem, MirItemKind, MirNode, MirNodeBase, MirParam, MirSpec,
+    MirStmt, MirStmtKind,
 };
 use crate::syntax::ast::NodeType;
+use crate::utils::EntityPrinter;
+use std::ops::Deref;
+
 pub struct MirPrinter;
 
 impl MirPrinter {
@@ -27,7 +30,9 @@ impl MirPrinter {
         Self::print_header(stmt, indent);
         match stmt.inner() {
             MirStmtKind::Expr(expr) => Self::print_expr_inner(expr.as_ref(), indent + 1),
-            MirStmtKind::Item(item) => Self::print_item_inner(item.as_ref(), indent + 1),
+            MirStmtKind::Item(item) => {
+                EntityPrinter::print_impl(&item.deref().borrow(), indent + 1);
+            }
         }
     }
 
@@ -116,7 +121,17 @@ impl MirPrinter {
                     .as_ref()
                     .map(|init| Self::print_expr_inner(init.as_ref(), indent + 1));
             }
-            MirItemKind::Struct(_) => {}
+            MirItemKind::Struct(structure) => {
+                structure
+                    .fields
+                    .iter()
+                    .for_each(|field| Self::print_field_inner(field.as_ref(), indent + 1));
+
+                structure
+                    .methods
+                    .iter()
+                    .for_each(|method| Self::print_item_inner(method.as_ref(), indent + 1));
+            }
             MirItemKind::Function(function) => {
                 function
                     .params
@@ -138,6 +153,19 @@ impl MirPrinter {
             .map(|spec| Self::print_spec_inner(spec.as_ref(), indent + 1));
 
         param_inner
+            .init
+            .as_ref()
+            .map(|init| Self::print_expr_inner(init.as_ref(), indent + 1));
+    }
+
+    fn print_field_inner(field: &MirField, indent: usize) {
+        let field_inner = field.inner();
+        field_inner
+            .spec
+            .as_ref()
+            .map(|spec| Self::print_spec_inner(spec.as_ref(), indent + 1));
+
+        field_inner
             .init
             .as_ref()
             .map(|init| Self::print_expr_inner(init.as_ref(), indent + 1));

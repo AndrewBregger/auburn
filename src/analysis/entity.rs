@@ -1,5 +1,5 @@
 use crate::analysis::scope::ScopeRef;
-use crate::mir::{MirExpr, MirItem};
+use crate::mir::{MirExprPtr, MirSpecPtr};
 use crate::syntax::ast::{Item, Visibility};
 use crate::types::Type;
 use crate::utils::{new_ptr, Ptr};
@@ -8,31 +8,46 @@ use std::rc::Rc;
 pub type EntityRef = Ptr<Entity>;
 
 #[derive(Debug, Clone)]
+pub struct StructureInfo {
+    pub field: ScopeRef,
+}
+
+pub struct MethodInfo {
+    pub parent: EntityRef,
+    pub method: ScopeRef,
+}
+
+#[derive(Debug, Clone)]
+pub struct FunctionInfo {
+    pub receiver: Option<EntityRef>,
+    pub params: ScopeRef,
+    pub body_scope: Option<ScopeRef>,
+    pub body: MirExprPtr,
+}
+
+#[derive(Debug, Clone)]
+pub struct VariableInfo {
+    pub spec: Option<MirSpecPtr>,
+    pub default: Option<MirExprPtr>,
+}
+
+#[derive(Debug, Clone)]
+pub struct LocalInfo {
+    pub index: usize,
+    pub spec: Option<MirSpecPtr>,
+    pub default: Option<MirExprPtr>,
+}
+
+#[derive(Debug, Clone)]
 pub enum EntityInfo {
     Unresolved(Box<Item>),
     Resolving,
     Primitive,
-    Structure {
-        scope: ScopeRef,
-        mir: Rc<MirItem>,
-    },
-    Function {
-        params: ScopeRef,
-        body: Option<ScopeRef>,
-        mir: Rc<MirItem>,
-    },
-    Variable {
-        default: Option<Rc<MirExpr>>,
-        mir: Rc<MirItem>,
-    },
-    Param {
-        index: usize,
-        default: Option<Rc<MirExpr>>,
-    },
-    Field {
-        index: usize,
-        default: Option<Rc<MirExpr>>,
-    },
+    Structure(StructureInfo),
+    Function(FunctionInfo),
+    Variable(VariableInfo),
+    Param(LocalInfo),
+    Field(LocalInfo),
 }
 
 #[derive(Debug, Clone)]
@@ -76,13 +91,8 @@ impl Entity {
         self.visibility = visibility;
     }
 
-    pub fn to_resolving(self) -> Self {
-        Self {
-            visibility: self.visibility,
-            name: self.name,
-            ty: self.ty,
-            kind: EntityInfo::Resolving,
-        }
+    pub fn to_resolving(&mut self) {
+        self.kind = EntityInfo::Resolving;
     }
 
     pub fn new(visibility: Visibility, name: String, ty: Rc<Type>, kind: EntityInfo) -> Self {
@@ -147,6 +157,19 @@ impl Entity {
         match self.kind {
             EntityInfo::Unresolved(_) => true,
             _ => false,
+        }
+    }
+
+    pub fn type_name(&self) -> &'static str {
+        match self.kind {
+            EntityInfo::Unresolved(_) => "unresolved",
+            EntityInfo::Resolving => "resolving",
+            EntityInfo::Primitive => "primative",
+            EntityInfo::Structure { .. } => "structure",
+            EntityInfo::Function { .. } => "function",
+            EntityInfo::Variable { .. } => "variable",
+            EntityInfo::Param { .. } => "param",
+            EntityInfo::Field { .. } => "field",
         }
     }
 }

@@ -127,6 +127,7 @@ pub enum Token<'a> {
     Integer(u64),
     Float(OrderedFloat<f64>),
     String(String),
+    Comment(String),
     Newline,
     Eof,
 }
@@ -138,6 +139,13 @@ impl<'a> Token<'a> {
 
     pub fn is_eof(&self) -> bool {
         *self == Token::Eof
+    }
+
+    pub fn is_comment(&self) -> bool {
+        match self {
+            Self::Comment(_) => true,
+            _ => false,
+        }
     }
 
     pub fn is_op(&self) -> bool {
@@ -245,6 +253,10 @@ impl<'a> PToken<'a> {
         self.token.is_eof()
     }
 
+    pub fn is_comment(&self) -> bool {
+        self.token.is_comment()
+    }
+
     pub fn precedence(&self) -> u8 {
         self.token.precedence()
     }
@@ -270,6 +282,7 @@ impl<'a> std::fmt::Display for Token<'a> {
                     PairKind::Close => write!(f, "]"),
                 },
             },
+            Token::Comment(_) => write!(f, "comment"),
             Token::Integer(val) => write!(f, "{}", val),
             Token::Float(val) => write!(f, "{}", val),
             Token::String(val) => write!(f, "{}", val),

@@ -88,12 +88,12 @@ struct Foo {
     fn new(x f32, y i32) Self { Self { x, y } }
  
     // constant associated method
-    fn foo(self, val String) {
+    fn foo(val String) {
         println("{} {}", val, self.x)
     }
 
     // mutable associated method
-    fn set_x(mut self, x f32) {
+    fn set_x(x f32) {
         self.x = x
     }
 }

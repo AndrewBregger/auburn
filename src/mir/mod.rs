@@ -195,7 +195,7 @@ impl NodeType for MirSpecKind {
 #[derive(Debug, Clone)]
 pub enum MirStmtKind {
     Expr(Rc<MirExpr>),
-    Item(Rc<MirItem>),
+    Item(EntityRef),
 }
 
 // the actual type will be the ty() of MirNode
@@ -308,30 +308,12 @@ pub type MirItem = MirNodeBase<MirItemKind>;
 pub type MirParam = MirNodeBase<Param>;
 pub type MirField = MirNodeBase<Field>;
 
-#[derive(Debug, Clone)]
-pub struct MirFile {
-    id: FileId,
-    stmts: Vec<Rc<MirStmt>>,
-    entities: Vec<EntityRef>,
-}
-
-impl MirFile {
-    pub(crate) fn new(id: FileId, stmts: Vec<Rc<MirStmt>>, entities: Vec<EntityRef>) -> Self {
-        Self {
-            id,
-            stmts,
-            entities,
-        }
-    }
-
-    pub fn stmts(&self) -> &[Rc<MirStmt>] {
-        self.stmts.as_slice()
-    }
-
-    pub fn entities(&self) -> &[EntityRef] {
-        self.entities.as_slice()
-    }
-}
+pub type MirExprPtr = Rc<MirExpr>;
+pub type MirStmtPtr = Rc<MirStmt>;
+pub type MirSpecPtr = Rc<MirSpec>;
+pub type MirItemPtr = Rc<MirItem>;
+pub type MirParamPtr = Rc<MirParam>;
+pub type MirFieldPtr = Rc<MirField>;
 
 impl MirExpr {
     pub fn is_literal(&self) -> bool {
@@ -342,5 +324,34 @@ impl MirExpr {
             | MirExprKind::Char(_) => true,
             _ => false,
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MirFile {
+    id: FileId,
+    global_expressions: Vec<MirExprPtr>,
+    entities: Vec<EntityRef>,
+}
+
+impl MirFile {
+    pub(crate) fn new(
+        id: FileId,
+        global_expressions: Vec<MirExprPtr>,
+        entities: Vec<EntityRef>,
+    ) -> Self {
+        Self {
+            id,
+            global_expressions,
+            entities,
+        }
+    }
+
+    pub fn expressions(&self) -> &[MirExprPtr] {
+        self.global_expressions.as_slice()
+    }
+
+    pub fn entities(&self) -> &[EntityRef] {
+        self.entities.as_slice()
     }
 }

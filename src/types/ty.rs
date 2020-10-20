@@ -1,5 +1,5 @@
-use crate::syntax::ast::Identifier;
-use std::fmt::{Display, Formatter};
+use crate::{analysis::EntityRef, syntax::ast::Identifier};
+use std::{fmt::{Display, Formatter}, ops::Deref};
 use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -13,7 +13,7 @@ impl TypeId {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum TypeKind {
     Invalid,
     U8,
@@ -36,10 +36,47 @@ pub enum TypeKind {
     },
 
     Struct {
-        name: Identifier,
-        fields: Vec<Rc<Type>>,
+        entity: EntityRef,
     },
 }
+
+impl PartialEq for TypeKind {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Invalid, Self::Invalid)
+            | (Self::U8, Self::U8)
+            | (Self::U16, Self::U16)
+            | (Self::U32, Self::U32)
+            | (Self::U64, Self::U64)
+            | (Self::I8, Self::I8)
+            | (Self::I16, Self::I16)
+            | (Self::I32, Self::I32)
+            | (Self::I64, Self::I64)
+            | (Self::F32, Self::F32)
+            | (Self::F64, Self::F64)
+            | (Self::Bool, Self::Bool)
+            | (Self::Char, Self::Char)
+            | (Self::String, Self::String)
+            | (Self::Unit, Self::Unit) => true,
+            (
+                Self::Function {
+                    params: lparams,
+                    return_type: lreturn_type,
+                },
+                Self::Function {
+                    params: rparams,
+                    return_type: rreturn_type,
+                },
+            ) => lparams == rparams && lreturn_type == rreturn_type,
+            (Self::Struct { entity: lentity }, Self::Struct { entity: rentityt }) => {
+                lentity.as_ptr() == rentityt.as_ptr()
+            }
+            (_, _) => false,
+        }
+    }
+}
+
+impl Eq for TypeKind {}
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Type {
@@ -165,7 +202,7 @@ impl Display for Type {
                     .join(", "),
                 return_type
             ),
-            TypeKind::Struct { name, .. } => write!(f, "{}", name.kind().value),
+            TypeKind::Struct { entity } => write!(f, "{}", entity.deref().borrow().name()),
         }
     }
 }

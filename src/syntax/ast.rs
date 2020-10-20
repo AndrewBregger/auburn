@@ -208,6 +208,9 @@ pub enum ItemKind {
         spec: Option<Box<Spec>>,
         init: Option<Box<Expr>>,
     },
+    SelfParam {
+        mutable: bool,
+    },
     Field {
         vis: Visibility,
         names: Vec<Identifier>,
@@ -354,6 +357,7 @@ impl NodeType for ItemKind {
             Self::Function { .. } => "Function",
             Self::Struct { .. } => "Struct",
             Self::Param { .. } => "Param",
+            Self::SelfParam { .. } => "SelfParam",
             Self::Field { .. } => "Field",
         }
     }
@@ -405,23 +409,22 @@ impl Spec {
 }
 
 impl Item {
-    pub fn get_name(&self) -> &Identifier {
+    pub fn get_name(&self) -> Option<&Identifier> {
         match self.kind() {
-            ItemKind::Variable { name, .. } => name,
-            ItemKind::Struct { name, .. } => name,
-            ItemKind::Function { name, .. } => name,
-            ItemKind::Param { names, .. } => names.first().unwrap(),
-            ItemKind::Field { names, .. } => names.first().unwrap(),
+            ItemKind::Variable { name, .. }
+            | ItemKind::Struct { name, .. }
+            | ItemKind::Function { name, .. } => Some(name),
+            ItemKind::Param { .. } | ItemKind::Field { .. } | ItemKind::SelfParam { .. } => None,
         }
     }
 
     pub fn get_visibility(&self) -> Visibility {
         match self.kind() {
-            ItemKind::Variable { vis, .. } => *vis,
-            ItemKind::Struct { vis, .. } => *vis,
-            ItemKind::Function { vis, .. } => *vis,
-            ItemKind::Param { .. } => Visibility::Private,
-            ItemKind::Field { vis, .. } => *vis,
+            ItemKind::Variable { vis, .. }
+            | ItemKind::Struct { vis, .. }
+            | ItemKind::Function { vis, .. }
+            | ItemKind::Field { vis, .. } => *vis,
+            ItemKind::Param { .. } | ItemKind::SelfParam { .. } => Visibility::Private,
         }
     }
 }

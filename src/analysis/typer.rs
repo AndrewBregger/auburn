@@ -1,11 +1,12 @@
-use crate::analysis::entity::{EntityInfo, EntityRef};
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use crate::analysis::scope::{Scope, ScopeKind, ScopeRef};
-use crate::analysis::Entity;
+use crate::analysis::{Entity, EntityInfo, EntityRef};
 use crate::error::Error;
 use crate::mir::{
-    BinaryExpr, BlockExpr, Field, Function, MirExpr, MirExprKind, MirField, MirFile, MirItem,
-    MirItemKind, MirNode, MirParam, MirSpec, MirSpecKind, MirStmt, MirStmtKind, Param, StructExpr,
-    Structure, UnaryExpr, Variable,
+    BinaryExpr, BlockExpr, MirExpr, MirExprKind, MirExprPtr, MirFile, MirNode, MirSpec,
+    MirSpecKind, MirStmt, MirStmtKind, StructExpr, UnaryExpr,
 };
 use crate::syntax::ast::{
     BinaryOp, Expr, ExprKind, FunctionBody, Identifier, Item, ItemKind, Node, NodeType, Spec,
@@ -14,11 +15,15 @@ use crate::syntax::ast::{
 use crate::syntax::{ParsedFile, Position};
 use crate::types::{Type, TypeKind, TypeMap};
 use crate::utils::{new_ptr, Ptr};
-use itertools::Itertools;
-use std::cell::RefCell;
-use std::rc::Rc;
+use crate::{
+    analysis::entity::{FunctionInfo, LocalInfo, StructureInfo, VariableInfo},
+    mir::Structure,
+};
+use std::borrow::Borrow;
+use std::ops::Deref;
 
 type State = u64;
+
 const DEFAULT: State = 0;
 const BLOCK: State = 1 << 0;
 const EXPR_RESULT_USED: State = 1 << 1;
@@ -108,7 +113,8 @@ impl<'a> Typer<'a> {
     pub fn resolve_file(mut self, parsed_file: ParsedFile) -> Result<MirFile, Error> {
         self.push_scope(ScopeKind::File(parsed_file.file_id));
         println!("Stmts: {}", parsed_file.stmts.len());
-        let mut stmts = vec![];
+        let mut global_expression = vec![];
+        let mut items = vec![];
 
         for stmt in &parsed_file.stmts {
             match stmt.kind() {
@@ -131,22 +137,17 @@ impl<'a> Typer<'a> {
         }
 
         for stmt in &parsed_file.stmts {
-            let stmt = match stmt.kind() {
+            match stmt.kind() {
                 StmtKind::Expr(expr) => {
                     let expr = self.resolve_expr(expr.as_ref(), None)?;
-                    let ty = expr.ty();
-                    let position = expr.position();
-                    MirStmt::new(MirStmtKind::Expr(expr), position, ty)
+                    global_expression.push(expr);
                 }
                 StmtKind::Item(item) => {
                     let item = self.resolve_top_level_item(item.as_ref())?;
-                    let ty = item.ty();
-                    let position = item.position();
-                    MirStmt::new(MirStmtKind::Item(item), position, ty)
+                    items.push(item);
                 }
                 _ => unreachable!(),
-            };
-            stmts.push(Rc::new(stmt));
+            }
         }
 
         let entities = self
@@ -158,7 +159,11 @@ impl<'a> Typer<'a> {
 
         self.pop_scope();
 
-        Ok(MirFile::new(parsed_file.file_id, stmts, entities))
+        Ok(MirFile::new(
+            parsed_file.file_id,
+            global_expression,
+            entities,
+        ))
     }
 
     fn resolve_stmt(&mut self, stmt: &Stmt) -> Result<Rc<MirStmt>, Error> {
@@ -176,12 +181,16 @@ impl<'a> Typer<'a> {
             }
             StmtKind::Item(item) => {
                 self.item_stack.push(item.clone());
-                let item = self.resolve_item(item.as_ref())?;
+                let entity = self.resolve_item(item.as_ref())?;
                 self.item_stack.pop();
 
                 let position = item.position();
-                let ty = item.ty();
-                Ok(Rc::new(MirStmt::new(MirStmtKind::Item(item), position, ty)))
+                let ty = entity.deref().borrow().ty();
+                Ok(Rc::new(MirStmt::new(
+                    MirStmtKind::Item(entity),
+                    position,
+                    ty,
+                )))
             }
             StmtKind::Empty => unreachable!(),
         }
@@ -220,7 +229,7 @@ impl<'a> Typer<'a> {
             }
             ExprKind::Name(ident) => {
                 let name = self.resolve_ident(ident)?;
-                let ty = name.borrow().ty();
+                let ty = name.deref().borrow().ty();
                 Rc::new(MirExpr::new(MirExprKind::Name(name), expr.position(), ty))
             }
             ExprKind::Binary(op, left, right) => self.resolve_binary(
@@ -264,93 +273,33 @@ impl<'a> Typer<'a> {
             }
             ExprKind::StructExpr { name, fields } => {
                 let ty = self.resolve_type_expr(name.as_ref())?;
-                let entity_borrow = ty.borrow();
+                let entity_borrow = ty.deref().borrow();
                 let struct_type = entity_borrow.ty();
                 println!("StructExpr: {}", struct_type);
                 match entity_borrow.kind() {
-                    EntityInfo::Structure { scope, mir } => {
-                        let elements = scope.elements();
-                        let mut mir_fields = vec![];
-                        for field in fields {
-                            match field {
-                                StructExprField::Bind(name, expr) => {
-                                    let field_name = name.kind().value.as_str();
-                                    if let Some(field) = elements.get(field_name) {
-                                        let mir_field = self.resolve_expr(
-                                            expr.as_ref(),
-                                            Some(field.borrow().ty()),
-                                        )?;
-                                        if let EntityInfo::Param { index, .. } =
-                                            field.borrow().kind()
-                                        {
-                                            mir_fields.push((*index, mir_field));
-                                        } else {
-                                            panic!(
-                                                "Compiler Error: Invalid entity for struct field"
-                                            );
-                                        }
-                                    } else {
-                                        let err = Error::undeclared_field_in_struct_binding(
-                                            field_name,
-                                            struct_type.as_ref(),
-                                        );
-                                        return Err(err.with_position(name.position()));
-                                    }
-                                }
-                                StructExprField::Field(expr) => match expr.kind() {
-                                    ExprKind::Name(name) => {
-                                        let field_name = name.kind().value.as_str();
-                                        if let Some(field) = elements.get(field_name) {
-                                            let mir_field = self.resolve_expr(
-                                                expr.as_ref(),
-                                                Some(field.borrow().ty()),
-                                            )?;
-                                            if let EntityInfo::Field { index, .. } =
-                                                field.borrow().kind()
-                                            {
-                                                mir_fields.push((*index, mir_field));
-                                            } else {
-                                                panic!(
-                                                    "Compiler Error: Invalid entity for struct field"
-                                                );
-                                            }
-                                        } else {
-                                            let err = Error::undeclared_field_in_struct_binding(
-                                                field_name,
-                                                struct_type.as_ref(),
-                                            );
-                                            return Err(err.with_position(name.position()));
-                                        }
-                                    }
-                                    _ => {}
-                                },
-                            }
-                        }
-                        let struct_expr = StructExpr {
-                            struct_type: ty.borrow().ty(),
-                            fields: mir_fields,
-                        };
-                        let mir_expr = MirExprKind::StructExpr(struct_expr);
-                        Rc::new(MirExpr::new(mir_expr, expr.position(), struct_type))
+                    EntityInfo::Structure(structure) => {
+                        self.resolve_struct_expr(struct_type, fields, structure, expr.position())?
                     }
                     _ => {
-                        let err = Error::expected_struct_type(ty.borrow().ty().as_ref())
+                        let err = Error::expected_struct_type(struct_type.as_ref())
                             .with_position(name.position());
                         return Err(err);
                     }
                 }
             }
-            _ => unimplemented!(), /*            ExprKind::Field(_, _) => {}
-                                               ExprKind::Call { .. } => {}
-                                               ExprKind::Method { .. } => {}
-                                               ExprKind::Tuple(_) => {}
-                                               ExprKind::Loop(_) => {}
-                                               ExprKind::While(_, _) => {}
-                                               ExprKind::For { .. } => {}
-                                               ExprKind::If { .. } => {}
-                                               ExprKind::SelfLit => {}
-                                               ExprKind::SelfType => {}
-                                   */
+            /*
+            ExprKind::Field(_, _) => {}
+            ExprKind::Call { .. } => {}
+            ExprKind::Method { .. } => {}
+            ExprKind::Tuple(_) => {}
+            ExprKind::Loop(_) => {}
+            ExprKind::While(_, _) => {}
+            ExprKind::For { .. } => {}
+            ExprKind::If { .. } => {}
+            ExprKind::SelfLit => {}
+            ExprKind::SelfType => {}
+            */
+            _ => unimplemented!(),
         };
 
         if let Some(expected_type) = &expected_type {
@@ -370,32 +319,103 @@ impl<'a> Typer<'a> {
         Ok(expr)
     }
 
-    fn resolve_top_level_item(&mut self, item: &Item) -> Result<Rc<MirItem>, Error> {
-        let name = item.get_name();
-        if let Some(entity) = self.shallow_lookup(name.kind().value.as_str()) {
-            self.resolve_item_impl(item, new_ptr(entity.borrow().clone().to_resolving()))
+    fn resolve_struct_expr(
+        &mut self,
+        struct_type: Rc<Type>,
+        fields: &[StructExprField],
+        structure: &StructureInfo,
+        position: Position,
+    ) -> Result<MirExprPtr, Error> {
+        let mut mir_fields = vec![];
+        for field in fields {
+            match field {
+                StructExprField::Bind(name, expr) => {
+                    let field_name = name.kind().value.as_str();
+                    if let Some(field) = structure.field.elements().get(field_name) {
+                        let mir_field =
+                            self.resolve_expr(expr.as_ref(), Some(field.deref().borrow().ty()))?;
+                        if let EntityInfo::Param(local_info) = field.deref().borrow().kind() {
+                            mir_fields.push((local_info.index, mir_field));
+                        } else {
+                            panic!("Compiler Error: Invalid entity for struct field");
+                        }
+                    } else {
+                        let err = Error::undeclared_field_in_struct_binding(
+                            field_name,
+                            struct_type.as_ref(),
+                        );
+                        return Err(err.with_position(name.position()));
+                    }
+                }
+                StructExprField::Field(expr) => match expr.kind() {
+                    ExprKind::Name(name) => {
+                        let field_name = name.kind().value.as_str();
+                        if let Some(field) = structure.field.elements().get(field_name) {
+                            let mir_field = self
+                                .resolve_expr(expr.as_ref(), Some(field.deref().borrow().ty()))?;
+                            if let EntityInfo::Field(local_info) = field.deref().borrow().kind() {
+                                mir_fields.push((local_info.index, mir_field));
+                            } else {
+                                panic!("Compiler Error: Invalid entity for struct field");
+                            }
+                        } else {
+                            let err = Error::undeclared_field_in_struct_binding(
+                                field_name,
+                                struct_type.as_ref(),
+                            );
+                            return Err(err.with_position(name.position()));
+                        }
+                    }
+                    _ => {}
+                },
+            }
+        }
+        let struct_expr = StructExpr {
+            struct_type: struct_type.clone(),
+            fields: mir_fields,
+        };
+        let mir_expr = MirExprKind::StructExpr(struct_expr);
+        Ok(Rc::new(MirExpr::new(mir_expr, position, struct_type)))
+    }
+
+    fn resolve_top_level_item(&mut self, item: &Item) -> Result<EntityRef, Error> {
+        if let Some(name) = item.get_name() {
+            if let Some(entity) = self.shallow_lookup(name.kind().value.as_str()) {
+                entity.deref().borrow_mut().to_resolving();
+                self.resolve_item_impl(item, entity, true)
+            } else {
+                let err = Error::other(
+                    "Compiler Error: attempting to resolve top level item but failed to find entity"
+                        .to_string(),
+                );
+                return Err(err.with_position(name.position()));
+            }
         } else {
-            let err = Error::other(
-                "Compiler Error: attempting to resolve top level item but failed to find entity"
-                    .to_string(),
-            );
-            return Err(err.with_position(name.position()));
+            panic!("Compiler Error: Invalid top level item found in analysis. This should have been caught by the parser.");
         }
     }
 
-    fn resolve_item(&mut self, item: &Item) -> Result<Rc<MirItem>, Error> {
-        let name = item.get_name();
-        let vis = item.get_visibility();
-        self.check_duplicate_item_name(name)?;
-        let entity = Ptr::new(RefCell::new(Entity::resolving(
-            vis,
-            name.kind().value.clone(),
-            self.type_map.get_invalid(),
-        )));
-        self.resolve_item_impl(item, entity)
+    fn resolve_item(&mut self, item: &Item) -> Result<EntityRef, Error> {
+        if let Some(name) = item.get_name() {
+            let vis = item.get_visibility();
+            self.check_duplicate_item_name(name)?;
+            let entity = Ptr::new(RefCell::new(Entity::resolving(
+                vis,
+                name.kind().value.clone(),
+                self.type_map.get_invalid(),
+            )));
+            self.resolve_item_impl(item, entity, false)
+        } else {
+            panic!("Compiler Error: attempting to resolving a field, param, or self as an item. These should be resolved locally");
+        }
     }
 
-    fn resolve_item_impl(&mut self, item: &Item, entity: EntityRef) -> Result<Rc<MirItem>, Error> {
+    fn resolve_item_impl(
+        &mut self,
+        item: &Item,
+        entity: EntityRef,
+        declared: bool,
+    ) -> Result<EntityRef, Error> {
         match item.kind() {
             ItemKind::Variable {
                 vis,
@@ -411,10 +431,16 @@ impl<'a> Typer<'a> {
                 init.as_ref(),
                 spec.as_ref(),
                 item.position(),
+                declared,
             ),
-            ItemKind::Struct { vis, name, fields } => {
-                self.resolve_struct(entity, *vis, name, fields.as_slice(), item.position())
-            }
+            ItemKind::Struct { vis, name, fields } => self.resolve_struct(
+                entity,
+                *vis,
+                name,
+                fields.as_slice(),
+                item.position(),
+                declared,
+            ),
             ItemKind::Function {
                 vis,
                 name,
@@ -430,9 +456,10 @@ impl<'a> Typer<'a> {
                     ret.as_ref(),
                     body,
                     item.position(),
+                    declared,
                 )
             }),
-            ItemKind::Param { .. } | ItemKind::Field { .. } => todo!(),
+            ItemKind::Param { .. } | ItemKind::SelfParam { .. } | ItemKind::Field { .. } => todo!(),
         }
     }
 
@@ -455,34 +482,29 @@ impl<'a> Typer<'a> {
         init: Option<&Box<Expr>>,
         spec: Option<&Box<Spec>>,
         position: Position,
-    ) -> Result<Rc<MirItem>, Error> {
+        declared: bool,
+    ) -> Result<EntityRef, Error> {
         let (spec, init, result_type) = self.resolve_local(spec, init, position)?;
 
-        let variable = Variable {
-            vis,
-            mutable,
-            name: name.clone(),
-            init: init.clone(),
-            spec: spec.clone(),
+        let variable_info = VariableInfo {
+            spec,
+            default: init.clone(),
         };
 
-        let mir = Rc::new(MirItem::new(
-            MirItemKind::Variable(variable),
-            position,
-            result_type.clone(),
-        ));
+        entity
+            .borrow_mut()
+            .resolve(result_type, EntityInfo::Variable(variable_info));
 
-        entity.borrow_mut().resolve(
-            result_type,
-            EntityInfo::Variable {
-                default: init,
-                mir: mir.clone(),
-            },
-        );
+        {
+            let borrow = entity.deref().borrow();
+            println!("Variable Entity Ptr: {:?}", (&borrow) as *const _);
+        }
 
-        self.insert_entity(name.kind().value.as_str(), entity);
+        if !declared {
+            self.insert_entity(name.kind().value.as_str(), entity.clone());
+        }
 
-        Ok(mir)
+        Ok(entity)
     }
 
     fn resolve_struct(
@@ -492,70 +514,36 @@ impl<'a> Typer<'a> {
         name: &Identifier,
         fields: &[Box<Item>],
         position: Position,
-    ) -> Result<Rc<MirItem>, Error> {
-        let (fields, _methods) = Self::split_struct_members(fields);
-        let mut mir_fields = vec![];
-        let mut mir_methods = vec![];
+        declared: bool,
+    ) -> Result<EntityRef, Error> {
+        let (fields, methods) = Self::split_struct_members(fields);
+        let fields_scope = with_state!(self, STRUCT, {
+            self.push_scope(ScopeKind::Struct(name.kind().value.clone()));
 
-        self.push_scope(ScopeKind::StructMembers(name.kind().value.clone()));
-        let mut index = 0;
-
-        for field in fields {
-            if let ItemKind::Field {
-                vis,
-                names,
-                spec,
-                init,
-            } = field.kind()
-            {
-                let mir_item = self.resolve_field(
-                    *vis,
+            let mut field_index = 0;
+            for field in fields {
+                if let ItemKind::Field {
+                    vis,
                     names,
-                    spec.as_ref(),
-                    init.as_ref(),
-                    index,
-                    field.position(),
-                )?;
-                index += names.len();
-                mir_fields.extend(mir_item);
+                    spec,
+                    init,
+                } = field.kind()
+                {
+                    self.resolve_field(
+                        *vis,
+                        names.as_slice(),
+                        spec.as_ref(),
+                        init.as_ref(),
+                        field_index,
+                        field.position(),
+                    )?;
+                    field_index += names.len();
+                }
             }
-        }
 
-        let field_scope = self.pop_scope();
-
-        let field_ty = mir_fields
-            .iter()
-            .map(|field| field.ty())
-            .collect::<Vec<Rc<Type>>>();
-
-        let struct_type = TypeKind::Struct {
-            name: name.clone(),
-            fields: field_ty,
-        };
-        let struct_type = self.insert_type(struct_type);
-
-        let structure = Structure {
-            vis,
-            name: name.clone(),
-            fields: mir_fields,
-            methods: mir_methods,
-        };
-
-        let mir = Rc::new(MirItem::new(
-            MirItemKind::Struct(structure),
-            position,
-            struct_type.clone(),
-        ));
-
-        let struct_entity = EntityInfo::Structure {
-            scope: field_scope,
-            mir: mir.clone(),
-        };
-
-        entity.borrow_mut().resolve(struct_type, struct_entity);
-        self.insert_entity(name.kind().value.as_str(), entity);
-
-        Ok(mir)
+            self.pop_scope()
+        });
+        todo!()
     }
 
     fn resolve_local(
@@ -604,33 +592,26 @@ impl<'a> Typer<'a> {
         init: Option<&Box<Expr>>,
         start_index: usize,
         position: Position,
-    ) -> Result<Vec<Rc<MirField>>, Error> {
+    ) -> Result<Vec<EntityRef>, Error> {
         let mut fields = vec![];
         let (spec, init, ty) = self.resolve_local(spec, init, position)?;
+
         names.iter().enumerate().for_each(|(idx, name)| {
             let index = start_index + idx;
-            let info = EntityInfo::Field {
+            let local_info = LocalInfo {
                 index,
+                spec: spec.clone(),
                 default: init.clone(),
             };
+            let info = EntityInfo::Field(local_info);
             let entity = new_ptr(Entity::new(
                 vis,
                 name.kind().value.clone(),
                 ty.clone(),
                 info,
             ));
-            self.insert_entity(name.kind().value.as_str(), entity);
-            let mir_field = MirField::new(
-                Field {
-                    vis,
-                    name: name.clone(),
-                    spec: spec.clone(),
-                    init: init.clone(),
-                },
-                position,
-                ty.clone(),
-            );
-            fields.push(Rc::new(mir_field));
+            self.insert_entity(name.kind().value.as_str(), entity.clone());
+            fields.push(entity);
         });
         Ok(fields)
     }
@@ -658,14 +639,16 @@ impl<'a> Typer<'a> {
         return_spec: &Spec,
         body: &FunctionBody,
         position: Position,
-    ) -> Result<Rc<MirItem>, Error> {
+        declared: bool,
+    ) -> Result<EntityRef, Error> {
+        let mut function_params = Vec::with_capacity(params.len());
         let mir_items = with_state!(self, FUNCTION_PARAM, {
             let mut mir_items = vec![];
             self.push_scope(ScopeKind::Param(name.kind().value.clone()));
             let mut start_index = 0;
             for param in params {
                 if let ItemKind::Param { names, spec, init } = param.kind() {
-                    let param = self.resolve_param(
+                    let params = self.resolve_param(
                         names,
                         spec.as_ref(),
                         init.as_ref(),
@@ -673,13 +656,13 @@ impl<'a> Typer<'a> {
                         param.position(),
                     )?;
                     start_index += names.len();
-                    mir_items.extend(param);
+
+                    function_params.extend(params.iter().map(|param| param.deref().borrow().ty()));
+                    mir_items.extend(params);
                 }
             }
             Ok(mir_items)
         })?;
-
-        let function_params: Vec<Rc<Type>> = mir_items.iter().map(|item| item.ty()).collect();
 
         let (return_type, mir_spec, mir_expr) =
             with_state!(self, FUNCTION_BODY | EXPR_RESULT_USED, {
@@ -729,38 +712,32 @@ impl<'a> Typer<'a> {
 
         let function_type = self.insert_type(function_kind);
 
-        let function = Function {
-            vis,
-            name: name.clone(),
-            params: mir_items,
-            ret: mir_spec,
+        let body_scope = params_scope.children().first().map(Rc::clone);
+
+        let function_info = FunctionInfo {
+            receiver: None,
+            params: params_scope,
+            body_scope,
             body: mir_expr,
         };
 
-        let body_scope = params_scope.children().first().map(Rc::clone);
+        {
+            let borrow = entity.deref().borrow();
+            println!(
+                "Resolved Function: {} Entity {:?}",
+                function_type,
+                (&borrow) as *const _
+            );
+        }
+        entity
+            .borrow_mut()
+            .resolve(function_type, EntityInfo::Function(function_info));
 
-        let mir = Rc::new(MirItem::new(
-            MirItemKind::Function(function),
-            position,
-            function_type.clone(),
-        ));
+        if !declared {
+            self.insert_entity(name.kind().value.as_str(), entity.clone());
+        }
 
-        let new_entity = Entity::new(
-            vis,
-            name.kind().value.clone(),
-            function_type,
-            EntityInfo::Function {
-                params: params_scope,
-                body: body_scope,
-                mir: mir.clone(),
-            },
-        );
-
-        *entity.borrow_mut() = new_entity;
-
-        self.insert_entity(name.kind().value.as_str(), entity);
-
-        Ok(mir)
+        Ok(entity)
     }
 
     fn resolve_param(
@@ -770,43 +747,38 @@ impl<'a> Typer<'a> {
         init: Option<&Box<Expr>>,
         start_index: usize,
         position: Position,
-    ) -> Result<Vec<Rc<MirParam>>, Error> {
+    ) -> Result<Vec<EntityRef>, Error> {
         let mut fields = vec![];
         let (spec, init, ty) = self.resolve_local(spec, init, position)?;
         names.iter().enumerate().for_each(|(idx, name)| {
             let index = start_index + idx;
-            let info = EntityInfo::Param {
+            let local_info = LocalInfo {
                 index,
+                spec: spec.clone(),
                 default: init.clone(),
             };
+
+            let info = EntityInfo::Param(local_info);
             let entity = new_ptr(Entity::new(
                 Visibility::Private,
                 name.kind().value.clone(),
                 ty.clone(),
                 info,
             ));
-            self.insert_entity(name.kind().value.as_str(), entity);
-            let mir_field = MirParam::new(
-                Param {
-                    name: name.clone(),
-                    spec: spec.clone(),
-                    init: init.clone(),
-                },
-                position,
-                ty.clone(),
-            );
-            fields.push(Rc::new(mir_field));
+
+            self.insert_entity(name.kind().value.as_str(), entity.clone());
+            fields.push(entity);
         });
+
         Ok(fields)
     }
 
     fn resolve_spec(&mut self, spec: &Spec) -> Result<Rc<MirSpec>, Error> {
         match spec.kind() {
             SpecKind::Named(expr) => {
-                // let expr = self.resolve_expr(expr.as_ref(), None)?;
                 let entity = self.resolve_type_expr(expr.as_ref())?;
-                if entity.borrow().is_type() {
-                    let ty = entity.borrow().ty();
+                if entity.deref().borrow().is_type() {
+                    let ty = entity.deref().borrow().ty();
                     Ok(Rc::new(MirSpec::new(
                         MirSpecKind::Named,
                         spec.position(),
@@ -816,7 +788,8 @@ impl<'a> Typer<'a> {
                     panic!()
                 }
             }
-            SpecKind::Tuple(_) | SpecKind::Unit | SpecKind::Infer | SpecKind::SelfType => todo!(),
+            SpecKind::SelfType => todo!(),
+            SpecKind::Tuple(_) | SpecKind::Unit | SpecKind::Infer => todo!(),
         }
     }
 
@@ -839,20 +812,25 @@ impl<'a> Typer<'a> {
 
     fn resolve_ident(&mut self, ident: &Identifier) -> Result<EntityRef, Error> {
         if let Some(entity) = self.deep_lookup(ident.kind().value.as_str()) {
-            if entity.borrow().is_resolved() {
+            println!("Resolving Name: {}", ident.kind().value);
+            let entity_borrow = entity.deref().borrow();
+            if entity_borrow.is_resolved() {
+                println!("\tName Resolves is resolved");
+                std::mem::drop(entity_borrow);
                 Ok(entity)
-            } else if entity.borrow().is_resolving() {
+            } else if entity_borrow.is_resolving() {
                 let err =
                     Error::other("Cyclic references are not supported at the moment".to_string())
                         .with_position(ident.position());
                 Err(err)
             } else {
-                let entity_info = entity.borrow().kind().clone();
-                if let EntityInfo::Unresolved(item) = entity_info {
-                    let mir_item = self.resolve_item_impl(item.as_ref(), entity.clone())?;
+                println!("\tEntity is unresolved, resolving");
+                if let EntityInfo::Unresolved(item) = entity_borrow.kind().clone() {
+                    std::mem::drop(entity_borrow);
+                    let entity = self.resolve_item_impl(item.as_ref(), entity, true)?;
                     Ok(entity)
                 } else {
-                    unreachable!()
+                    unreachable!("Compiler Error")
                 }
             }
         } else {

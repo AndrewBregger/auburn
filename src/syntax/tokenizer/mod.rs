@@ -1,9 +1,9 @@
 use std::str::Chars;
 
 use crate::error::Error;
-use crate::system::{File, FileId};
 use crate::syntax::token::{Control, Keyword, Operator, PToken, Token};
 use crate::syntax::{Coord, FilePos, PairKind, Position, Span};
+use crate::system::{File, FileId};
 use std::convert::TryFrom;
 
 pub struct Lexer<'src> {
@@ -286,9 +286,8 @@ impl<'src> Lexer<'src> {
                         while !self.check_for('\n') {
                             self.advance();
                         }
-                        let _value = self.examine_span();
-                        panic!("Comments no supported")
-                    // Token::Comment(value)
+                        let value = self.examine_span();
+                        Token::Comment(value.to_owned())
                     } else if self.check_for('=') {
                         self.advance();
                         Token::Op(Operator::SlashEq)
@@ -423,10 +422,10 @@ impl<'src> std::iter::Iterator for TokenCursor<'src> {
 
 #[cfg(test)]
 mod tests {
-    use crate::system::{File, FileId};
     use crate::syntax::token::{Operator, PToken};
     use crate::syntax::tokenizer::Lexer;
     use crate::syntax::{Coord, FilePos, Keyword, Position, Span, Token};
+    use crate::system::{File, FileId};
 
     #[test]
     fn test_simple_op_tokenizer() {

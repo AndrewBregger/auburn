@@ -53,7 +53,7 @@ impl<'src> Parser<'src> {
         self.current_token().position()
     }
 
-    pub fn consume(&mut self) -> Result<Option<PToken<'src>>, Error> {
+    fn consume_inner(&mut self) -> Result<Option<PToken<'src>>, Error> {
         let current = self.current.clone();
         self.current = self.peek.clone();
 
@@ -64,6 +64,22 @@ impl<'src> Parser<'src> {
         }
 
         Ok(current)
+    }
+
+    fn consume(&mut self) -> Result<Option<PToken<'src>>, Error> {
+        let mut index = 0;
+        let mut token: Option<PToken>;
+        loop {
+            index += 1;
+            token = self.consume_inner()?;
+
+            match self.current.as_ref() {
+                Some(token) if token.is_comment() => {}
+                Some(_) => break,
+                None => break,
+            }
+        }
+        Ok(token)
     }
 
     fn check_for(&self, token: Token) -> bool {
@@ -841,12 +857,30 @@ impl<'src> Parser<'src> {
     }
 
     fn parse_param(&mut self) -> Result<Box<Item>, Error> {
-        let (names, spec, init, position) = self.parse_field_param()?;
+        if self.check_for(Token::Kw(Keyword::Mut)) || self.check_for(Token::Kw(Keyword::SelfLit)) {
+            let token_position = self.current_token().position();
+            let mutable = self.check_for(Token::Kw(Keyword::Mut));
+            if mutable {
+                self.consume()?;
+            }
 
-        Ok(Box::new(Item::new_with_position(
-            ItemKind::Param { names, spec, init },
-            position,
-        )))
+            let token = self.expect(Token::Kw(Keyword::SelfLit))?;
+            Ok(Box::new(Item::new_with_position(
+                ItemKind::SelfParam { mutable },
+                if mutable {
+                    token_position.extended_to_token(token)
+                } else {
+                    token_position
+                },
+            )))
+        } else {
+            let (names, spec, init, position) = self.parse_field_param()?;
+
+            Ok(Box::new(Item::new_with_position(
+                ItemKind::Param { names, spec, init },
+                position,
+            )))
+        }
     }
 
     fn parse_field(&mut self) -> Result<Box<Item>, Error> {

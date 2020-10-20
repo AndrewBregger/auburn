@@ -16,23 +16,28 @@ fn compile(root: &File) -> Result<(), language::error::Error> {
 
     println!("Parsing");
     let parsed_file = parser.parse_file()?;
-    println!("Checking");
-    let checked = analysis.check(parsed_file)?;
 
-    for stmt in checked.stmts() {
-        MirPrinter::print_stmt(stmt.as_ref());
-    }
-    println!("{}", checked.entities().len());
-    for entity in checked.entities() {
-        EntityPrinter::print(&entity.deref().borrow());
-    }
+    println!("{:#?}", parsed_file);
+
+    // println!("Checking");
+    // let checked = analysis.check(parsed_file)?;
+    //
+    // println!("Global Expressions");
+    // for stmt in checked.expressions() {
+    //     MirPrinter::print_expr(stmt.as_ref());
+    // }
+    //
+    // println!("Entities {}", checked.entities().len());
+    // for entity in checked.entities() {
+    //     EntityPrinter::print(&entity.deref().borrow());
+    // }
 
     Ok(())
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut file_map = FileMap::new();
-    let file = file_map.open_file("examples/test")?;
+    let file = file_map.open_file("examples/analysis/struct")?;
 
     match compile(file) {
         Ok(_) => {}

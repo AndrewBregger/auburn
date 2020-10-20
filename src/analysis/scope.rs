@@ -13,7 +13,8 @@ pub enum ScopeKind {
     File(FileId),
     Param(String),
     Block,
-    StructMembers(String),
+    Struct(String),
+    StructMethods,
 }
 
 #[derive(Debug, Clone)]

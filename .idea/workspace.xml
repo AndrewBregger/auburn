@@ -25,9 +25,23 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4b17c99f-758c-48ea-b0b5-e3d26e51a8dc" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/examples/analysis/order_test" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/bin/main.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/spec.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/spec.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/analysis/struct" beforeDir="false" afterPath="$PROJECT_DIR$/examples/analysis/struct" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/analysis/entity.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/analysis/entity.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/analysis/scope.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/analysis/scope.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/analysis/typer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/analysis/typer.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mir/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/mir/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/syntax/ast.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/syntax/ast.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/syntax/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/syntax/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/syntax/parse/parser.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/syntax/parse/parser.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/syntax/token.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/syntax/token.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/syntax/tokenizer/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/syntax/tokenizer/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types/ty.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/ty.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/entity_printer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/entity_printer.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/mir_printer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/mir_printer.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -61,9 +75,11 @@
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="cf.first.check.clang-format" value="false" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/examples/parser/item" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="nodejs_package_manager_path" value="npm" />
     <property name="org.rust.cargo.project.model.PROJECT_DISCOVERY" value="true" />
-    <property name="settings.editor.selected.configurable" value="language.rust.rustfmt" />
+    <property name="run.code.analysis.last.selected.profile" value="pProject Default" />
+    <property name="settings.editor.selected.configurable" value="xyz.sleipnir.codeminimap.config.ConfigEntry" />
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
@@ -197,7 +213,18 @@
       <workItem from="1601958629037" duration="22732000" />
       <workItem from="1602126419671" duration="2621000" />
       <workItem from="1602209571930" duration="692000" />
-      <workItem from="1602218332430" duration="1016000" />
+      <workItem from="1602218332430" duration="1442000" />
+      <workItem from="1602314761858" duration="611000" />
+      <workItem from="1602350871061" duration="4127000" />
+      <workItem from="1602370526655" duration="36010000" />
+      <workItem from="1602742761937" duration="9615000" />
+      <workItem from="1602818009686" duration="5145000" />
+      <workItem from="1603000446980" duration="18000" />
+      <workItem from="1603044621922" duration="1348000" />
+      <workItem from="1603046013469" duration="11696000" />
+      <workItem from="1603076715977" duration="1296000" />
+      <workItem from="1603078035665" duration="5644000" />
+      <workItem from="1603172123491" duration="2280000" />
     </task>
     <task id="LOCAL-00001" summary="Implemented block and tuple expressions.">
       <created>1601015341655</created>
@@ -234,7 +261,21 @@
       <option name="project" value="LOCAL" />
       <updated>1602039589943</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="chanching item resolution architecture.">
+      <created>1602228205059</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1602228205060</updated>
+    </task>
+    <task id="LOCAL-00007" summary="Implemented Struct Expression resolution. Struct Expression only supports binding expression and named expressions.">
+      <created>1602569448121</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1602569448121</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -258,81 +299,115 @@
     <MESSAGE value="Began implementation for semantic analysis.&#10;Includes:&#10;- Scopes&#10;- Entities&#10;- Mir" />
     <MESSAGE value="function resolution implemented." />
     <MESSAGE value="implemented function resolution" />
-    <option name="LAST_COMMIT_MESSAGE" value="implemented function resolution" />
+    <MESSAGE value="chanching item resolution architecture." />
+    <MESSAGE value="Implemented Struct Expression resolution. Struct Expression only supports binding expression and named expressions." />
+    <option name="LAST_COMMIT_MESSAGE" value="Implemented Struct Expression resolution. Struct Expression only supports binding expression and named expressions." />
   </component>
   <component name="WindowStateProjectService">
+    <state x="1179" y="600" width="773" height="269" key="#Vim_Emulation" timestamp="1602315256138">
+      <screen x="0" y="30" width="2560" height="1410" />
+    </state>
+    <state x="1179" y="600" width="773" height="269" key="#Vim_Emulation/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1602315256138" />
     <state x="733" y="388" width="1094" height="717" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1600055397288">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="733" y="388" width="1094" height="717" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600055397288" />
-    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1601907834488">
+    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1602743221663">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601907834488" />
+    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1602743221663" />
     <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser" timestamp="1601959970397">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601959970397" />
+    <state x="1027" y="590" key="ANALYSIS_DLG_com.intellij.analysis.BaseAnalysisAction$1" timestamp="1602818632842">
+      <screen x="0" y="30" width="2560" height="1410" />
+    </state>
+    <state x="1027" y="590" key="ANALYSIS_DLG_com.intellij.analysis.BaseAnalysisAction$1/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1602818632842" />
+    <state x="92" y="122" width="2376" height="1226" key="DiffContextDialog" timestamp="1602600574406">
+      <screen x="0" y="30" width="2560" height="1410" />
+    </state>
+    <state x="92" y="122" width="2376" height="1226" key="DiffContextDialog/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1602600574406" />
     <state x="1059" y="500" key="FileChooserDialogImpl" timestamp="1600055373613">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="1059" y="500" key="FileChooserDialogImpl/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600055373613" />
-    <state width="2515" height="225" key="GridCell.Tab.0.bottom" timestamp="1602039568384">
+    <state width="2517" height="488" key="GridCell.Tab.0.bottom" timestamp="1603174493178">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.bottom/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2515" height="225" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1602039568384" />
-    <state width="2515" height="225" key="GridCell.Tab.0.center" timestamp="1602039568384">
+    <state width="2517" height="488" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603174493178" />
+    <state width="2517" height="488" key="GridCell.Tab.0.center" timestamp="1603174493178">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.center/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2515" height="225" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1602039568384" />
-    <state width="2515" height="225" key="GridCell.Tab.0.left" timestamp="1602039568384">
+    <state width="2517" height="488" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603174493178" />
+    <state width="2517" height="488" key="GridCell.Tab.0.left" timestamp="1603174493178">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.left/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332313" />
-    <state width="2515" height="225" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1602039568384" />
-    <state width="2515" height="225" key="GridCell.Tab.0.right" timestamp="1602039568384">
+    <state width="2517" height="488" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603174493178" />
+    <state width="2517" height="488" key="GridCell.Tab.0.right" timestamp="1603174493178">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.right/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2515" height="225" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1602039568384" />
-    <state width="2515" height="495" key="GridCell.Tab.1.bottom" timestamp="1600384295610">
+    <state width="2517" height="488" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603174493178" />
+    <state width="2517" height="488" key="GridCell.Tab.1.bottom" timestamp="1603174494376">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state width="2515" height="495" key="GridCell.Tab.1.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600384295610" />
-    <state width="2515" height="495" key="GridCell.Tab.1.center" timestamp="1600384295610">
+    <state width="2517" height="488" key="GridCell.Tab.1.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603174494376" />
+    <state width="2517" height="488" key="GridCell.Tab.1.center" timestamp="1603174494375">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state width="2515" height="495" key="GridCell.Tab.1.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600384295610" />
-    <state width="2515" height="495" key="GridCell.Tab.1.left" timestamp="1600384295610">
+    <state width="2517" height="488" key="GridCell.Tab.1.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603174494375" />
+    <state width="2517" height="488" key="GridCell.Tab.1.left" timestamp="1603174494375">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state width="2515" height="495" key="GridCell.Tab.1.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600384295610" />
-    <state width="2515" height="495" key="GridCell.Tab.1.right" timestamp="1600384295610">
+    <state width="2517" height="488" key="GridCell.Tab.1.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603174494375" />
+    <state width="2517" height="488" key="GridCell.Tab.1.right" timestamp="1603174494375">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state width="2515" height="495" key="GridCell.Tab.1.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600384295610" />
-    <state x="709" y="220" key="SettingsEditor" timestamp="1601428636765">
+    <state width="2517" height="488" key="GridCell.Tab.1.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603174494375" />
+    <state x="56" y="346" width="998" height="708" key="SettingsEditor" timestamp="1603078011844">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="709" y="220" key="SettingsEditor/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601428636765" />
-    <state x="871" y="466" key="Vcs.Push.Dialog.v2" timestamp="1601967050836">
+    <state x="56" y="346" width="998" height="708" key="SettingsEditor/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603078011844" />
+    <state x="871" y="466" key="Vcs.Push.Dialog.v2" timestamp="1602569453171">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="871" y="466" key="Vcs.Push.Dialog.v2/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601967050836" />
-    <state x="987" y="468" width="585" height="592" key="find.popup" timestamp="1601435378203">
+    <state x="871" y="466" key="Vcs.Push.Dialog.v2/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1602569453171" />
+    <state x="995" y="143" width="960" height="1057" maximized="true" key="dock-window-1" timestamp="1603057279307">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="987" y="468" width="585" height="592" key="find.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601435378203" />
-    <state x="936" y="348" key="run.anything.popup" timestamp="1601355640712">
+    <state x="995" y="143" width="960" height="1057" maximized="true" key="dock-window-1/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603057279307" />
+    <state x="987" y="468" width="585" height="592" key="find.popup" timestamp="1603174305278">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="936" y="348" key="run.anything.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1601355640712" />
-    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup" timestamp="1602038738171">
+    <state x="987" y="468" width="585" height="592" key="find.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603174305278" />
+    <state x="936" y="348" width="672" height="677" key="run.anything.popup" timestamp="1602389153894">
+      <screen x="0" y="30" width="2560" height="1410" />
+    </state>
+    <state x="936" y="348" width="672" height="677" key="run.anything.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1602389153894" />
+    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup" timestamp="1603174525376">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="707" y="266" width="672" height="505" key="search.everywhere.popup/0.30.1920.1050@0.30.1920.1050" timestamp="1601991482247" />
-    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1602038738171" />
+    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603174525376" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/src/error.rs</url>
+          <line>199</line>
+          <option name="timeStamp" value="2" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/src/syntax/parse/parser.rs</url>
+          <line>860</line>
+          <option name="timeStamp" value="4" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
 </project>

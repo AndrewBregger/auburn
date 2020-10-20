@@ -1,4 +1,11 @@
 struct Foo {
     x f32
     y, w i32
+
+   fn new(x f32, y, w i32) = Self { x, y, w}
+
+   // fn get_x(self) = self.x
+
+   // fn set_x(mut self, x f32) = self.x
 }
+

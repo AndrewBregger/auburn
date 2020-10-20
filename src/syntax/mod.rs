@@ -152,6 +152,7 @@ impl Display for Position {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct ParsedFile {
     pub file_id: FileId,
     // imports: Vec<Box<Import>>,

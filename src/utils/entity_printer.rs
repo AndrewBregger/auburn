@@ -17,36 +17,47 @@ impl EntityPrinter {
     pub fn print_impl(entity: &Entity, indent: usize) {
         let name = entity.name();
         let ty = entity.ty();
-        println!("{}Entity({}, {})", Self::indent(indent), name, ty);
+        println!(
+            "{}Entity({:?}, {}, {}, {})",
+            Self::indent(indent),
+            entity as *const _,
+            entity.type_name(),
+            name,
+            ty
+        );
 
         match entity.kind() {
             EntityInfo::Unresolved(..) => println!("{}Unresolved", Self::indent(indent + 1)),
             EntityInfo::Resolving => println!("{}Resolving", Self::indent(indent + 1)),
-            EntityInfo::Structure { scope, .. } => {
-                for member in scope.elements().values() {
+            EntityInfo::Structure(structure) => {
+                for member in structure.field.elements().values() {
                     Self::print_impl(&member.deref().borrow(), indent + 1);
                 }
+
+                // for member in structure.method.elements().values() {
+                //     Self::print_impl(&member.deref().borrow(), indent + 1);
+                // }
             }
-            EntityInfo::Function { params, body, .. } => {
+            EntityInfo::Function(function) => {
                 println!("{}Params:", Self::indent(indent));
-                for member in params.elements().values() {
+                for member in function.params.elements().values() {
                     Self::print_impl(&member.deref().borrow(), indent + 1);
                 }
-                if let Some(body) = body {
+                if let Some(body) = function.body_scope.as_ref() {
                     for member in body.elements().values() {
                         Self::print_impl(&member.deref().borrow(), indent + 1);
                     }
                 }
             }
-            EntityInfo::Variable { default, .. } => {
-                if let Some(default) = default {
+            EntityInfo::Variable(varaible) => {
+                if let Some(default) = varaible.default.as_ref() {
                     MirPrinter::print_expr_inner(&default.deref().borrow(), indent + 1);
                 }
             }
 
-            EntityInfo::Param { default, index, .. } | EntityInfo::Field { default, index, .. } => {
-                println!("{}Index: {}", Self::indent(indent + 1), index);
-                if let Some(default) = default {
+            EntityInfo::Param(local_info) | EntityInfo::Field(local_info) => {
+                println!("{}Index: {}", Self::indent(indent + 1), local_info.index);
+                if let Some(default) = local_info.default.as_ref() {
                     MirPrinter::print_expr_inner(&default.deref().borrow(), indent + 1);
                 }
             }
