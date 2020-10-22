@@ -1,7 +1,10 @@
-use crate::{analysis::EntityRef, syntax::ast::Identifier};
-use std::{fmt::{Display, Formatter}, ops::Deref};
+use crate::analysis::EntityRef;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::{
+    fmt::{Display, Formatter},
+    ops::Deref,
+};
 
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct TypeId(pub usize);
@@ -30,6 +33,9 @@ pub enum TypeKind {
     Char,
     String,
     Unit,
+    Mutable {
+        inner: Rc<Type>,
+    },
     Function {
         params: Vec<Rc<Type>>,
         return_type: Rc<Type>,
@@ -58,6 +64,7 @@ impl PartialEq for TypeKind {
             | (Self::Char, Self::Char)
             | (Self::String, Self::String)
             | (Self::Unit, Self::Unit) => true,
+            (Self::Mutable { inner: linner }, Self::Mutable { inner: rinner }) => linner.eq(rinner),
             (
                 Self::Function {
                     params: lparams,
@@ -189,6 +196,7 @@ impl Display for Type {
             TypeKind::Char => write!(f, "char"),
             TypeKind::String => write!(f, "String"),
             TypeKind::Unit => write!(f, "<>"),
+            TypeKind::Mutable { inner } => write!(f, "mut {}", inner),
             TypeKind::Function {
                 params,
                 return_type,

@@ -86,6 +86,8 @@ pub enum AstNodeType {
     Item,
     Spec,
     Ident,
+    Param,
+    Field,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -128,7 +130,6 @@ pub enum ExprKind {
         actual: Vec<Box<Expr>>,
     },
     Method {
-        operand: Box<Expr>,
         name: Box<Identifier>,
         actual: Vec<Box<Expr>>,
     },

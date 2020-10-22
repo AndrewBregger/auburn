@@ -78,6 +78,33 @@ pub enum ErrorKind {
     )]
     UndefinedFieldInStructBinding { name: String, ty: Type },
 
+    #[error("invalid 'self' in non-associative function")]
+    InvalidSelfInFunction,
+
+    #[error("unexpected 'self' parameter in function")]
+    UnexpectedSelfParameter,
+
+    #[error("invalid 'Self' type is context")]
+    InvalidSelfTypeInContext,
+
+    #[error("invalid 'self' expression")]
+    InvalidSelfExpression,
+
+    #[error("unable to access field '{}' of struct '{}'", field, struct_type)]
+    InaccessableField { struct_type: Type, field: String },
+
+    #[error("struct '{}' does not have field '{}'", struct_type, field)]
+    UnknownField { struct_type: Type, field: String },
+
+    #[error("attempting to call an invalid type '{}'", ty)]
+    InvalidCallOnType { ty: Type },
+
+    #[error(
+        "attempting to call function expecting {} parameters with {} parameters",
+        expected,
+        found
+    )]
+    InvalidActuals { expected: usize, found: usize },
     // #[error("expecting keyword '{}' found '{}'", expected.to_string(), found.text())]
     // ExpectedKeyword {
     //     expected: Keyword,
@@ -251,6 +278,44 @@ impl<'src> Error {
             name: name.to_owned(),
             ty: ty.clone(),
         })
+    }
+
+    pub fn invalid_self_in_function() -> Self {
+        Self::new_default(ErrorKind::InvalidSelfInFunction)
+    }
+
+    pub fn unexpected_self_parameter() -> Self {
+        Self::new_default(ErrorKind::UnexpectedSelfParameter)
+    }
+
+    pub fn invalid_self_type_in_context() -> Self {
+        Self::new_default(ErrorKind::InvalidSelfTypeInContext)
+    }
+
+    pub fn invalid_self_expression() -> Self {
+        Self::new_default(ErrorKind::InvalidSelfExpression)
+    }
+
+    pub fn unknown_field(struct_type: &Type, field: String) -> Self {
+        Self::new_default(ErrorKind::UnknownField {
+            struct_type: struct_type.clone(),
+            field,
+        })
+    }
+
+    pub fn inaccessible_field(struct_type: &Type, field: String) -> Self {
+        Self::new_default(ErrorKind::InaccessableField {
+            struct_type: struct_type.clone(),
+            field,
+        })
+    }
+
+    pub fn invalid_call_on_type(ty: &Type) -> Self {
+        Self::new_default(ErrorKind::InvalidCallOnType { ty: ty.clone() })
+    }
+
+    pub fn invalid_actuals(expected: usize, found: usize) -> Self {
+        Self::new_default(ErrorKind::InvalidActuals { expected, found })
     }
 
     // fn execpted_keyword(expected: token::Kw, token: &Token) -> Self {

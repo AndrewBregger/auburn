@@ -9,6 +9,7 @@ pub type ScopeRef = Rc<Scope>;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ScopeKind {
+    Invalid,
     Prelude,
     File(FileId),
     Param(String),

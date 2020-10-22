@@ -1,5 +1,5 @@
-mod type_map;
 mod ty;
+mod type_map;
 
-pub use type_map::TypeMap;
 pub use ty::{Type, TypeKind};
+pub use type_map::TypeMap;

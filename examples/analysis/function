@@ -1,4 +1,5 @@
-fn foo() = 1.0
+fn add(x f32, y f32) = x + y
 
-fn pi() {
+fn call_add() {
+    let res = add(12.0, 2.0)
 }

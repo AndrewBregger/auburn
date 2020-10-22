@@ -42,7 +42,7 @@ impl MirPrinter {
 
     pub(crate) fn print_expr_inner(expr: &MirExpr, indent: usize) {
         Self::print_header(expr, indent);
-        match expr.inner() {
+        match expr.inner().kind() {
             MirExprKind::Name(_) => {}
             MirExprKind::Binary(binary_expr) => {
                 Self::print_expr_inner(binary_expr.left.as_ref(), indent + 1);
@@ -55,6 +55,7 @@ impl MirPrinter {
                 Self::print_expr_inner(field_expr.operand.as_ref(), indent + 1);
                 println!("{}| {}", Self::indent(indent + 1), field_expr.field_idx);
             }
+            MirExprKind::FieldAccess(..) => {}
             MirExprKind::Call(call_expr) => {
                 Self::print_expr_inner(call_expr.operand.as_ref(), indent + 1);
                 for actual in &call_expr.actuals {
@@ -67,12 +68,12 @@ impl MirPrinter {
                     .iter()
                     .for_each(|stmt| Self::print_stmt_inner(stmt, indent + 1));
             }
-            MirExprKind::Method(method_expr) => {}
-            MirExprKind::Tuple(tuple_expr) => {}
-            MirExprKind::Loop(loop_expr) => {}
-            MirExprKind::While(while_expr) => {}
-            MirExprKind::For(for_expr) => {}
-            MirExprKind::If(if_expr) => {}
+            MirExprKind::Method(_method_expr) => {}
+            MirExprKind::Tuple(_tuple_expr) => {}
+            MirExprKind::Loop(_loop_expr) => {}
+            MirExprKind::While(_while_expr) => {}
+            MirExprKind::For(_for_expr) => {}
+            MirExprKind::If(_if_expr) => {}
             MirExprKind::StructExpr(struct_expr) => {
                 struct_expr.fields.iter().for_each(|(index, mir)| {
                     println!("{}Index: {}", Self::indent(indent + 1), index);
@@ -80,8 +81,6 @@ impl MirPrinter {
                 })
             }
             MirExprKind::SelfLit => {}
-            MirExprKind::SelfType => {}
-
             MirExprKind::Integer(_)
             | MirExprKind::Float(_)
             | MirExprKind::String(_)

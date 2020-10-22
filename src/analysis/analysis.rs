@@ -4,24 +4,20 @@ use crate::analysis::typer::Typer;
 use crate::analysis::Entity;
 use crate::error::Error;
 use crate::mir::MirFile;
-use crate::syntax::ast::{Item, Visibility};
+use crate::syntax::ast::Visibility;
 use crate::syntax::ParsedFile;
 use crate::types::TypeMap;
 
 pub struct Analysis {
     type_map: TypeMap,
-    item_stack: Vec<Box<Item>>,
     scope_stack: Vec<Scope>,
-    entity_stack: Vec<Entity>,
 }
 
 impl Analysis {
     pub fn new() -> Self {
         let mut analysis = Analysis {
             type_map: TypeMap::new(),
-            item_stack: vec![],
             scope_stack: vec![],
-            entity_stack: vec![],
         };
 
         analysis.type_map.init_primitives();
@@ -47,7 +43,7 @@ impl Analysis {
         let prelude_scope = Scope::new(ScopeKind::Prelude, None);
         self.scope_stack.push(prelude_scope);
 
-        let mut prelude_scope = self.scope_stack.last_mut().unwrap();
+        let prelude_scope = self.scope_stack.last_mut().unwrap();
 
         define_primitive!(prelude_scope, "u8", self.type_map.get_u8());
         define_primitive!(prelude_scope, "u16", self.type_map.get_u16());
@@ -69,12 +65,8 @@ impl Analysis {
     }
 
     pub fn check(&mut self, file: ParsedFile) -> Result<MirFile, Error> {
-        let typed_file = Typer::new(
-            &mut self.type_map,
-            &mut self.item_stack,
-            &mut self.scope_stack,
-        )
-        .resolve_file(file)?;
+        let typed_file =
+            Typer::new(&mut self.type_map, &mut self.scope_stack).resolve_file(file)?;
 
         Ok(typed_file)
     }

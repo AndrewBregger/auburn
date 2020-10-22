@@ -29,6 +29,9 @@ pub struct FieldExpr {
 }
 
 #[derive(Debug, Clone)]
+pub struct FieldAccessExpr {}
+
+#[derive(Debug, Clone)]
 pub struct CallExpr {
     pub operand: Rc<MirExpr>,
     pub function_type: Rc<Type>,
@@ -37,8 +40,8 @@ pub struct CallExpr {
 
 #[derive(Debug, Clone)]
 pub struct MethodExpr {
-    pub operand: Rc<MirExpr>,
     pub function_type: Rc<Type>,
+    pub name: String,
     pub actuals: Vec<Rc<MirExpr>>,
 }
 
@@ -94,6 +97,7 @@ pub enum MirExprKind {
     Binary(BinaryExpr),
     Unary(UnaryExpr),
     Field(FieldExpr),
+    FieldAccess(FieldAccessExpr),
     Call(CallExpr),
     Method(MethodExpr),
     Block(BlockExpr),
@@ -104,7 +108,52 @@ pub enum MirExprKind {
     If(IfExpr),
     StructExpr(StructExpr),
     SelfLit,
-    SelfType,
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum AddressMode {
+    Value,
+    Address,
+}
+
+#[derive(Debug, Clone)]
+pub struct MirExprInner {
+    address_mode: AddressMode,
+    kind: MirExprKind,
+}
+
+impl MirExprInner {
+    pub fn new(address_mode: AddressMode, kind: MirExprKind) -> Self {
+        Self { address_mode, kind }
+    }
+
+    pub fn kind(&self) -> &MirExprKind {
+        &self.kind
+    }
+
+    pub fn address_mode(&self) -> AddressMode {
+        self.address_mode
+    }
+}
+
+impl NodeType for MirExprInner {
+    fn name(&self) -> &'static str {
+        self.kind.name()
+    }
+
+    fn ty(&self) -> AstNodeType {
+        self.kind.ty()
+    }
+}
+
+impl MirExprKind {
+    pub fn is_self(&self) -> bool {
+        match self {
+            Self::SelfLit => true,
+            _ => false,
+        }
+    }
 }
 
 impl NodeType for MirExprKind {
@@ -118,6 +167,7 @@ impl NodeType for MirExprKind {
             Self::Binary(..) => "Binary",
             Self::Unary(..) => "Unary",
             Self::Field(..) => "Field",
+            Self::FieldAccess(..) => "Field Access",
             Self::Call { .. } => "Call",
             Self::Method { .. } => "Method",
             Self::Block(..) => "Block",
@@ -127,7 +177,6 @@ impl NodeType for MirExprKind {
             Self::For { .. } => "For",
             Self::If { .. } => "If",
             Self::StructExpr { .. } => "Struct Expr",
-            Self::SelfType => "Self Type",
             Self::SelfLit => "Self Literal",
         }
     }
@@ -249,6 +298,26 @@ pub struct Field {
     pub init: Option<Rc<MirExpr>>,
 }
 
+impl NodeType for Param {
+    fn name(&self) -> &'static str {
+        "param"
+    }
+
+    fn ty(&self) -> AstNodeType {
+        AstNodeType::Param
+    }
+}
+
+impl NodeType for Field {
+    fn name(&self) -> &'static str {
+        "field"
+    }
+
+    fn ty(&self) -> AstNodeType {
+        AstNodeType::Field
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum MirItemKind {
     Variable(Variable),
@@ -272,7 +341,7 @@ pub trait MirNode {
     fn ty(&self) -> Rc<Type>;
 }
 
-impl<Inner> MirNodeBase<Inner> {
+impl<Inner: NodeType> MirNodeBase<Inner> {
     pub fn new(inner: Inner, position: Position, ty: Rc<Type>) -> Self {
         Self {
             id: NodeId::next(),
@@ -301,7 +370,7 @@ impl<Inner> MirNode for MirNodeBase<Inner> {
     }
 }
 
-pub type MirExpr = MirNodeBase<MirExprKind>;
+pub type MirExpr = MirNodeBase<MirExprInner>;
 pub type MirStmt = MirNodeBase<MirStmtKind>;
 pub type MirSpec = MirNodeBase<MirSpecKind>;
 pub type MirItem = MirNodeBase<MirItemKind>;
@@ -317,7 +386,7 @@ pub type MirFieldPtr = Rc<MirField>;
 
 impl MirExpr {
     pub fn is_literal(&self) -> bool {
-        match self.inner() {
+        match self.inner().kind() {
             MirExprKind::Integer(_)
             | MirExprKind::Float(_)
             | MirExprKind::String(_)

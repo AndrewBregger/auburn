@@ -67,10 +67,8 @@ impl<'src> Parser<'src> {
     }
 
     fn consume(&mut self) -> Result<Option<PToken<'src>>, Error> {
-        let mut index = 0;
         let mut token: Option<PToken>;
         loop {
-            index += 1;
             token = self.consume_inner()?;
 
             match self.current.as_ref() {
@@ -311,10 +309,11 @@ impl<'src> Parser<'src> {
                             let name = self.parse_ident()?;
 
                             if self.check_for(Token::ControlPair(Control::Paren, PairKind::Open)) {
-                                let (actual, end_paren) = self.parse_call_actual()?;
+                                let (actuals, end_paren) = self.parse_call_actual()?;
+                                let mut actual = vec![operand.clone()];
+                                actual.extend(actuals);
                                 let position = position.extended_to_token(end_paren);
                                 let kind = ExprKind::Method {
-                                    operand: operand.clone(),
                                     name: Box::new(name),
                                     actual,
                                 };
