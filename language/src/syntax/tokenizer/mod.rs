@@ -201,7 +201,7 @@ impl<'src> Lexer<'src> {
             '\\' => '\\' as u8,
             _ => {
                 return Err(Error::unknown_escape_character(self.ch.unwrap())
-                    .with_position(Position::new(self.span, self.file_pos, self.file())))
+                    .with_position(Position::new(self.span, self.file_pos, self.file())));
             }
         };
         Ok(val as char)
@@ -440,8 +440,8 @@ mod tests {
                 Position::new(
                     Span(0, 1),
                     FilePos::new(Coord(1, 1), Coord(1, 2)),
-                    FileId(0)
-                )
+                    FileId(0),
+                ),
             )
         );
     }
@@ -459,8 +459,8 @@ mod tests {
                 Position::new(
                     Span(0, 2),
                     FilePos::new(Coord(1, 1), Coord(1, 3)),
-                    FileId(0)
-                )
+                    FileId(0),
+                ),
             )
         );
     }
@@ -478,8 +478,8 @@ mod tests {
                 Position::new(
                     Span(0, 3),
                     FilePos::new(Coord(1, 1), Coord(1, 4)),
-                    FileId(0)
-                )
+                    FileId(0),
+                ),
             )
         );
     }
@@ -497,8 +497,8 @@ mod tests {
                 Position::new(
                     Span(0, 3),
                     FilePos::new(Coord(1, 1), Coord(1, 4)),
-                    FileId(0)
-                )
+                    FileId(0),
+                ),
             )
         );
     }
@@ -516,8 +516,8 @@ mod tests {
                 Position::new(
                     Span(0, 3),
                     FilePos::new(Coord(1, 1), Coord(1, 4)),
-                    FileId(0)
-                )
+                    FileId(0),
+                ),
             )
         );
     }
@@ -535,8 +535,8 @@ mod tests {
                 Position::new(
                     Span(0, 6),
                     FilePos::new(Coord(1, 1), Coord(1, 7)),
-                    FileId(0)
-                )
+                    FileId(0),
+                ),
             )
         );
     }
@@ -554,8 +554,8 @@ mod tests {
                 Position::new(
                     Span(0, 6),
                     FilePos::new(Coord(1, 1), Coord(1, 7)),
-                    FileId(0)
-                )
+                    FileId(0),
+                ),
             )
         );
     }
@@ -573,8 +573,8 @@ mod tests {
                 Position::new(
                     Span(0, 3),
                     FilePos::new(Coord(1, 1), Coord(1, 4)),
-                    FileId(0)
-                )
+                    FileId(0),
+                ),
             )
         );
     }
@@ -592,8 +592,8 @@ mod tests {
                 Position::new(
                     Span(0, 3),
                     FilePos::new(Coord(1, 1), Coord(1, 4)),
-                    FileId(0)
-                )
+                    FileId(0),
+                ),
             )
         );
     }
@@ -611,8 +611,8 @@ mod tests {
                 Position::new(
                     Span(0, 1),
                     FilePos::new(Coord(1, 1), Coord(2, 1)),
-                    FileId(0)
-                )
+                    FileId(0),
+                ),
             )
         );
     }
@@ -631,8 +631,8 @@ mod tests {
                     Position::new(
                         Span(0, 1),
                         FilePos::new(Coord(1, 1), Coord(1, 2)),
-                        FileId(0)
-                    )
+                        FileId(0),
+                    ),
                 ),
                 PToken::new(
                     ".",
@@ -640,8 +640,8 @@ mod tests {
                     Position::new(
                         Span(1, 2),
                         FilePos::new(Coord(1, 2), Coord(1, 3)),
-                        FileId(0)
-                    )
+                        FileId(0),
+                    ),
                 )
             ]
         );

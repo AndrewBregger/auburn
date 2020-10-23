@@ -182,7 +182,7 @@ impl<'a> Token<'a> {
                 Operator::Slash | Operator::Astrick | Operator::Percent => 13,
                 Operator::Plus | Operator::Minus => 12,
                 Operator::LessLess | Operator::GreaterGreater => 11,
-                Operator::Less | Operator::Greater | Operator::EqualEqual| Operator::BangEqual => 10,
+                Operator::Less | Operator::Greater | Operator::EqualEqual | Operator::BangEqual => 10,
                 Operator::Ampersand => 9,
                 // Op::Carrot => 8,
                 // Op::Tilde => 7,

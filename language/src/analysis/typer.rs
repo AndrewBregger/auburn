@@ -6,7 +6,7 @@ use crate::analysis::{Entity, EntityInfo, EntityRef};
 use crate::error::Error;
 use crate::mir::{
     AddressMode, BinaryExpr, BlockExpr, CallExpr, MirExpr, MirExprKind, MirExprPtr, MirFile,
-    MirNode, MirSpec, MirSpecKind, MirStmt, MirStmtKind, StructExpr, UnaryExpr,
+    MirNode, MirSpec, MirSpecKind, MirStmt, MirStmtKind, StructExpr, TupleExpr, UnaryExpr,
 };
 use crate::syntax::ast::{
     BinaryOp, Expr, ExprKind, FunctionBody, Identifier, Item, ItemKind, Node, NodeType, Spec,
@@ -19,6 +19,7 @@ use crate::{
     analysis::scope::{Scope, ScopeKind, ScopeRef},
     mir::{FieldExpr, MirExprInner},
 };
+use itertools::Itertools;
 use std::ops::Deref;
 
 type State = u64;
@@ -422,15 +423,33 @@ impl<'a> Typer<'a> {
                     }
                 }
             }
+            ExprKind::Tuple(elements) => {
+                let mut mir_elements = vec![];
+                for element in elements {
+                    let mir_expr = self.resolve_expr(element.as_ref(), None)?;
+                    mir_elements.push(mir_expr);
+                }
+
+                let elements = mir_elements
+                    .iter()
+                    .map(|element| element.ty())
+                    .collect_vec();
+
+                let tuple_expr = TupleExpr {
+                    elements: mir_elements,
+                };
+
+                let tuple_type = self.insert_type(TypeKind::Tuple { elements });
+                let mir_expr_inner =
+                    MirExprInner::new(AddressMode::Value, MirExprKind::Tuple(tuple_expr));
+                Rc::new(MirExpr::new(mir_expr_inner, expr.position(), tuple_type))
+            }
             /*
-            ExprKind::Method { .. } => {}
-            ExprKind::Tuple(_) => {}
             ExprKind::Loop(_) => {}
             ExprKind::While(_, _) => {}
             ExprKind::For { .. } => {}
             ExprKind::If { .. } => {}
             ExprKind::SelfType => {}
-            ExprKind::Call { operand, actual } => {}
             ExprKind::Method { name, actual } => {}
             ExprKind::Tuple(_) => {}
             ExprKind::Loop(_) => {}
@@ -445,7 +464,6 @@ impl<'a> Typer<'a> {
                 body,
                 else_if,
             } => {}
-            ExprKind::SelfType => {}
             */
             _ => todo!(),
         };

@@ -1,4 +1,5 @@
 use crate::analysis::EntityRef;
+use itertools::Itertools;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{
@@ -43,6 +44,9 @@ pub enum TypeKind {
 
     Struct {
         entity: EntityRef,
+    },
+    Tuple {
+        elements: Vec<Rc<Type>>,
     },
 }
 
@@ -211,6 +215,9 @@ impl Display for Type {
                 return_type
             ),
             TypeKind::Struct { entity } => write!(f, "{}", entity.deref().borrow().name()),
+            TypeKind::Tuple { elements } => {
+                write!(f, "({})", elements.iter().map(|e| e.to_string()).join(", "))
+            }
         }
     }
 }

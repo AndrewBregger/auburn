@@ -8,6 +8,7 @@ use crate::system::File;
 use std::convert::TryFrom;
 
 type Restriction = usize;
+
 const DEFAULT: Restriction = 0;
 const TYPE_EXPR: Restriction = 1 << 0;
 const NO_STRUCT_EXPR: Restriction = 1 << 1;
