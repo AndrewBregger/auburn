@@ -145,13 +145,13 @@ impl Entity {
         self.kind = EntityInfo::Resolving;
     }
 
-    pub fn new(visibility: Visibility, name: String, ty: Rc<Type>, kind: EntityInfo) -> Self {
+    pub fn new(visibility: Visibility, name: String, ty: Rc<Type>, kind: EntityInfo, path: Path) -> Self {
         Self {
             visibility,
             name,
             ty,
             kind,
-            path: Path::empty(),
+            path,
         }
     }
 
@@ -166,12 +166,17 @@ impl Entity {
         name: String,
         ty: Rc<Type>,
         kind: EntityInfo,
+        path: Path
     ) -> EntityRef {
-        new_ptr(Self::new(visibility, name, ty, kind))
+        new_ptr(Self::new(visibility, name, ty, kind, path))
     }
 
     pub fn name(&self) -> &str {
         self.name.as_str()
+    }
+
+    pub fn path(&self) -> &Path {
+        &self.path
     }
 
     pub fn visibility(&self) -> Visibility {

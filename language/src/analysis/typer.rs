@@ -868,6 +868,7 @@ impl<'a> Typer<'a> {
                 name.kind().value.clone(),
                 ty.clone(),
                 info,
+                self.current_path_from_root(),
             ));
             self.insert_entity(name.kind().value.as_str(), entity.clone());
             fields.push(entity);

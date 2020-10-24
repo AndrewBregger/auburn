@@ -18,12 +18,13 @@ impl EntityPrinter {
         let name = entity.name();
         let ty = entity.ty();
         println!(
-            "{}Entity({:?}, {}, {}, {})",
+            "{}Entity({:?}, {}, {}, {}, path: {})",
             Self::indent(indent),
             entity as *const _,
             entity.type_name(),
             name,
-            ty
+            ty,
+            entity.path()
         );
 
         match entity.kind() {

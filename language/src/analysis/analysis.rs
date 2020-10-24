@@ -2,6 +2,7 @@ use crate::{analysis::entity::EntityInfo};
 use crate::analysis::scope::{Scope, ScopeKind};
 use crate::analysis::typer::Typer;
 use crate::analysis::Entity;
+use crate::analysis::entity::Path;
 use crate::error::Error;
 use crate::mir::MirFile;
 use crate::syntax::ast::Visibility;
@@ -36,6 +37,7 @@ impl Analysis {
                         $name.to_string(),
                         $ty,
                         EntityInfo::Primitive,
+                        Path::emtpy(),
                     ),
                 );
             };
