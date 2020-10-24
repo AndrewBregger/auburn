@@ -131,7 +131,7 @@ impl<'src> Parser<'src> {
     //----------------------------------------------------------------------------------------------
 
     pub fn parse_file(&mut self) -> Result<ParsedFile, Error> {
-        let mut parsed_file = ParsedFile::new(self.file.id());
+        let mut parsed_file = ParsedFile::new(self.file.file_name().to_owned(), self.file.id());
         while let Some(current) = self.current.clone() {
             if current.is_eof() {
                 break;

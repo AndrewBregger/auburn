@@ -22,6 +22,8 @@ use crate::{
 use itertools::Itertools;
 use std::ops::Deref;
 
+use super::entity::Path;
+
 type State = u64;
 
 const DEFAULT: State = 0;
@@ -113,8 +115,29 @@ impl<'a> Typer<'a> {
         self.current_scope().shallow_lookup(name)
     }
 
+    fn current_path_from_root(&self) -> Path {
+        let mut path = Path::empty();
+        for scope in self.scope_stack.iter() {
+            match scope.kind() {
+                ScopeKind::File {
+                    file_id: _,
+                    file_name,
+                } => {
+                    path.push_path(file_name.as_str());
+                }
+                ScopeKind::Struct(name) => path.push_path(name.as_str()),
+                _ => {}
+            }
+        }
+        path
+    }
+
     pub fn resolve_file(mut self, parsed_file: ParsedFile) -> Result<MirFile, Error> {
-        self.push_scope(ScopeKind::File(parsed_file.file_id));
+        self.push_scope(ScopeKind::File {
+                file_id: parsed_file.file_id,
+                file_name: parsed_file.file_name.clone(),
+            }
+        );
         println!("Stmts: {}", parsed_file.stmts.len());
         let mut global_expression = vec![];
         let mut items = vec![];
@@ -658,10 +681,10 @@ impl<'a> Typer<'a> {
             mutable,
             default: init.clone(),
         };
-
+        
         entity
             .borrow_mut()
-            .resolve(result_type, EntityInfo::Variable(variable_info));
+            .resolve(result_type, EntityInfo::Variable(variable_info), Path::empty());
 
         {
             let borrow = entity.deref().borrow();
@@ -721,9 +744,11 @@ impl<'a> Typer<'a> {
             methods: Scope::new_ref(ScopeKind::Invalid, None),
         };
 
+        let path = self.current_path_from_root();
+
         entity
             .borrow_mut()
-            .resolve(ty, EntityInfo::Structure(structure_info));
+            .resolve(ty, EntityInfo::Structure(structure_info), path);
 
         with_state!(self, ASSOCIATIVE_FUNCTION, {
             let mut entities = vec![];
@@ -1001,9 +1026,11 @@ impl<'a> Typer<'a> {
                 (&borrow) as *const _
             );
         }
+
+        let path = self.current_path_from_root();
         entity
             .borrow_mut()
-            .resolve(function_type, EntityInfo::Function(function_info));
+            .resolve(function_type, EntityInfo::Function(function_info), path);
 
         if !declared {
             self.insert_entity(name.kind().value.as_str(), entity.clone());

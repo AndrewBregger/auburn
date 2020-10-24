@@ -154,14 +154,16 @@ impl Display for Position {
 
 #[derive(Debug, Clone)]
 pub struct ParsedFile {
+    pub file_name: String,
     pub file_id: FileId,
     // imports: Vec<Box<Import>>,
     pub stmts: Vec<Box<ast::Stmt>>,
 }
 
 impl ParsedFile {
-    pub fn new(file_id: FileId) -> Self {
+    pub fn new(file_name: String, file_id: FileId) -> Self {
         Self {
+            file_name,
             file_id,
             // imports: vec![],
             stmts: vec![],

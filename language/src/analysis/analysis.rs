@@ -1,4 +1,4 @@
-use crate::analysis::entity::EntityInfo;
+use crate::{analysis::entity::EntityInfo};
 use crate::analysis::scope::{Scope, ScopeKind};
 use crate::analysis::typer::Typer;
 use crate::analysis::Entity;
@@ -66,7 +66,7 @@ impl Analysis {
 
     pub fn check(&mut self, file: ParsedFile) -> Result<MirFile, Error> {
         let typed_file =
-            Typer::new(&mut self.type_map, &mut self.scope_stack).resolve_file(file)?;
+            Typer::new(&mut self.type_map,  &mut self.scope_stack).resolve_file(file)?;
 
         Ok(typed_file)
     }

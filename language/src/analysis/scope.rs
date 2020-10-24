@@ -11,7 +11,10 @@ pub type ScopeRef = Rc<Scope>;
 pub enum ScopeKind {
     Invalid,
     Prelude,
-    File(FileId),
+    File {
+        file_id: FileId,
+        file_name: String,
+    },
     Param(String),
     Block,
     Struct(String),

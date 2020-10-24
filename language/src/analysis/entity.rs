@@ -5,6 +5,7 @@ use crate::types::Type;
 use crate::utils::{new_ptr, Ptr};
 use std::fmt::{Display, Formatter};
 use std::rc::Rc;
+use itertools::Itertools;
 
 pub type EntityRef = Ptr<Entity>;
 
@@ -56,7 +57,7 @@ pub enum EntityInfo {
     SelfParam { mutable: bool },
     Field(LocalInfo),
 }
-
+#[derive(Debug, Clone)]
 pub enum Segment {
     Path(String),
     Object(String),
@@ -70,6 +71,7 @@ impl Display for Segment {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Path {
     segments: Vec<Segment>,
 }
@@ -83,14 +85,14 @@ impl Path {
         self.segments.push(Segment::Path(name.to_string()))
     }
 
-    pub fn path_object(&mut self, name: &str) {
+    pub fn push_object(&mut self, name: &str) {
         self.segments.push(Segment::Object(name.to_string()))
     }
 }
 
 impl Display for Path {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.segments.join("."))
+        write!(f, "{}", self.segments.iter().map(ToString::to_string).collect_vec().join("."))
     }
 }
 
@@ -149,7 +151,14 @@ impl Entity {
             name,
             ty,
             kind,
+            path: Path::empty(),
         }
+    }
+
+    pub fn full_name(&self) -> Path {
+        let mut path = self.path.clone();
+        path.push_object(self.name());
+        path
     }
 
     pub fn new_ref(
