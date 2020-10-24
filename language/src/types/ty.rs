@@ -214,7 +214,10 @@ impl Display for Type {
                     .join(", "),
                 return_type
             ),
-            TypeKind::Struct { entity } => write!(f, "{}", entity.deref().borrow().name()),
+            TypeKind::Struct { entity } => {
+                let path = entity.deref().borrow().full_name();
+                write!(f, "{}", path.to_string())
+            }
             TypeKind::Tuple { elements } => {
                 write!(f, "({})", elements.iter().map(|e| e.to_string()).join(", "))
             }

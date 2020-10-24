@@ -3,6 +3,7 @@ use crate::mir::{MirExprPtr, MirSpecPtr};
 use crate::syntax::ast::{Item, Visibility};
 use crate::types::Type;
 use crate::utils::{new_ptr, Ptr};
+use std::fmt::{Display, Formatter};
 use std::rc::Rc;
 
 pub type EntityRef = Ptr<Entity>;
@@ -56,12 +57,50 @@ pub enum EntityInfo {
     Field(LocalInfo),
 }
 
+pub enum Segment {
+    Path(String),
+    Object(String),
+}
+
+impl Display for Segment {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Path(name) | Self::Object(name) => write!(f, "{}", name),
+        }
+    }
+}
+
+pub struct Path {
+    segments: Vec<Segment>,
+}
+
+impl Path {
+    pub fn empty() -> Self {
+        Self { segments: vec![] }
+    }
+
+    pub fn push_path(&mut self, name: &str) {
+        self.segments.push(Segment::Path(name.to_string()))
+    }
+
+    pub fn path_object(&mut self, name: &str) {
+        self.segments.push(Segment::Object(name.to_string()))
+    }
+}
+
+impl Display for Path {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.segments.join("."))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Entity {
     visibility: Visibility,
     name: String,
     ty: Rc<Type>,
     kind: EntityInfo,
+    path: Path,
 }
 
 impl Entity {
@@ -76,6 +115,7 @@ impl Entity {
             name,
             ty: invalid_type,
             kind: EntityInfo::Unresolved(item),
+            path: Path::empty(),
         }
     }
 
@@ -85,12 +125,14 @@ impl Entity {
             name,
             ty: invalid_type,
             kind: EntityInfo::Resolving,
+            path: Path::empty(),
         }
     }
 
-    pub fn resolve(&mut self, ty: Rc<Type>, kind: EntityInfo) {
+    pub fn resolve(&mut self, ty: Rc<Type>, kind: EntityInfo, path: Path) {
         self.ty = ty;
         self.kind = kind;
+        self.path = path;
     }
 
     pub fn set_visibility(&mut self, visibility: Visibility) {

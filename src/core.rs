@@ -4,19 +4,16 @@ use clap::Clap;
 use language::analysis::Analysis;
 use language::error::Error;
 use language::mir::MirFile;
-use language::syntax::token::Operator::Comma;
 use language::syntax::{ParsedFile, Parser, Position};
 use language::system::{File, FileMap};
 use language::utils::{EntityPrinter, MirPrinter};
 use language::Executor;
-use std::fmt::{Display, Formatter};
-use std::io::ErrorKind;
 use std::ops::Deref;
 use std::path::Path;
 use std::rc::Rc;
 
 #[derive(Clap, Debug)]
-pub enum Command {
+enum Command {
     #[clap()]
     Check { input: String },
 
@@ -26,13 +23,13 @@ pub enum Command {
 
 #[derive(Clap, Debug)]
 #[clap(version = "0.1.0", author = "Andrew Bregger")]
-pub struct Arguments {
+struct Arguments {
     #[clap(subcommand)]
-    command: Command,
+    command: Option<Command>,
 }
 
 #[derive(Debug)]
-pub enum CoreError {
+enum CoreError {
     IoError(std::io::Error, String),
     // CommandError(CommandError),
     CompilerError(Error),
@@ -80,19 +77,25 @@ impl Core {
 
     fn print_compiler_error(&self, err: &Error) {
         let pos = err.pos();
-
+        println!("Error Pos: {}", pos);
         if let Some(file) = self.file_map.file_by_id(&pos.file_id()) {
             let start_coord = pos.start();
             let end_coord = pos.end();
-            let line = *file.get_lines(start_coord.0, end_coord.0).first().unwrap();
-            println!(
-                "{}:{}:{}| {}",
-                file.path().display(),
-                start_coord.line(),
-                start_coord.column(),
-                err
-            );
-            self.print_file_lines(line, pos);
+
+            if start_coord.line() == end_coord.line() {
+                let line = file.get_line(start_coord.line());
+                println!(
+                    "{}:{}:{}| {}",
+                    file.path().display(),
+                    start_coord.line(),
+                    start_coord.column(),
+                    err
+                );
+                self.print_file_lines(line, pos);
+            } else {
+                // let line = *file.get_lines(start_coord.0, end_coord.0).first().unwrap();
+                println!("Mutli-line error are not supported");
+            }
         } else {
             println!("Unable to find file of id: '{}'", pos.file_id().0);
         }
@@ -100,22 +103,31 @@ impl Core {
 
     fn print_file_lines(&self, line: &str, pos: &Position) {
         println!(">\t{}", line);
-        Self::print_start_cursor(line, pos.start().line());
+        Self::print_start_cursor(line, pos.start().column(), pos.end().column());
     }
 
-    fn print_start_cursor(line: &str, column: usize) {
-        let cursor = (0..(column - 1))
+    fn print_start_cursor(line: &str, start_column: usize, end_column: usize) {
+        let offset = (0..(start_column - 1))
             .map(|idx| match line.chars().nth(idx) {
                 Some('\t') => '\t',
                 Some(_) => ' ',
                 None => panic!(),
             })
             .collect::<String>();
-        println!(" \t{}^", cursor);
+        let cursor = String::from_utf8(vec![b'^'; end_column - start_column])
+            .expect("cursor string is not valid utf8??");
+        println!(" \t{}{}", offset, cursor);
     }
 
-    fn execute(&mut self, command: Arguments) -> Result<(), CoreError> {
-        match command.command {
+    fn execute(&mut self, arg: Arguments) -> Result<(), CoreError> {
+        match arg.command {
+            Some(cmd) => self.execute_command(cmd),
+            None => self.execute_repl(),
+        }
+    }
+
+    fn execute_command(&mut self, cmd: Command) -> Result<(), CoreError> {
+        match cmd {
             Command::Check { input } => {
                 let file = self
                     .open_file(input.as_str())
@@ -139,7 +151,11 @@ impl Core {
             }
             Command::Run { .. } => {}
         }
+        Ok(())
+    }
 
+    fn execute_repl(&mut self) -> Result<(), CoreError> {
+        println!("REPL not implemented");
         Ok(())
     }
 }

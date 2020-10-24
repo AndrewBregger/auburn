@@ -1,5 +1,5 @@
 fn add(x f32, y f32) = x + y
 
 fn call_add() {
-    let res = add(12.0, 2.0)
+    let res = add(12, 2.0)
 }

@@ -2,11 +2,10 @@ extern crate language;
 
 mod core;
 
-use crate::core::{Core, CoreError};
+use crate::core::Core;
 use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut core = Core::new();
-    core.run();
+    Core::new().run();
     Ok(())
 }
