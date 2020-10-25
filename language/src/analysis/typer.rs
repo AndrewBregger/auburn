@@ -949,6 +949,7 @@ impl<'a> Typer<'a> {
                                 "self".to_string(),
                                 result_type.clone(),
                                 EntityInfo::SelfParam { mutable: *mutable },
+                                Path::empty()
                             ));
                             start_index += 1;
 
@@ -1064,6 +1065,7 @@ impl<'a> Typer<'a> {
                 name.kind().value.clone(),
                 ty.clone(),
                 info,
+                Path::empty()
             ));
 
             self.insert_entity(name.kind().value.as_str(), entity.clone());

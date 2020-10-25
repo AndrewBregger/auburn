@@ -37,7 +37,7 @@ impl Analysis {
                         $name.to_string(),
                         $ty,
                         EntityInfo::Primitive,
-                        Path::emtpy(),
+                        Path::empty(),
                     ),
                 );
             };
