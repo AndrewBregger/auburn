@@ -351,101 +351,9 @@ impl<'a> Typer<'a> {
                     return Err(err);
                 }
             }
-            ExprKind::Field(operand, field) => {
-                let operand = self.resolve_expr(operand.as_ref(), None)?;
-                let operand_type = operand.ty();
-                match operand_type.kind() {
-                    TypeKind::Struct { entity } => {
-                        // we know it is astructure at this point.
-                        let entity_borrow = entity.borrow();
-                        let structure_info = entity_borrow.as_struct();
-                        if let Some(field_entity) = structure_info
-                            .fields
-                            .elements()
-                            .get(field.kind().value.as_str())
-                        {
-                            let field_borrow = field_entity.borrow();
-                            if !operand.inner().kind().is_self() {
-                                // otherwise, we need to check if this field can be access in this context.
-                                match field_borrow.visibility() {
-                                    Visibility::Private => {
-                                        let err = Error::inaccessible_field(
-                                            operand_type.as_ref(),
-                                            field.kind().value.clone(),
-                                        )
-                                        .with_position(field.position());
-                                        return Err(err);
-                                    }
-                                    Visibility::Public => { /* Continue */ }
-                                }
-                            }
-
-                            // if the parent is a 'self' then we do not care what the visibility of the field is
-                            match field_borrow.kind() {
-                                EntityInfo::Field(field_info) => {
-                                    let field_expr = FieldExpr {
-                                        operand,
-                                        field_idx: field_info.index,
-                                    };
-
-                                    Rc::new(MirExpr::new(
-                                        MirExprInner::new(
-                                            AddressMode::Address,
-                                            MirExprKind::Field(field_expr),
-                                        ),
-                                        expr.position(),
-                                        field_borrow.ty(),
-                                    ))
-                                }
-                                _ => todo!(),
-                            }
-                        } else {
-                            let err = Error::unknown_field(
-                                operand_type.as_ref(),
-                                field.kind().value.clone(),
-                            )
-                            .with_position(field.position());
-                            return Err(err);
-                        }
-                    }
-                    _ => todo!(),
-                }
-            }
-            ExprKind::Call { operand, actual } => {
-                let mir_operand = self.resolve_expr(operand.as_ref(), None)?;
-                println!("Function Type: {}", mir_operand.ty());
-                let function_type = mir_operand.ty();
-                match function_type.kind() {
-                    TypeKind::Function {
-                        params,
-                        return_type,
-                    } => {
-                        if params.len() != actual.len() {
-                            let err = Error::invalid_actuals(params.len(), actual.len())
-                                .with_position(operand.position());
-                            return Err(err);
-                        }
-                        let mut actuals = vec![];
-                        for (act, param) in actual.iter().zip(params) {
-                            let mir_actual = self.resolve_expr(act, Some(param.clone()))?;
-                            actuals.push(mir_actual);
-                        }
-                        let call_expr = CallExpr {
-                            operand: mir_operand,
-                            function_type: function_type.clone(),
-                            actuals,
-                        };
-
-                        let inner =
-                            MirExprInner::new(AddressMode::Value, MirExprKind::Call(call_expr));
-                        Rc::new(MirExpr::new(inner, expr.position(), return_type.clone()))
-                    }
-                    _ => {
-                        let err = Error::invalid_call_on_type(mir_operand.ty().as_ref());
-                        return Err(err.with_position(operand.position()));
-                    }
-                }
-            }
+            ExprKind::Field(operand, field) => self.resolve_field_access(operand.as_ref(), field.as_ref())?,
+            ExprKind::Call { operand, actual } => self.resolve_call(operand.as_ref(), actual.as_slice())?,
+            ExprKind::Method { name, actual } => self.resolve_method_call(name.as_ref(), actual)?,
             ExprKind::Tuple(elements) => {
                 let mut mir_elements = vec![];
                 for element in elements {
@@ -467,13 +375,13 @@ impl<'a> Typer<'a> {
                     MirExprInner::new(AddressMode::Value, MirExprKind::Tuple(tuple_expr));
                 Rc::new(MirExpr::new(mir_expr_inner, expr.position(), tuple_type))
             }
+
             /*
             ExprKind::Loop(_) => {}
             ExprKind::While(_, _) => {}
             ExprKind::For { .. } => {}
             ExprKind::If { .. } => {}
             ExprKind::SelfType => {}
-            ExprKind::Method { name, actual } => {}
             ExprKind::Tuple(_) => {}
             ExprKind::Loop(_) => {}
             ExprKind::While(_, _) => {}
@@ -506,6 +414,145 @@ impl<'a> Typer<'a> {
         }
 
         Ok(expr)
+    }
+
+    fn resolve_field_access(&mut self, operand: &Expr, field: &Identifier) -> Result<Rc<MirExpr>, Error> {
+        let operand = self.resolve_expr(operand, None)?;
+        let operand_type = operand.ty();
+        match operand_type.kind() {
+            TypeKind::Struct { entity } => {
+                // we know it is astructure at this point.
+                let entity_borrow = entity.borrow();
+                let structure_info = entity_borrow.as_struct();
+                if let Some(field_entity) = structure_info
+                    .fields
+                    .elements()
+                    .get(field.kind().value.as_str())
+                {
+                    let field_borrow = field_entity.borrow();
+                    if !operand.inner().kind().is_self() {
+                        // otherwise, we need to check if this field can be access in this context.
+                        match field_borrow.visibility() {
+                            Visibility::Private => {
+                                let err = Error::inaccessible_subentity(
+                                    "field",
+                                    operand_type.as_ref(),
+                                    field.kind().value.clone(),
+                                )
+                                .with_position(field.position());
+                                return Err(err);
+                            }
+                            Visibility::Public => { /* Continue */ }
+                        }
+                    }
+
+                    // if the parent is a 'self' then we do not care what the visibility of the field is
+                    match field_borrow.kind() {
+                        EntityInfo::Field(field_info) => {
+                            let field_expr = FieldExpr {
+                                operand,
+                                field_idx: field_info.index,
+                            };
+
+                            Ok(Rc::new(MirExpr::new(
+                                MirExprInner::new(
+                                    AddressMode::Address,
+                                    MirExprKind::Field(field_expr),
+                                ),
+                                field.position(),
+                                field_borrow.ty(),
+                            )))
+                        }
+                        _ => todo!(),
+                    }
+                } else {
+                    let err = Error::unknown_subfield(
+                        "field",
+                        operand_type.as_ref(),
+                        field.kind().value.clone(),
+                    )
+                    .with_position(field.position());
+                    return Err(err);
+                }
+            }
+            _ => todo!(),
+        }
+    }
+
+    fn resolve_call(&mut self, operand: &Expr, actuals: &[Box<Expr>]) -> Result<Rc<MirExpr>, Error> {
+        let mir_operand = self.resolve_expr(operand, None)?;
+        println!("Function Type: {}", mir_operand.ty());
+        let function_type = mir_operand.ty();
+        match function_type.kind() {
+            TypeKind::Function {
+                params,
+                return_type,
+            } => {
+                if params.len() != actuals.len() {
+                    let err = Error::invalid_actuals(params.len(), actuals.len())
+                        .with_position(operand.position());
+                    return Err(err);
+                }
+                let mut mir_actuals = vec![];
+                for (act, param) in actuals.iter().zip(params) {
+                    let mir_actual = self.resolve_expr(act, Some(param.clone()))?;
+                    mir_actuals.push(mir_actual);
+                }
+                let call_expr = CallExpr {
+                    operand: mir_operand,
+                    function_type: function_type.clone(),
+                    actuals: mir_actuals,
+                };
+
+                let inner =
+                    MirExprInner::new(AddressMode::Value, MirExprKind::Call(call_expr));
+                Ok(Rc::new(MirExpr::new(inner, operand.position(), return_type.clone())))
+            }
+            _ => {
+                let err = Error::invalid_call_on_type(mir_operand.ty().as_ref());
+                return Err(err.with_position(operand.position()));
+            }
+        }
+    }
+
+    fn resolve_method_call(&mut self, name: &Identifier, actuals: &[Box<Expr>]) -> Result<Rc<MirExpr>, Error> {
+        assert!(actuals.len() >= 1);
+
+        let receiver = actuals.first().unwrap();
+        let mir_receiver = self.resolve_expr(receiver.as_ref(), None)?;
+        let receiver_type = mir_receiver.ty();
+
+        match receiver_type.kind() {
+            TypeKind::Struct { entity } => {
+                let entity_borrow = entity.borrow();
+                let structure_info = entity_borrow.as_struct();
+                if let Some(method_entity) = structure_info
+                    .methods
+                    .elements()
+                    .get(name.kind().value.as_str())
+                {
+                    let method_borrow = method_entity.borrow();
+                    if !mir_receiver.inner().kind().is_self() {
+                        match method_borrow.visibility() {
+                            Visibility::Private => {
+                                let err = Error::inaccessible_subentity(method_borrow.name(), receiver_type.as_ref(), name.kind().value.clone());
+                                return Err(err.with_position(name.position()))
+                            }
+                            _ => {}
+                        }
+
+                        match method_borrow.kind() {
+                            EntityInfo::AssociatedFunction(associated_function_info) => {
+                                
+                            }
+                            _ => todo!(),
+                        }
+                    }
+                }
+            }
+            _ => todo!(),
+        }
+        unimplemented!()
     }
 
     fn resolve_struct_expr(
@@ -941,7 +988,7 @@ impl<'a> Typer<'a> {
                             let result_type = if *mutable {
                                 self.insert_type(TypeKind::Mutable { inner: ty })
                             } else {
-                                entity.deref().borrow().ty()
+                                ty
                             };
 
                             let param = new_ptr(Entity::new(

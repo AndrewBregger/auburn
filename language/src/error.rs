@@ -90,11 +90,11 @@ pub enum ErrorKind {
     #[error("invalid 'self' expression")]
     InvalidSelfExpression,
 
-    #[error("unable to access field '{}' of struct '{}'", field, struct_type)]
-    InaccessableField { struct_type: Type, field: String },
+    #[error("unable to access field '{}' of {} '{}'", field, entity_type, struct_type)]
+    InaccessableSubEntity { entity_type: String,struct_type: Type, field: String },
 
-    #[error("struct '{}' does not have field '{}'", struct_type, field)]
-    UnknownField { struct_type: Type, field: String },
+    #[error("struct '{}' does not have {} '{}'", struct_type, entity_type, field)]
+    UnknownSubEntity {  entity_type: String, struct_type: Type, field: String },
 
     #[error("attempting to call an invalid type '{}'", ty)]
     InvalidCallOnType { ty: Type },
@@ -296,15 +296,17 @@ impl<'src> Error {
         Self::new_default(ErrorKind::InvalidSelfExpression)
     }
 
-    pub fn unknown_field(struct_type: &Type, field: String) -> Self {
-        Self::new_default(ErrorKind::UnknownField {
+    pub fn unknown_subfield(entity_type: &str, struct_type: &Type, field: String) -> Self {
+        Self::new_default(ErrorKind::UnknownSubEntity {
+            entity_type: entity_type.to_owned(),
             struct_type: struct_type.clone(),
             field,
         })
     }
 
-    pub fn inaccessible_field(struct_type: &Type, field: String) -> Self {
-        Self::new_default(ErrorKind::InaccessableField {
+    pub fn inaccessible_subentity(entity_type: &str, struct_type: &Type, field: String) -> Self {
+        Self::new_default(ErrorKind::InaccessableSubEntity {
+            entity_type: entity_type.to_owned(),
             struct_type: struct_type.clone(),
             field,
         })
