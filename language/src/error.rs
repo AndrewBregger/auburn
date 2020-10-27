@@ -105,6 +105,13 @@ pub enum ErrorKind {
         found
     )]
     InvalidActuals { expected: usize, found: usize },
+
+    #[error("use of undeclared {} '{}' of type '{}'", entity_type, name, struct_type)]
+    UndeclaredStructEntity {
+        entity_type: String,
+        name: String,
+        struct_type: Type,
+    },
     // #[error("expecting keyword '{}' found '{}'", expected.to_string(), found.text())]
     // ExpectedKeyword {
     //     expected: Keyword,
@@ -318,6 +325,14 @@ impl<'src> Error {
 
     pub fn invalid_actuals(expected: usize, found: usize) -> Self {
         Self::new_default(ErrorKind::InvalidActuals { expected, found })
+    }
+
+    pub fn inaccessable_subentity(entity_type: &str, name: &str, struct_type: &Type) -> Self {
+        Self::new_default(ErrorKind::UndeclaredStructEntity {
+            entity_type: entity_type.to_owned(),
+            name: name.to_owned(),
+            struct_type: struct_type.clone()
+        })
     }
 
     // fn execpted_keyword(expected: token::Kw, token: &Token) -> Self {

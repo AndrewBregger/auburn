@@ -53,7 +53,7 @@ impl MirPrinter {
             }
             MirExprKind::Field(field_expr) => {
                 Self::print_expr_inner(field_expr.operand.as_ref(), indent + 1);
-                println!("{}| {}", Self::indent(indent + 1), field_expr.field_idx);
+                EntityPrinter::print_impl(&field_expr.field.borrow(), indent + 1);
             }
             MirExprKind::FieldAccess(..) => {}
             MirExprKind::Call(call_expr) => {

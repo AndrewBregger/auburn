@@ -449,9 +449,14 @@ impl<'a> Typer<'a> {
                     // if the parent is a 'self' then we do not care what the visibility of the field is
                     match field_borrow.kind() {
                         EntityInfo::Field(field_info) => {
+
+                            let position = field.position();
+                            let ty = field_borrow.ty();
+                            std::mem::drop(field_borrow);
+
                             let field_expr = FieldExpr {
                                 operand,
-                                field_idx: field_info.index,
+                                field: field_entity.clone(),
                             };
 
                             Ok(Rc::new(MirExpr::new(
@@ -459,8 +464,8 @@ impl<'a> Typer<'a> {
                                     AddressMode::Address,
                                     MirExprKind::Field(field_expr),
                                 ),
-                                field.position(),
-                                field_borrow.ty(),
+                                position,
+                                ty
                             )))
                         }
                         _ => todo!(),
@@ -517,41 +522,7 @@ impl<'a> Typer<'a> {
 
     fn resolve_method_call(&mut self, name: &Identifier, actuals: &[Box<Expr>]) -> Result<Rc<MirExpr>, Error> {
         assert!(actuals.len() >= 1);
-
-        let receiver = actuals.first().unwrap();
-        let mir_receiver = self.resolve_expr(receiver.as_ref(), None)?;
-        let receiver_type = mir_receiver.ty();
-
-        match receiver_type.kind() {
-            TypeKind::Struct { entity } => {
-                let entity_borrow = entity.borrow();
-                let structure_info = entity_borrow.as_struct();
-                if let Some(method_entity) = structure_info
-                    .methods
-                    .elements()
-                    .get(name.kind().value.as_str())
-                {
-                    let method_borrow = method_entity.borrow();
-                    if !mir_receiver.inner().kind().is_self() {
-                        match method_borrow.visibility() {
-                            Visibility::Private => {
-                                let err = Error::inaccessible_subentity(method_borrow.name(), receiver_type.as_ref(), name.kind().value.clone());
-                                return Err(err.with_position(name.position()))
-                            }
-                            _ => {}
-                        }
-
-                        match method_borrow.kind() {
-                            EntityInfo::AssociatedFunction(associated_function_info) => {
-                                
-                            }
-                            _ => todo!(),
-                        }
-                    }
-                }
-            }
-            _ => todo!(),
-        }
+        
         unimplemented!()
     }
 

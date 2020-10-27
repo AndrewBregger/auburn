@@ -25,7 +25,7 @@ pub struct UnaryExpr {
 #[derive(Debug, Clone)]
 pub struct FieldExpr {
     pub operand: Rc<MirExpr>,
-    pub field_idx: usize,
+    pub field: EntityRef,
 }
 
 #[derive(Debug, Clone)]
