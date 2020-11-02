@@ -48,6 +48,10 @@ impl Scope {
         self.elements.borrow()
     }
 
+    pub fn get(&self, name: &str) -> Option<&EntityRef> {
+        self.elements.get(name)
+    }
+
     pub fn parent(&self) -> Option<ScopeRef> {
         self.parent.clone()
     }

@@ -22,7 +22,7 @@ use crate::{
 use itertools::Itertools;
 use std::ops::Deref;
 
-use super::entity::Path;
+use super::entity::{AssociatedFunctionInfo, Path};
 
 type State = u64;
 
@@ -522,8 +522,61 @@ impl<'a> Typer<'a> {
 
     fn resolve_method_call(&mut self, name: &Identifier, actuals: &[Box<Expr>]) -> Result<Rc<MirExpr>, Error> {
         assert!(actuals.len() >= 1);
-        
-        unimplemented!()
+        let mir_expr = self.resolve_expr(actuals.first().unwrap(), None)?; 
+        let mir_expr_inner = mir_expr.inner();
+        let struct_type = mir_expr.ty();
+        let mir_entity = match mir_expr_inner.kind() {
+            MirExprKind::Field(field_expr) => field_expr.field.clone(),
+            MirExprKind::Name(entity) =>  entity.clone(),
+            _ => panic!(),
+                // let err = Error:
+        };
+
+        let name_str = name.kind().value.as_str();
+        match struct_type.kind() {
+            TypeKind::Struct { entity } => {
+                if let EntityInfo::Structure(structure_info) = entity.borrow().kind() {
+                    if let Some(method) = structure_info.methods.get(name_str) {
+                        self.resolve_method_from_entity(mir_entity.clone(),
+             method.clone(),
+                            actuals,
+                            name)
+                    }
+                    else if let Some(field) = structure_info.fields.get(name_str) {
+                        panic!()
+                    }
+                    else {
+                        return Err(Error::unknown_subentity("associated function", name_str, struct_type.as_ref()).with_position(name.position()));
+                    }
+                }
+                else { panic!("Compiler Error: structure type entity is not a struct entity") }
+            }
+            _ => {
+                panic!()
+            }
+        }
+    }
+
+    fn resolve_method_from_entity(&mut self, associated_type: EntityRef, method_entity: EntityRef, actuals: &[Box<Expr>], name: &Identifier) -> Result<Rc<MirExpr>, Error> {
+        let method_borrow = method_entity.borrow();
+        match method_borrow.kind() {
+            EntityInfo::AssociatedFunction(associated_function_info) => {
+                let method_type = method_borrow.ty();
+                if associated_type.borrow().is_type() {
+                }
+                else if associated_type.borrow().is_instance() {
+                }
+                else {
+                }
+            }
+            EntityInfo::Function(function_info) => {
+                panic!("Compiler Error: ")
+            }
+            _ => {
+                let err = Error::invalid_call_on_type(method_borrow.ty().as_ref()).with_position(name.position());
+                Err(err)
+            }
+        }
     }
 
     fn resolve_struct_expr(
@@ -920,6 +973,7 @@ impl<'a> Typer<'a> {
         declared: bool,
     ) -> Result<EntityRef, Error> {
         let mut function_params = Vec::with_capacity(params.len());
+        let mut takes_self = false;
         let _mir_items = with_state!(self, FUNCTION_PARAM, {
             let mut mir_items = vec![];
             self.push_scope(ScopeKind::Param(name.kind().value.clone()));
@@ -951,7 +1005,7 @@ impl<'a> Typer<'a> {
                                 Error::unexpected_self_parameter().with_position(param.position());
                             return Err(err);
                         }
-
+                        takes_self = true;
                         if let Some(entity) = self.self_entity.as_ref() {
                             let ty = entity.deref().borrow().ty();
                             std::mem::drop(entity);
@@ -976,7 +1030,7 @@ impl<'a> Typer<'a> {
                             mir_items.push(param);
                         }
                     }
-                    _ => panic!("Compiler Error: unexpected params"),
+                    _ => panic!("Compiler Error: unexpected param item"),
                 }
             }
             Ok(mir_items)
@@ -1032,25 +1086,27 @@ impl<'a> Typer<'a> {
 
         let body_scope = params_scope.children().first().map(Rc::clone);
 
-        let function_info = FunctionInfo {
-            params: params_scope,
-            body_scope,
-            body: mir_expr,
-        };
-
-        {
-            let borrow = entity.deref().borrow();
-            println!(
-                "Resolved Function: {} Entity {:?}",
-                function_type,
-                (&borrow) as *const _
-            );
-        }
-
         let path = self.current_path_from_root();
-        entity
-            .borrow_mut()
-            .resolve(function_type, EntityInfo::Function(function_info), path);
+        if self.check_state(ASSOCIATIVE_FUNCTION) {
+            let associated_function_info = AssociatedFunctionInfo {
+                entity: self.self_entity.unwrap().clone(),
+                params: params_scope,
+                body_scope, 
+                body: mir_expr,
+                takes_self,
+            };
+        }
+        else {
+            let function_info = FunctionInfo {
+                params: params_scope,
+                body_scope,
+                body: mir_expr,
+            };
+
+            entity
+                .borrow_mut()
+                .resolve(function_type, EntityInfo::Function(function_info), path);
+        }
 
         if !declared {
             self.insert_entity(name.kind().value.as_str(), entity.clone());

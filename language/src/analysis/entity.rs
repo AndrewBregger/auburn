@@ -28,6 +28,7 @@ pub struct AssociatedFunctionInfo {
     pub params: ScopeRef,
     pub body_scope: Option<ScopeRef>,
     pub body: MirExprPtr,
+    pub takes_self: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -219,6 +220,14 @@ impl Entity {
     pub fn is_struct(&self) -> bool {
         match self.kind {
             EntityInfo::Structure { .. } => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_instance(&self) -> bool {
+        match self.kind {
+            EntityInfo::Variable(..) |
+            EntityInfo::Field(..) => true,
             _ => false,
         }
     }

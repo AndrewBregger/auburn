@@ -112,6 +112,8 @@ pub enum ErrorKind {
         name: String,
         struct_type: Type,
     },
+
+    // #[error("")]
     // #[error("expecting keyword '{}' found '{}'", expected.to_string(), found.text())]
     // ExpectedKeyword {
     //     expected: Keyword,
@@ -327,7 +329,7 @@ impl<'src> Error {
         Self::new_default(ErrorKind::InvalidActuals { expected, found })
     }
 
-    pub fn inaccessable_subentity(entity_type: &str, name: &str, struct_type: &Type) -> Self {
+    pub fn unknown_subentity(entity_type: &str, name: &str, struct_type: &Type) -> Self {
         Self::new_default(ErrorKind::UndeclaredStructEntity {
             entity_type: entity_type.to_owned(),
             name: name.to_owned(),
