@@ -26,7 +26,7 @@ impl MirPrinter {
         );
     }
 
-    fn print_stmt_inner(stmt: &MirStmt, indent: usize) {
+    pub(crate) fn print_stmt_inner(stmt: &MirStmt, indent: usize) {
         Self::print_header(stmt, indent);
         match stmt.inner() {
             MirStmtKind::Expr(expr) => Self::print_expr_inner(expr.as_ref(), indent + 1),
@@ -92,7 +92,7 @@ impl MirPrinter {
         Self::print_spec_inner(stmt, 0);
     }
 
-    fn print_spec_inner(spec: &MirSpec, indent: usize) {
+    pub(crate) fn print_spec_inner(spec: &MirSpec, indent: usize) {
         Self::print_header(spec, indent);
         // match spec.inner() {
         //     MirSpecKind::Named => {}

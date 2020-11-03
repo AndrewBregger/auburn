@@ -25,33 +25,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4b17c99f-758c-48ea-b0b5-e3d26e51a8dc" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/examples/analysis/methods" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/main.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/analysis/analysis.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/analysis/entity.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/analysis/mod.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/analysis/scope.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/analysis/typer.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/error.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/lib.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mir/mod.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/syntax/ast.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/syntax/mod.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/syntax/parse/mod.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/syntax/parse/parser.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/syntax/token.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/syntax/tokenizer/mod.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/system/file.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/system/file_map.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/system/mod.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/types/mod.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/types/ty.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/types/type_map.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/entity_printer.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/mir_printer.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/mod.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/language/src/analysis/typer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/language/src/analysis/typer.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/language/src/utils/entity_printer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/language/src/utils/entity_printer.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/language/src/utils/mir_printer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/language/src/utils/mir_printer.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -105,7 +83,7 @@
   <component name="RunManager" selected="Cargo.Run">
     <configuration name="Run" type="CargoCommandRunConfiguration" factoryName="Cargo Command" nameIsGenerated="true">
       <option name="channel" value="DEFAULT" />
-      <option name="command" value="run" />
+      <option name="command" value="run -- check examples\analysis\methods" />
       <option name="allFeatures" value="false" />
       <option name="emulateTerminal" value="false" />
       <option name="backtrace" value="SHORT" />
@@ -194,6 +172,15 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
+    <list>
+      <item itemvalue="Cargo.Run" />
+      <item itemvalue="Cargo.Test tokenizer" />
+      <item itemvalue="Cargo.Test syntax::tokenizer::tests::hierarchy_tokenizer" />
+      <item itemvalue="Cargo.Test syntax::tokenizer::tests::multi_tokens_tokenizer" />
+      <item itemvalue="Cargo.Test syntax::tokenizer::tests::test_simple_op_tokenizer" />
+      <item itemvalue="Cargo.Test tokenizer::tests" />
+      <item itemvalue="Python tests.Unittests in E:/Projects/languagec/src/tests" />
+    </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python tests.Unittests in E:/Projects/languagec/src/tests" />
@@ -242,7 +229,9 @@
       <workItem from="1603172123491" duration="15807000" />
       <workItem from="1603337267804" duration="11709000" />
       <workItem from="1603422675443" duration="5699000" />
-      <workItem from="1603429692024" duration="285000" />
+      <workItem from="1603429692024" duration="4207000" />
+      <workItem from="1604376902907" duration="45000" />
+      <workItem from="1604376963060" duration="4459000" />
     </task>
     <task id="LOCAL-00001" summary="Implemented block and tuple expressions.">
       <created>1601015341655</created>
@@ -307,7 +296,14 @@
       <option name="project" value="LOCAL" />
       <updated>1603341981214</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="Restructed the project and added command line arguements.">
+      <created>1603430027450</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1603430027450</updated>
+    </task>
+    <option name="localTasksCounter" value="11" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -335,25 +331,26 @@
     <MESSAGE value="Implemented Struct Expression resolution. Struct Expression only supports binding expression and named expressions." />
     <MESSAGE value="added self as a function parameter." />
     <MESSAGE value="Implemented field, self, and call." />
-    <option name="LAST_COMMIT_MESSAGE" value="Implemented field, self, and call." />
+    <MESSAGE value="Restructed the project and added command line arguements." />
+    <option name="LAST_COMMIT_MESSAGE" value="Restructed the project and added command line arguements." />
   </component>
   <component name="WindowStateProjectService">
     <state x="1179" y="600" width="773" height="269" key="#Vim_Emulation" timestamp="1602315256138">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="1179" y="600" width="773" height="269" key="#Vim_Emulation/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1602315256138" />
-    <state x="733" y="388" width="1094" height="717" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1600055397288">
+    <state x="733" y="388" width="1094" height="717" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1604380218517">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="733" y="388" width="1094" height="717" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600055397288" />
-    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1602743221663">
+    <state x="733" y="388" width="1094" height="717" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604380218517" />
+    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1604379875759">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1602743221663" />
-    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser" timestamp="1603423055443">
+    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604379875759" />
+    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser" timestamp="1603471421452">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603423055443" />
+    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603471421452" />
     <state x="1027" y="590" key="ANALYSIS_DLG_com.intellij.analysis.BaseAnalysisAction$1" timestamp="1602818632842">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
@@ -366,50 +363,54 @@
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="1059" y="500" key="FileChooserDialogImpl/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600055373613" />
-    <state width="2517" height="288" key="GridCell.Tab.0.bottom" timestamp="1603429675592">
+    <state width="2517" height="441" key="GridCell.Tab.0.bottom" timestamp="1604381885095">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.bottom/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2517" height="288" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603429675592" />
-    <state width="2517" height="288" key="GridCell.Tab.0.center" timestamp="1603429675592">
+    <state width="2517" height="441" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604381885095" />
+    <state width="2517" height="441" key="GridCell.Tab.0.center" timestamp="1604381885094">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.center/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2517" height="288" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603429675592" />
-    <state width="2517" height="288" key="GridCell.Tab.0.left" timestamp="1603429675592">
+    <state width="2517" height="441" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604381885094" />
+    <state width="2517" height="441" key="GridCell.Tab.0.left" timestamp="1604381885094">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.left/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332313" />
-    <state width="2517" height="288" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603429675592" />
-    <state width="2517" height="288" key="GridCell.Tab.0.right" timestamp="1603429675592">
+    <state width="2517" height="441" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604381885094" />
+    <state width="2517" height="441" key="GridCell.Tab.0.right" timestamp="1604381885094">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.right/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2517" height="288" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603429675592" />
-    <state width="2517" height="488" key="GridCell.Tab.1.bottom" timestamp="1603174719195">
+    <state width="2517" height="441" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604381885094" />
+    <state width="2517" height="488" key="GridCell.Tab.1.bottom" timestamp="1604381671546">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state width="2517" height="488" key="GridCell.Tab.1.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603174719195" />
-    <state width="2517" height="488" key="GridCell.Tab.1.center" timestamp="1603174719195">
+    <state width="2517" height="488" key="GridCell.Tab.1.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604381671546" />
+    <state width="2517" height="488" key="GridCell.Tab.1.center" timestamp="1604381671546">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state width="2517" height="488" key="GridCell.Tab.1.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603174719195" />
-    <state width="2517" height="488" key="GridCell.Tab.1.left" timestamp="1603174719194">
+    <state width="2517" height="488" key="GridCell.Tab.1.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604381671546" />
+    <state width="2517" height="488" key="GridCell.Tab.1.left" timestamp="1604381671546">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state width="2517" height="488" key="GridCell.Tab.1.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603174719194" />
-    <state width="2517" height="488" key="GridCell.Tab.1.right" timestamp="1603174719195">
+    <state width="2517" height="488" key="GridCell.Tab.1.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604381671546" />
+    <state width="2517" height="488" key="GridCell.Tab.1.right" timestamp="1604381671546">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state width="2517" height="488" key="GridCell.Tab.1.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603174719195" />
+    <state width="2517" height="488" key="GridCell.Tab.1.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604381671546" />
     <state x="56" y="346" width="998" height="708" key="SettingsEditor" timestamp="1603078011844">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="56" y="346" width="998" height="708" key="SettingsEditor/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603078011844" />
-    <state x="871" y="466" key="Vcs.Push.Dialog.v2" timestamp="1603341985305">
+    <state x="871" y="466" key="Vcs.Push.Dialog.v2" timestamp="1603430031305">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="871" y="466" key="Vcs.Push.Dialog.v2/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603341985305" />
+    <state x="871" y="466" key="Vcs.Push.Dialog.v2/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603430031305" />
+    <state x="1097" y="645" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2" timestamp="1604376942129">
+      <screen x="0" y="30" width="2560" height="1410" />
+    </state>
+    <state x="1097" y="645" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604376942129" />
     <state x="995" y="143" width="960" height="1057" maximized="true" key="dock-window-1" timestamp="1603057279307">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
@@ -422,10 +423,21 @@
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="936" y="348" width="672" height="677" key="run.anything.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1602389153894" />
-    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup" timestamp="1603429841232">
+    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup" timestamp="1604381632449">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="707" y="266" width="672" height="505" key="search.everywhere.popup/0.30.1920.1050@0.30.1920.1050" timestamp="1601991482247" />
-    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603429841232" />
+    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604381632449" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/language/src/analysis/typer.rs</url>
+          <line>555</line>
+          <option name="timeStamp" value="2" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
 </project>

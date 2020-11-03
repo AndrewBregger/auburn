@@ -44,6 +44,7 @@ impl EntityPrinter {
                 for member in function.params.elements().values() {
                     Self::print_impl(&member.deref().borrow(), indent + 1);
                 }
+                println!("{}Body:", Self::indent(indent));
                 if let Some(body) = function.body_scope.as_ref() {
                     for member in body.elements().values() {
                         Self::print_impl(&member.deref().borrow(), indent + 1);
@@ -51,6 +52,11 @@ impl EntityPrinter {
                 }
             }
             EntityInfo::Variable(variable) => {
+                println!("{}Mutable: {}", Self::indent(indent + 1), variable.mutable);
+                if let Some(spec) = variable.spec.as_ref() {
+                    MirPrinter::print_spec_inner(&spec.deref().borrow(), indent + 1);
+                }
+
                 if let Some(default) = variable.default.as_ref() {
                     MirPrinter::print_expr_inner(&default.deref().borrow(), indent + 1);
                 }

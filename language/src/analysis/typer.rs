@@ -5,8 +5,8 @@ use crate::analysis::entity::{FunctionInfo, LocalInfo, StructureInfo, VariableIn
 use crate::analysis::{Entity, EntityInfo, EntityRef};
 use crate::error::Error;
 use crate::mir::{
-    AddressMode, BinaryExpr, BlockExpr, CallExpr, MirExpr, MirExprKind, MirExprPtr, MirFile,
-    MirNode, MirSpec, MirSpecKind, MirStmt, MirStmtKind, StructExpr, TupleExpr, UnaryExpr,
+    AddressMode, BinaryExpr, BlockExpr, CallExpr, MethodExpr, MirExpr, MirExprKind, MirExprPtr,
+    MirFile, MirNode, MirSpec, MirSpecKind, MirStmt, MirStmtKind, StructExpr, TupleExpr, UnaryExpr,
 };
 use crate::syntax::ast::{
     BinaryOp, Expr, ExprKind, FunctionBody, Identifier, Item, ItemKind, Node, NodeType, Spec,
@@ -134,10 +134,9 @@ impl<'a> Typer<'a> {
 
     pub fn resolve_file(mut self, parsed_file: ParsedFile) -> Result<MirFile, Error> {
         self.push_scope(ScopeKind::File {
-                file_id: parsed_file.file_id,
-                file_name: parsed_file.file_name.clone(),
-            }
-        );
+            file_id: parsed_file.file_id,
+            file_name: parsed_file.file_name.clone(),
+        });
         println!("Stmts: {}", parsed_file.stmts.len());
         let mut global_expression = vec![];
         let mut items = vec![];
@@ -351,9 +350,15 @@ impl<'a> Typer<'a> {
                     return Err(err);
                 }
             }
-            ExprKind::Field(operand, field) => self.resolve_field_access(operand.as_ref(), field.as_ref())?,
-            ExprKind::Call { operand, actual } => self.resolve_call(operand.as_ref(), actual.as_slice())?,
-            ExprKind::Method { name, actual } => self.resolve_method_call(name.as_ref(), actual)?,
+            ExprKind::Field(operand, field) => {
+                self.resolve_field_access(operand.as_ref(), field.as_ref())?
+            }
+            ExprKind::Call { operand, actual } => {
+                self.resolve_call(operand.as_ref(), actual.as_slice())?
+            }
+            ExprKind::Method { name, actual } => {
+                self.resolve_method_call(name.as_ref(), actual, expr.position())?
+            }
             ExprKind::Tuple(elements) => {
                 let mut mir_elements = vec![];
                 for element in elements {
@@ -416,7 +421,11 @@ impl<'a> Typer<'a> {
         Ok(expr)
     }
 
-    fn resolve_field_access(&mut self, operand: &Expr, field: &Identifier) -> Result<Rc<MirExpr>, Error> {
+    fn resolve_field_access(
+        &mut self,
+        operand: &Expr,
+        field: &Identifier,
+    ) -> Result<Rc<MirExpr>, Error> {
         let operand = self.resolve_expr(operand, None)?;
         let operand_type = operand.ty();
         match operand_type.kind() {
@@ -449,7 +458,6 @@ impl<'a> Typer<'a> {
                     // if the parent is a 'self' then we do not care what the visibility of the field is
                     match field_borrow.kind() {
                         EntityInfo::Field(field_info) => {
-
                             let position = field.position();
                             let ty = field_borrow.ty();
                             std::mem::drop(field_borrow);
@@ -465,7 +473,7 @@ impl<'a> Typer<'a> {
                                     MirExprKind::Field(field_expr),
                                 ),
                                 position,
-                                ty
+                                ty,
                             )))
                         }
                         _ => todo!(),
@@ -484,7 +492,11 @@ impl<'a> Typer<'a> {
         }
     }
 
-    fn resolve_call(&mut self, operand: &Expr, actuals: &[Box<Expr>]) -> Result<Rc<MirExpr>, Error> {
+    fn resolve_call(
+        &mut self,
+        operand: &Expr,
+        actuals: &[Box<Expr>],
+    ) -> Result<Rc<MirExpr>, Error> {
         let mir_operand = self.resolve_expr(operand, None)?;
         println!("Function Type: {}", mir_operand.ty());
         let function_type = mir_operand.ty();
@@ -509,9 +521,12 @@ impl<'a> Typer<'a> {
                     actuals: mir_actuals,
                 };
 
-                let inner =
-                    MirExprInner::new(AddressMode::Value, MirExprKind::Call(call_expr));
-                Ok(Rc::new(MirExpr::new(inner, operand.position(), return_type.clone())))
+                let inner = MirExprInner::new(AddressMode::Value, MirExprKind::Call(call_expr));
+                Ok(Rc::new(MirExpr::new(
+                    inner,
+                    operand.position(),
+                    return_type.clone(),
+                )))
             }
             _ => {
                 let err = Error::invalid_call_on_type(mir_operand.ty().as_ref());
@@ -520,16 +535,21 @@ impl<'a> Typer<'a> {
         }
     }
 
-    fn resolve_method_call(&mut self, name: &Identifier, actuals: &[Box<Expr>]) -> Result<Rc<MirExpr>, Error> {
+    fn resolve_method_call(
+        &mut self,
+        name: &Identifier,
+        actuals: &[Box<Expr>],
+        position: Position,
+    ) -> Result<Rc<MirExpr>, Error> {
         assert!(actuals.len() >= 1);
-        let mir_expr = self.resolve_expr(actuals.first().unwrap(), None)?; 
+        let mir_expr = self.resolve_expr(actuals.first().unwrap(), None)?;
         let mir_expr_inner = mir_expr.inner();
         let struct_type = mir_expr.ty();
         let mir_entity = match mir_expr_inner.kind() {
             MirExprKind::Field(field_expr) => field_expr.field.clone(),
-            MirExprKind::Name(entity) =>  entity.clone(),
+            MirExprKind::Name(entity) => entity.clone(),
             _ => panic!(),
-                // let err = Error:
+            // let err = Error:
         };
 
         let name_str = name.kind().value.as_str();
@@ -537,43 +557,91 @@ impl<'a> Typer<'a> {
             TypeKind::Struct { entity } => {
                 if let EntityInfo::Structure(structure_info) = entity.borrow().kind() {
                     if let Some(method) = structure_info.methods.get(name_str) {
-                        self.resolve_method_from_entity(mir_entity.clone(),
-             method.clone(),
+                        self.resolve_method_from_entity(
+                            mir_entity.clone(),
+                            method.clone(),
+                            mir_expr,
                             actuals,
-                            name)
-                    }
-                    else if let Some(field) = structure_info.fields.get(name_str) {
+                            name,
+                            position,
+                        )
+                    } else if let Some(field) = structure_info.fields.get(name_str) {
                         panic!()
+                    } else {
+                        return Err(Error::unknown_subentity(
+                            "associated function",
+                            name_str,
+                            struct_type.as_ref(),
+                        )
+                        .with_position(name.position()));
                     }
-                    else {
-                        return Err(Error::unknown_subentity("associated function", name_str, struct_type.as_ref()).with_position(name.position()));
-                    }
+                } else {
+                    panic!("Compiler Error: structure type entity is not a struct entity")
                 }
-                else { panic!("Compiler Error: structure type entity is not a struct entity") }
             }
-            _ => {
-                panic!()
-            }
+            _ => panic!(),
         }
     }
 
-    fn resolve_method_from_entity(&mut self, associated_type: EntityRef, method_entity: EntityRef, actuals: &[Box<Expr>], name: &Identifier) -> Result<Rc<MirExpr>, Error> {
+    fn resolve_method_from_entity(
+        &mut self,
+        associated_type: EntityRef,
+        method_entity: EntityRef,
+        receiver: Rc<MirExpr>,
+        actuals: &[Box<Expr>],
+        name: &Identifier,
+        position: Position,
+    ) -> Result<Rc<MirExpr>, Error> {
         let method_borrow = method_entity.borrow();
         match method_borrow.kind() {
             EntityInfo::AssociatedFunction(associated_function_info) => {
                 let method_type = method_borrow.ty();
                 if associated_type.borrow().is_type() {
-                }
-                else if associated_type.borrow().is_instance() {
-                }
-                else {
+                    match method_type.kind() {
+                        TypeKind::Function {
+                            params,
+                            return_type,
+                        } => {
+                            if params.len() != actuals.len() - 1 {
+                                let err = Error::invalid_actuals(params.len(), actuals.len())
+                                    .with_position(name.position());
+                                return Err(err);
+                            }
+                            let mut mir_actuals = vec![receiver.clone()];
+                            for (act, param) in actuals.iter().skip(1).zip(params) {
+                                let mir_actual = self.resolve_expr(act, Some(param.clone()))?;
+                                mir_actuals.push(mir_actual);
+                            }
+                            let method_expr = MethodExpr {
+                                function_type: method_type.clone(),
+                                name: name.kind().value.clone(),
+                                actuals: mir_actuals,
+                            };
+                            // operand: mir_operand,
+                            // function_type: function_type.clone(),
+                            // actuals: mir_actuals,
+
+                            let inner = MirExprInner::new(
+                                AddressMode::Address,
+                                MirExprKind::Method(method_expr),
+                            );
+                            Ok(Rc::new(MirExpr::new(inner, position, return_type.clone())))
+                        }
+                        _ => {
+                            let err = Error::invalid_call_on_type(method_borrow.ty().as_ref());
+                            return Err(err.with_position(name.position()));
+                        }
+                    }
+                } else if associated_type.borrow().is_instance() {
+                    unimplemented!()
+                } else {
+                    unimplemented!()
                 }
             }
-            EntityInfo::Function(function_info) => {
-                panic!("Compiler Error: ")
-            }
+            EntityInfo::Function(function_info) => panic!("Compiler Error: "),
             _ => {
-                let err = Error::invalid_call_on_type(method_borrow.ty().as_ref()).with_position(name.position());
+                let err = Error::invalid_call_on_type(method_borrow.ty().as_ref())
+                    .with_position(name.position());
                 Err(err)
             }
         }
@@ -752,10 +820,12 @@ impl<'a> Typer<'a> {
             mutable,
             default: init.clone(),
         };
-        
-        entity
-            .borrow_mut()
-            .resolve(result_type, EntityInfo::Variable(variable_info), Path::empty());
+
+        entity.borrow_mut().resolve(
+            result_type,
+            EntityInfo::Variable(variable_info),
+            Path::empty(),
+        );
 
         {
             let borrow = entity.deref().borrow();
@@ -1021,7 +1091,7 @@ impl<'a> Typer<'a> {
                                 "self".to_string(),
                                 result_type.clone(),
                                 EntityInfo::SelfParam { mutable: *mutable },
-                                Path::empty()
+                                Path::empty(),
                             ));
                             start_index += 1;
 
@@ -1089,14 +1159,19 @@ impl<'a> Typer<'a> {
         let path = self.current_path_from_root();
         if self.check_state(ASSOCIATIVE_FUNCTION) {
             let associated_function_info = AssociatedFunctionInfo {
-                entity: self.self_entity.unwrap().clone(),
+                entity: self.self_entity.as_ref().map(|e| e.clone()).unwrap(),
                 params: params_scope,
-                body_scope, 
+                body_scope,
                 body: mir_expr,
                 takes_self,
             };
-        }
-        else {
+
+            entity.borrow_mut().resolve(
+                function_type,
+                EntityInfo::AssociatedFunction(associated_function_info),
+                path,
+            );
+        } else {
             let function_info = FunctionInfo {
                 params: params_scope,
                 body_scope,
@@ -1139,7 +1214,7 @@ impl<'a> Typer<'a> {
                 name.kind().value.clone(),
                 ty.clone(),
                 info,
-                Path::empty()
+                Path::empty(),
             ));
 
             self.insert_entity(name.kind().value.as_str(), entity.clone());
