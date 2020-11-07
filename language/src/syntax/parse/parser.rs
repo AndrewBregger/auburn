@@ -1,11 +1,11 @@
+use std::convert::TryFrom;
+
 use crate::error::Error;
 use crate::syntax::ast::*;
 use crate::syntax::tokenizer::TokenCursor;
 use crate::syntax::{Control, Keyword, Operator, PToken, Position, Token};
 use crate::syntax::{PairKind, ParsedFile};
 use crate::system::File;
-
-use std::convert::TryFrom;
 
 type Restriction = usize;
 

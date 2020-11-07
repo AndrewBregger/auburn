@@ -1,10 +1,11 @@
-mod entity_printer;
-mod mir_printer;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 pub use entity_printer::EntityPrinter;
 pub use mir_printer::MirPrinter;
-use std::cell::RefCell;
-use std::rc::Rc;
+
+mod entity_printer;
+mod mir_printer;
 
 pub type Ptr<T> = Rc<RefCell<T>>;
 

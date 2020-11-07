@@ -1,7 +1,8 @@
-use itertools::Itertools;
 use std::fs::read_to_string;
 pub use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
+
+use itertools::Itertools;
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct FileId(pub usize);

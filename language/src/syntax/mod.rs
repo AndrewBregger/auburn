@@ -1,8 +1,4 @@
-pub mod ast;
-pub mod token;
-
-mod parse;
-mod tokenizer;
+use std::fmt::{Display, Formatter};
 
 use ast::Node;
 pub use parse::Parser;
@@ -11,7 +7,12 @@ pub use tokenizer::TokenCursor;
 
 use crate::syntax::ast::Stmt;
 use crate::system::FileId;
-use std::fmt::{Display, Formatter};
+
+pub mod ast;
+pub mod token;
+
+mod parse;
+mod tokenizer;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
 pub struct Span(pub usize, pub usize);

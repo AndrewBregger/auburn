@@ -1,6 +1,7 @@
-use crate::system::file::{File, FileId, Path, PathBuf};
 use std::collections::BTreeMap;
 use std::rc::Rc;
+
+use crate::system::file::{File, FileId, Path, PathBuf};
 
 pub struct FileMap {
     paths: BTreeMap<PathBuf, FileId>,

@@ -1,7 +1,8 @@
+use std::fmt::{Display, Formatter};
+
 use crate::syntax::ast::{BinaryOp, UnaryOp};
 use crate::syntax::{Operator, Position, Token};
 use crate::types::Type;
-use std::fmt::{Display, Formatter};
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum ErrorKind {
@@ -83,6 +84,9 @@ pub enum ErrorKind {
 
     #[error("invalid 'self' in non-associative function")]
     InvalidSelfInFunction,
+
+    #[error("invalid 'self' declared in non-associative function")]
+    InvalidSelfDeclaredInFunction,
 
     #[error("unexpected 'self' parameter in function")]
     UnexpectedSelfParameter,
@@ -327,6 +331,10 @@ impl<'src> Error {
 
     pub fn invalid_self_in_function() -> Self {
         Self::new_default(ErrorKind::InvalidSelfInFunction)
+    }
+
+    pub fn invalid_self_declared_in_function() -> Self {
+        Self::new_default(ErrorKind::InvalidSelfDeclaredInFunction)
     }
 
     pub fn unexpected_self_parameter() -> Self {

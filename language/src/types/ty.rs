@@ -1,11 +1,13 @@
-use crate::analysis::EntityRef;
-use itertools::Itertools;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{
     fmt::{Display, Formatter},
     ops::Deref,
 };
+
+use itertools::Itertools;
+
+use crate::analysis::EntityRef;
 
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct TypeId(pub usize);
@@ -185,6 +187,13 @@ impl Type {
         match self.kind {
             TypeKind::Mutable { .. } => true,
             _ => false,
+        }
+    }
+
+    pub fn inner(ty: Rc<Self>) -> Rc<Type> {
+        match ty.kind() {
+            TypeKind::Mutable { inner } => inner.clone(),
+            _ => ty,
         }
     }
 }

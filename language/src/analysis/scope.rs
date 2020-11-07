@@ -1,9 +1,10 @@
-use crate::analysis::EntityRef;
-use crate::system::FileId;
-use crate::utils::Ptr;
 use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::rc::Rc;
+
+use crate::analysis::EntityRef;
+use crate::system::FileId;
+use crate::utils::Ptr;
 
 pub type ScopeRef = Rc<Scope>;
 
@@ -11,14 +12,11 @@ pub type ScopeRef = Rc<Scope>;
 pub enum ScopeKind {
     Invalid,
     Prelude,
-    File {
-        file_id: FileId,
-        file_name: String,
-    },
+    File { file_id: FileId, file_name: String },
     Param(String),
     Block,
     Struct(String),
-    StructMethods,
+    StructMethods(String),
 }
 
 #[derive(Debug, Clone)]

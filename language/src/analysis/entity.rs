@@ -1,12 +1,14 @@
+use std::fmt::{Display, Formatter};
+use std::rc::Rc;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+use itertools::Itertools;
+
 use crate::analysis::scope::ScopeRef;
 use crate::mir::{MirExprPtr, MirSpecPtr};
 use crate::syntax::ast::{Item, Visibility};
 use crate::types::Type;
 use crate::utils::{new_ptr, Ptr};
-use itertools::Itertools;
-use std::fmt::{Display, Formatter};
-use std::rc::Rc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub type EntityRef = Ptr<Entity>;
 
@@ -59,6 +61,7 @@ pub enum EntityInfo {
     SelfParam { mutable: bool },
     Field(LocalInfo),
 }
+
 #[derive(Debug, Clone)]
 pub enum Segment {
     Path(String),

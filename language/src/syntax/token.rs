@@ -1,8 +1,9 @@
-use crate::syntax::Position;
 use std::convert::TryFrom;
+use std::fmt::{Display, Formatter};
 
 use ordered_float::OrderedFloat;
-use std::fmt::{Display, Formatter};
+
+use crate::syntax::Position;
 
 // auto generate the mapping of keyword to string
 macro_rules! string_mapping {

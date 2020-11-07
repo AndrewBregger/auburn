@@ -1,5 +1,9 @@
 extern crate clap;
 
+use std::ops::Deref;
+use std::path::Path;
+use std::rc::Rc;
+
 use clap::Clap;
 use language::analysis::Analysis;
 use language::error::Error;
@@ -8,9 +12,6 @@ use language::syntax::{ParsedFile, Parser, Position};
 use language::system::{File, FileMap};
 use language::utils::{EntityPrinter, MirPrinter};
 use language::Executor;
-use std::ops::Deref;
-use std::path::Path;
-use std::rc::Rc;
 
 #[derive(Clap, Debug)]
 enum Command {

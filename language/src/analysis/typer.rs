@@ -1,5 +1,8 @@
 use std::cell::RefCell;
+use std::ops::Deref;
 use std::rc::Rc;
+
+use itertools::Itertools;
 
 use crate::analysis::entity::{FunctionInfo, LocalInfo, StructureInfo, VariableInfo};
 use crate::analysis::{Entity, EntityInfo, EntityRef};
@@ -20,8 +23,6 @@ use crate::{
     analysis::scope::{Scope, ScopeKind, ScopeRef},
     mir::{FieldExpr, MirExprInner},
 };
-use itertools::Itertools;
-use std::ops::Deref;
 
 use super::entity::{AssociatedFunctionInfo, Path};
 
@@ -117,6 +118,22 @@ impl<'a> Typer<'a> {
         self.current_scope().shallow_lookup(name)
     }
 
+    fn compare_types(&self, expected: Rc<Type>, found: Rc<Type>, ignore_mutable: bool) -> bool {
+        let expected = if ignore_mutable {
+            Type::inner(expected)
+        } else {
+            expected
+        };
+
+        let found = if ignore_mutable {
+            Type::inner(found)
+        } else {
+            found
+        };
+
+        expected.as_ref() != found.as_ref()
+    }
+
     fn current_path_from_root(&self) -> Path {
         let mut path = Path::empty();
         for scope in self.scope_stack.iter() {
@@ -128,6 +145,7 @@ impl<'a> Typer<'a> {
                     path.push_path(file_name.as_str());
                 }
                 ScopeKind::Struct(name) => path.push_path(name.as_str()),
+                ScopeKind::StructMethods(name) => path.push_path(name.as_str()),
                 _ => {}
             }
         }
@@ -394,7 +412,7 @@ impl<'a> Typer<'a> {
             }
             ExprKind::SelfLit => {
                 if self.check_state(ASSOCIATIVE_FUNCTION) {
-                    let self_entity = match self.shallow_lookup(SELF_PARAM_IDENT) {
+                    let self_entity = match self.deep_lookup(SELF_PARAM_IDENT) {
                         Some(entity) => entity,
                         None => {
                             let err =
@@ -520,7 +538,8 @@ impl<'a> Typer<'a> {
         field: &Identifier,
     ) -> Result<Rc<MirExpr>, Error> {
         let operand = self.resolve_expr(operand, None)?;
-        let operand_type = operand.ty();
+        // get any inner type when appropriate (ie. mut T -> T)
+        let operand_type = Type::inner(operand.ty());
         match operand_type.kind() {
             TypeKind::Struct { entity } => {
                 // we know it is a structure at this point.
@@ -591,7 +610,7 @@ impl<'a> Typer<'a> {
                     return Err(err);
                 }
             }
-            _ => todo!(),
+            _ => todo!("Operand Type: {}", operand_type),
         }
     }
 
@@ -775,8 +794,15 @@ impl<'a> Typer<'a> {
                                     .with_position(name.position());
                                 return Err(err);
                             }
+
+                            let receiver_mutablility = receiver.inner().mutable();
                             let expected_receiver_type = params.first().unwrap();
-                            if receiver.ty() != *expected_receiver_type {
+
+                            if self.compare_types(
+                                expected_receiver_type.clone(),
+                                receiver.ty(),
+                                receiver_mutablility.mutable,
+                            ) {
                                 let err = Error::incompatible_types(
                                     expected_receiver_type.as_ref(),
                                     receiver.ty().as_ref(),
@@ -1077,7 +1103,7 @@ impl<'a> Typer<'a> {
             let mut entities = vec![];
 
             self.set_self(entity.clone());
-            self.push_scope(ScopeKind::StructMethods);
+            self.push_scope(ScopeKind::StructMethods(name.kind().value.clone()));
 
             for method in methods.iter() {
                 if let ItemKind::Function { vis, name, .. } = method.kind() {
@@ -1248,8 +1274,8 @@ impl<'a> Typer<'a> {
                     }
                     ItemKind::SelfParam { mutable } => {
                         if !self.check_state(ASSOCIATIVE_FUNCTION) {
-                            let err =
-                                Error::invalid_self_in_function().with_position(param.position());
+                            let err = Error::invalid_self_declared_in_function()
+                                .with_position(param.position());
                             return Err(err);
                         }
                         if start_index != 0 {

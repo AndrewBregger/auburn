@@ -1,3 +1,4 @@
+use std::convert::TryFrom;
 use std::fmt::{Debug, Display, Formatter};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -5,7 +6,6 @@ use ordered_float::OrderedFloat;
 
 use crate::error::Error;
 use crate::syntax::{FilePos, Operator, Position, Span};
-use std::convert::TryFrom;
 
 macro_rules! define_op {
     ($($name:literal => $en:ident), *, $ty:ident) => {

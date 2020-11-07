@@ -1,6 +1,7 @@
-use crate::types::ty::{Type, TypeId, TypeKind};
 use std::collections::BTreeMap;
 use std::rc::Rc;
+
+use crate::types::ty::{Type, TypeId, TypeKind};
 
 pub struct TypeMap {
     map: BTreeMap<TypeId, Rc<Type>>,

@@ -1,9 +1,10 @@
 extern crate language;
 
-mod core;
+use std::error::Error;
 
 use crate::core::Core;
-use std::error::Error;
+
+mod core;
 
 fn main() -> Result<(), Box<dyn Error>> {
     Core::new().run();

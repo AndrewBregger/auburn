@@ -1,7 +1,8 @@
-use crate::analysis::{Entity, EntityInfo};
-use crate::utils::MirPrinter;
 use std::borrow::Borrow;
 use std::ops::Deref;
+
+use crate::analysis::{Entity, EntityInfo};
+use crate::utils::MirPrinter;
 
 pub struct EntityPrinter;
 
@@ -45,11 +46,14 @@ impl EntityPrinter {
                     Self::print_impl(&member.deref().borrow(), indent + 1);
                 }
                 println!("{}Body:", Self::indent(indent));
+                println!("{}Body Entities:", Self::indent(indent));
                 if let Some(body) = function.body_scope.as_ref() {
                     for member in body.elements().values() {
                         Self::print_impl(&member.deref().borrow(), indent + 1);
                     }
                 }
+                println!("{}Body Expression:", Self::indent(indent));
+                MirPrinter::print_expr_inner(function.body.as_ref(), indent + 1);
             }
             EntityInfo::Variable(variable) => {
                 println!("{}Mutable: {}", Self::indent(indent + 1), variable.mutable);
@@ -76,11 +80,15 @@ impl EntityPrinter {
                 for member in associated_function.params.elements().values() {
                     Self::print_impl(&member.deref().borrow(), indent + 1);
                 }
+                println!("{}Body:", Self::indent(indent));
+                println!("{}Body Entities:", Self::indent(indent));
                 if let Some(body) = associated_function.body_scope.as_ref() {
                     for member in body.elements().values() {
                         Self::print_impl(&member.deref().borrow(), indent + 1);
                     }
                 }
+                println!("{}Body Expression:", Self::indent(indent));
+                MirPrinter::print_expr_inner(associated_function.body.as_ref(), indent + 1);
             }
             EntityInfo::Primitive => {}
         }

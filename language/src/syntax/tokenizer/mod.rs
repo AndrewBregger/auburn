@@ -1,10 +1,10 @@
+use std::convert::TryFrom;
 use std::str::Chars;
 
 use crate::error::Error;
 use crate::syntax::token::{Control, Keyword, Operator, PToken, Token};
 use crate::syntax::{Coord, FilePos, PairKind, Position, Span};
 use crate::system::{File, FileId};
-use std::convert::TryFrom;
 
 pub struct Lexer<'src> {
     /// the file to be processed

@@ -1,3 +1,8 @@
+use std::fmt::Debug;
+use std::rc::Rc;
+
+use ordered_float::OrderedFloat;
+
 use crate::analysis::EntityRef;
 use crate::syntax::ast::{
     AssignmentOp, AstNodeType, BinaryOp, Identifier, NodeId, NodeType, UnaryOp, Visibility,
@@ -5,9 +10,6 @@ use crate::syntax::ast::{
 use crate::syntax::Position;
 use crate::system::FileId;
 use crate::types::Type;
-use ordered_float::OrderedFloat;
-use std::fmt::Debug;
-use std::rc::Rc;
 
 #[derive(Debug, Clone)]
 pub struct BinaryExpr {

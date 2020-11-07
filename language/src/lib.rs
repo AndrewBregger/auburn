@@ -2,12 +2,13 @@ extern crate debug_cell;
 extern crate itertools;
 extern crate ordered_float;
 
+use std::path::Path;
+use std::rc::Rc;
+
 use crate::error::Error;
 use crate::mir::MirFile;
 use crate::syntax::ParsedFile;
 use crate::system::File;
-use std::path::Path;
-use std::rc::Rc;
 
 pub mod analysis;
 pub mod error;

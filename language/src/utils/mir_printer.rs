@@ -1,10 +1,11 @@
+use std::ops::Deref;
+
 use crate::mir::{
     MirExpr, MirExprKind, MirField, MirItem, MirItemKind, MirNode, MirNodeBase, MirParam, MirSpec,
     MirStmt, MirStmtKind,
 };
 use crate::syntax::ast::NodeType;
 use crate::utils::EntityPrinter;
-use std::ops::Deref;
 
 pub struct MirPrinter;
 
