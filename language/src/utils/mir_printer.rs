@@ -33,6 +33,10 @@ impl MirPrinter {
             MirStmtKind::Item(item) => {
                 EntityPrinter::print_impl(&item.deref().borrow(), indent + 1);
             }
+            MirStmtKind::Assignment(assignment) => {
+                EntityPrinter::print_impl(&assignment.lvalue.borrow(), indent + 1);
+                Self::print_expr_inner(assignment.rhs.as_ref(), indent + 1);
+            }
         }
     }
 
@@ -68,7 +72,26 @@ impl MirPrinter {
                     .iter()
                     .for_each(|stmt| Self::print_stmt_inner(stmt, indent + 1));
             }
-            MirExprKind::Method(_method_expr) => {}
+            MirExprKind::Method(method_expr) => {
+                println!(
+                    "{}Type: {}",
+                    Self::indent(indent + 1),
+                    method_expr.function_type
+                );
+                for actual in &method_expr.actuals {
+                    Self::print_expr_inner(actual.as_ref(), indent + 1);
+                }
+            }
+            MirExprKind::AssociatedFunction(associated_function_expr) => {
+                println!(
+                    "{}Type: {}",
+                    Self::indent(indent + 1),
+                    associated_function_expr.function_type
+                );
+                for actual in &associated_function_expr.actuals {
+                    Self::print_expr_inner(actual.as_ref(), indent + 1);
+                }
+            }
             MirExprKind::Tuple(_tuple_expr) => {}
             MirExprKind::Loop(_loop_expr) => {}
             MirExprKind::While(_while_expr) => {}

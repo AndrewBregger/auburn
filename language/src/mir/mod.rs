@@ -1,6 +1,6 @@
 use crate::analysis::EntityRef;
 use crate::syntax::ast::{
-    AstNodeType, BinaryOp, Identifier, NodeId, NodeType, UnaryOp, Visibility,
+    AssignmentOp, AstNodeType, BinaryOp, Identifier, NodeId, NodeType, UnaryOp, Visibility,
 };
 use crate::syntax::Position;
 use crate::system::FileId;
@@ -40,6 +40,13 @@ pub struct CallExpr {
 
 #[derive(Debug, Clone)]
 pub struct MethodExpr {
+    pub function_type: Rc<Type>,
+    pub name: String,
+    pub actuals: Vec<Rc<MirExpr>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct AssociatedFunctionExpr {
     pub function_type: Rc<Type>,
     pub name: String,
     pub actuals: Vec<Rc<MirExpr>>,
@@ -100,6 +107,7 @@ pub enum MirExprKind {
     FieldAccess(FieldAccessExpr),
     Call(CallExpr),
     Method(MethodExpr),
+    AssociatedFunction(AssociatedFunctionExpr),
     Block(BlockExpr),
     Tuple(TupleExpr),
     Loop(LoopExpr),
@@ -117,15 +125,51 @@ pub enum AddressMode {
     Address,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct MutabilityInfo {
+    pub mutable: bool,
+    pub inherited: bool,
+    pub mutable_type: bool,
+    pub rvalue: bool,
+    pub is_type: bool,
+}
+
+impl MutabilityInfo {
+    pub fn new(
+        mutable: bool,
+        inherited: bool,
+        mutable_type: bool,
+        rvalue: bool,
+        is_type: bool,
+    ) -> Self {
+        Self {
+            mutable,
+            inherited,
+            mutable_type,
+            rvalue,
+            is_type,
+        }
+    }
+
+    pub fn literal() -> Self {
+        Self::new(false, false, false, true, false)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct MirExprInner {
     address_mode: AddressMode,
+    mutable: MutabilityInfo,
     kind: MirExprKind,
 }
 
 impl MirExprInner {
-    pub fn new(address_mode: AddressMode, kind: MirExprKind) -> Self {
-        Self { address_mode, kind }
+    pub fn new(address_mode: AddressMode, mutable: MutabilityInfo, kind: MirExprKind) -> Self {
+        Self {
+            address_mode,
+            mutable,
+            kind,
+        }
     }
 
     pub fn kind(&self) -> &MirExprKind {
@@ -134,6 +178,10 @@ impl MirExprInner {
 
     pub fn address_mode(&self) -> AddressMode {
         self.address_mode
+    }
+
+    pub fn mutable(&self) -> MutabilityInfo {
+        self.mutable
     }
 }
 
@@ -170,6 +218,7 @@ impl NodeType for MirExprKind {
             Self::FieldAccess(..) => "Field Access",
             Self::Call { .. } => "Call",
             Self::Method { .. } => "Method",
+            Self::AssociatedFunction(..) => "Associated Function",
             Self::Block(..) => "Block",
             Self::Tuple(..) => "Tuple",
             Self::Loop(..) => "Loop",
@@ -191,6 +240,7 @@ impl NodeType for MirStmtKind {
         match self {
             Self::Expr(_) => "Expr Stmt",
             Self::Item(_) => "Item Stmt",
+            Self::Assignment(_) => "Assignment Stmt",
         }
     }
 
@@ -242,9 +292,17 @@ impl NodeType for MirSpecKind {
 // }
 
 #[derive(Debug, Clone)]
+pub struct Assignment {
+    pub op: AssignmentOp,
+    pub lvalue: EntityRef,
+    pub rhs: Rc<MirExpr>,
+}
+
+#[derive(Debug, Clone)]
 pub enum MirStmtKind {
     Expr(Rc<MirExpr>),
     Item(EntityRef),
+    Assignment(Assignment),
 }
 
 // the actual type will be the ty() of MirNode
@@ -399,14 +457,14 @@ impl MirExpr {
 #[derive(Debug, Clone)]
 pub struct MirFile {
     id: FileId,
-    global_expressions: Vec<MirExprPtr>,
+    global_expressions: Vec<MirStmtPtr>,
     entities: Vec<EntityRef>,
 }
 
 impl MirFile {
     pub(crate) fn new(
         id: FileId,
-        global_expressions: Vec<MirExprPtr>,
+        global_expressions: Vec<MirStmtPtr>,
         entities: Vec<EntityRef>,
     ) -> Self {
         Self {
@@ -416,7 +474,7 @@ impl MirFile {
         }
     }
 
-    pub fn expressions(&self) -> &[MirExprPtr] {
+    pub fn globals(&self) -> &[MirStmtPtr] {
         self.global_expressions.as_slice()
     }
 

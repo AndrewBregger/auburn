@@ -18,6 +18,9 @@ enum Command {
     Check { input: String },
 
     #[clap()]
+    Parse { input: String },
+
+    #[clap()]
     Run { input: String },
 }
 
@@ -140,14 +143,23 @@ impl Core {
                     .map_err(|err| CoreError::from(err))?;
 
                 println!("Global Expressions");
-                for stmt in mir_file.expressions() {
-                    MirPrinter::print_expr(stmt.as_ref());
+                for stmt in mir_file.globals() {
+                    MirPrinter::print_stmt(stmt.as_ref());
                 }
 
                 println!("Entities {}", mir_file.entities().len());
                 for entity in mir_file.entities() {
                     EntityPrinter::print(&entity.deref().borrow());
                 }
+            }
+            Command::Parse { input } => {
+                let file = self
+                    .open_file(input.as_str())
+                    .map_err(|err| CoreError::IoError(err, input))?;
+                let parsed_file = self
+                    .parse_file(file.as_ref())
+                    .map_err(|err| CoreError::from(err))?;
+                println!("{:#?}", parsed_file);
             }
             Command::Run { .. } => {}
         }

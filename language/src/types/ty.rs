@@ -180,6 +180,13 @@ impl Type {
     pub fn is_unsigned(&self) -> bool {
         !self.is_signed()
     }
+
+    pub fn is_mutable(&self) -> bool {
+        match self.kind {
+            TypeKind::Mutable { .. } => true,
+            _ => false,
+        }
+    }
 }
 
 impl Display for Type {

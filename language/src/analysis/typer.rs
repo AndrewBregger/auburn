@@ -5,12 +5,13 @@ use crate::analysis::entity::{FunctionInfo, LocalInfo, StructureInfo, VariableIn
 use crate::analysis::{Entity, EntityInfo, EntityRef};
 use crate::error::Error;
 use crate::mir::{
-    AddressMode, BinaryExpr, BlockExpr, CallExpr, MethodExpr, MirExpr, MirExprKind, MirExprPtr,
-    MirFile, MirNode, MirSpec, MirSpecKind, MirStmt, MirStmtKind, StructExpr, TupleExpr, UnaryExpr,
+    AddressMode, Assignment, AssociatedFunctionExpr, BinaryExpr, BlockExpr, CallExpr, MethodExpr,
+    MirExpr, MirExprKind, MirExprPtr, MirFile, MirNode, MirSpec, MirSpecKind, MirStmt, MirStmtKind,
+    MutabilityInfo, StructExpr, TupleExpr, UnaryExpr,
 };
 use crate::syntax::ast::{
-    BinaryOp, Expr, ExprKind, FunctionBody, Identifier, Item, ItemKind, Node, NodeType, Spec,
-    SpecKind, Stmt, StmtKind, StructExprField, UnaryOp, Visibility,
+    AssignmentOp, BinaryOp, Expr, ExprKind, FunctionBody, Identifier, Item, ItemKind, Node,
+    NodeType, Spec, SpecKind, Stmt, StmtKind, StructExprField, UnaryOp, Visibility,
 };
 use crate::syntax::{ParsedFile, Position};
 use crate::types::{Type, TypeKind, TypeMap};
@@ -34,6 +35,7 @@ const FUNCTION: State = 1 << 3;
 const FUNCTION_PARAM: State = 1 << 4;
 const FUNCTION_BODY: State = 1 << 5;
 const ASSOCIATIVE_FUNCTION: State = 1 << 6;
+const SELF_PARAM_IDENT: &'static str = "__self__";
 
 macro_rules! with_state {
     ($typer:expr, $state:expr, $body:tt) => {{
@@ -138,8 +140,7 @@ impl<'a> Typer<'a> {
             file_name: parsed_file.file_name.clone(),
         });
         println!("Stmts: {}", parsed_file.stmts.len());
-        let mut global_expression = vec![];
-        let mut items = vec![];
+        let mut globals = vec![];
 
         for stmt in &parsed_file.stmts {
             match stmt.kind() {
@@ -162,16 +163,10 @@ impl<'a> Typer<'a> {
         }
 
         for stmt in &parsed_file.stmts {
-            match stmt.kind() {
-                StmtKind::Expr(expr) => {
-                    let expr = self.resolve_expr(expr.as_ref(), None)?;
-                    global_expression.push(expr);
-                }
-                StmtKind::Item(item) => {
-                    let item = self.resolve_top_level_item(item.as_ref())?;
-                    items.push(item);
-                }
-                _ => unreachable!(),
+            let stmt = self.resolve_stmt_inner(stmt.as_ref(), true)?;
+            match stmt.inner() {
+                MirStmtKind::Expr(..) | MirStmtKind::Assignment(..) => globals.push(stmt.clone()),
+                _ => {}
             }
         }
 
@@ -184,14 +179,14 @@ impl<'a> Typer<'a> {
 
         self.pop_scope();
 
-        Ok(MirFile::new(
-            parsed_file.file_id,
-            global_expression,
-            entities,
-        ))
+        Ok(MirFile::new(parsed_file.file_id, globals, entities))
     }
 
     fn resolve_stmt(&mut self, stmt: &Stmt) -> Result<Rc<MirStmt>, Error> {
+        self.resolve_stmt_inner(stmt, false)
+    }
+
+    fn resolve_stmt_inner(&mut self, stmt: &Stmt, top_level: bool) -> Result<Rc<MirStmt>, Error> {
         println!("Resolving Stmt {}", stmt.kind().name());
 
         match stmt.kind() {
@@ -205,7 +200,12 @@ impl<'a> Typer<'a> {
                 Ok(Rc::new(MirStmt::new(MirStmtKind::Expr(expr), position, ty)))
             }
             StmtKind::Item(item) => {
-                let entity = self.resolve_item(item.as_ref())?;
+                let entity = if top_level {
+                    self.resolve_top_level_item(item.as_ref())?
+                } else {
+                    self.resolve_item(item.as_ref())?
+                };
+
                 let position = item.position();
                 // let ty = entity.deref().borrow().ty();
                 Ok(Rc::new(MirStmt::new(
@@ -213,6 +213,33 @@ impl<'a> Typer<'a> {
                     position,
                     self.type_map.get_unit(),
                 )))
+            }
+            StmtKind::Assignment { op, lvalue, rhs } => {
+                let (entity, mir_lvalue) = self.resolve_expr_to_entity(lvalue.as_ref())?;
+                // let lvalue_type = mir_lvalue.ty();
+                let mutability = mir_lvalue.inner().mutable();
+                if !mutability.mutable {
+                    let err = Error::immutable_entity(entity.deref().borrow().name());
+                    return Err(err.with_position(lvalue.position()));
+                }
+                match op {
+                    AssignmentOp::Assign => {
+                        let lvalue_type = mir_lvalue.ty();
+                        let rhs = self.resolve_expr(rhs.as_ref(), Some(lvalue_type))?;
+                        let assignment = Assignment {
+                            op: *op,
+                            lvalue: entity,
+                            rhs,
+                        };
+
+                        Ok(Rc::new(MirStmt::new(
+                            MirStmtKind::Assignment(assignment),
+                            stmt.position(),
+                            self.type_map.get_unit(),
+                        )))
+                    }
+                    _ => todo!("Assignment operator {} is not implemented", op),
+                }
             }
             StmtKind::Empty => unreachable!(),
         }
@@ -228,7 +255,11 @@ impl<'a> Typer<'a> {
             ExprKind::Integer(val) => {
                 let ty = self.type_map.get_u32();
                 Rc::new(MirExpr::new(
-                    MirExprInner::new(AddressMode::Value, MirExprKind::Integer(*val)),
+                    MirExprInner::new(
+                        AddressMode::Value,
+                        MutabilityInfo::literal(),
+                        MirExprKind::Integer(*val),
+                    ),
                     expr.position(),
                     ty,
                 ))
@@ -236,7 +267,11 @@ impl<'a> Typer<'a> {
             ExprKind::Float(val) => {
                 let ty = self.type_map.get_f32();
                 Rc::new(MirExpr::new(
-                    MirExprInner::new(AddressMode::Value, MirExprKind::Float(*val)),
+                    MirExprInner::new(
+                        AddressMode::Value,
+                        MutabilityInfo::literal(),
+                        MirExprKind::Float(*val),
+                    ),
                     expr.position(),
                     ty,
                 ))
@@ -244,7 +279,11 @@ impl<'a> Typer<'a> {
             ExprKind::String(val) => {
                 let ty = self.type_map.get_string();
                 Rc::new(MirExpr::new(
-                    MirExprInner::new(AddressMode::Address, MirExprKind::String(val.clone())),
+                    MirExprInner::new(
+                        AddressMode::Address,
+                        MutabilityInfo::literal(),
+                        MirExprKind::String(val.clone()),
+                    ),
                     expr.position(),
                     ty,
                 ))
@@ -252,7 +291,11 @@ impl<'a> Typer<'a> {
             ExprKind::Char(val) => {
                 let ty = self.type_map.get_char();
                 Rc::new(MirExpr::new(
-                    MirExprInner::new(AddressMode::Value, MirExprKind::Char(*val)),
+                    MirExprInner::new(
+                        AddressMode::Value,
+                        MutabilityInfo::literal(),
+                        MirExprKind::Char(*val),
+                    ),
                     expr.position(),
                     ty,
                 ))
@@ -260,8 +303,20 @@ impl<'a> Typer<'a> {
             ExprKind::Name(ident) => {
                 let name = self.resolve_ident(ident)?;
                 let ty = name.deref().borrow().ty();
+                let mutable = match name.deref().borrow().kind() {
+                    EntityInfo::Variable(variable) => {
+                        MutabilityInfo::new(variable.mutable, false, ty.is_mutable(), false, false)
+                    }
+                    EntityInfo::Structure(_structure) => {
+                        MutabilityInfo::new(false, false, false, false, true)
+                    }
+                    EntityInfo::Param(_local_info) => {
+                        MutabilityInfo::new(false, false, ty.is_mutable(), false, false)
+                    }
+                    _ => MutabilityInfo::new(false, false, false, false, false),
+                };
                 Rc::new(MirExpr::new(
-                    MirExprInner::new(AddressMode::Address, MirExprKind::Name(name)),
+                    MirExprInner::new(AddressMode::Address, mutable, MirExprKind::Name(name)),
                     expr.position(),
                     ty,
                 ))
@@ -290,19 +345,25 @@ impl<'a> Typer<'a> {
 
                 self.pop_scope();
 
-                let (address_mode, return_type) =
-                    stmts
-                        .last()
-                        .map_or(
-                            (AddressMode::Value, self.type_map.get_unit()),
-                            |stmt| match stmt.inner() {
-                                MirStmtKind::Expr(expr) => {
-                                    let inner = expr.inner();
-                                    (inner.address_mode(), expr.ty())
-                                }
-                                _ => (AddressMode::Value, stmt.ty()),
-                            },
-                        );
+                // the result of the block is the result of the last expression in the block, this includes the addressing, type, and mutability
+                let (address_mode, return_type, mutable) = stmts.last().map_or(
+                    (
+                        AddressMode::Value,
+                        self.type_map.get_unit(),
+                        MutabilityInfo::literal(),
+                    ),
+                    |stmt| match stmt.inner() {
+                        MirStmtKind::Expr(expr) => {
+                            let inner = expr.inner();
+                            (inner.address_mode(), expr.ty(), inner.mutable())
+                        }
+                        _ => (
+                            AddressMode::Value,
+                            stmt.ty(),
+                            MutabilityInfo::new(false, false, false, false, false),
+                        ),
+                    },
+                );
 
                 let block_expr = BlockExpr {
                     stmts,
@@ -310,7 +371,7 @@ impl<'a> Typer<'a> {
                 };
 
                 Rc::new(MirExpr::new(
-                    MirExprInner::new(address_mode, MirExprKind::Block(block_expr)),
+                    MirExprInner::new(address_mode, mutable, MirExprKind::Block(block_expr)),
                     expr.position(),
                     return_type,
                 ))
@@ -332,18 +393,33 @@ impl<'a> Typer<'a> {
                 }
             }
             ExprKind::SelfLit => {
-                if let Some(entity) = self.self_entity.as_ref() {
-                    if self.check_state(ASSOCIATIVE_FUNCTION) {
-                        let mir_inner =
-                            MirExprInner::new(AddressMode::Address, MirExprKind::SelfLit);
+                if self.check_state(ASSOCIATIVE_FUNCTION) {
+                    let self_entity = match self.shallow_lookup(SELF_PARAM_IDENT) {
+                        Some(entity) => entity,
+                        None => {
+                            let err =
+                                Error::invalid_self_in_function().with_position(expr.position());
+                            return Err(err);
+                        }
+                    };
+
+                    let self_borrow = self_entity.deref().borrow();
+                    if let EntityInfo::SelfParam { mutable } = self_borrow.kind() {
+                        let mir_inner = MirExprInner::new(
+                            AddressMode::Address,
+                            MutabilityInfo::new(*mutable, false, false, false, false),
+                            MirExprKind::SelfLit,
+                        );
                         Rc::new(MirExpr::new(
                             mir_inner,
                             expr.position(),
-                            entity.deref().borrow().ty(),
+                            self_entity.deref().borrow().ty(),
                         ))
                     } else {
-                        let err = Error::invalid_self_expression().with_position(expr.position());
-                        return Err(err);
+                        let err = Error::other(
+                            "Compiler Error: 'self' entity is not a Self Entity type".to_owned(),
+                        );
+                        return Err(err.with_position(expr.position()));
                     }
                 } else {
                     let err = Error::invalid_self_expression().with_position(expr.position());
@@ -376,8 +452,11 @@ impl<'a> Typer<'a> {
                 };
 
                 let tuple_type = self.insert_type(TypeKind::Tuple { elements });
-                let mir_expr_inner =
-                    MirExprInner::new(AddressMode::Value, MirExprKind::Tuple(tuple_expr));
+                let mir_expr_inner = MirExprInner::new(
+                    AddressMode::Value,
+                    MutabilityInfo::new(false, false, false, true, false),
+                    MirExprKind::Tuple(tuple_expr),
+                );
                 Rc::new(MirExpr::new(mir_expr_inner, expr.position(), tuple_type))
             }
 
@@ -421,6 +500,20 @@ impl<'a> Typer<'a> {
         Ok(expr)
     }
 
+    fn resolve_expr_to_entity(&mut self, expr: &Expr) -> Result<(EntityRef, Rc<MirExpr>), Error> {
+        let mir_expr = self.resolve_expr(expr, None)?;
+        let entity = match mir_expr.inner().kind() {
+            MirExprKind::Field(field_expr) => field_expr.field.clone(),
+            MirExprKind::Name(entity) => entity.clone(),
+            _ => {
+                let err = Error::invalid_lvalue();
+                return Err(err.with_position(expr.position()));
+            }
+        };
+
+        Ok((entity, mir_expr))
+    }
+
     fn resolve_field_access(
         &mut self,
         operand: &Expr,
@@ -430,15 +523,15 @@ impl<'a> Typer<'a> {
         let operand_type = operand.ty();
         match operand_type.kind() {
             TypeKind::Struct { entity } => {
-                // we know it is astructure at this point.
-                let entity_borrow = entity.borrow();
+                // we know it is a structure at this point.
+                let entity_borrow = entity.deref().borrow();
                 let structure_info = entity_borrow.as_struct();
                 if let Some(field_entity) = structure_info
                     .fields
                     .elements()
                     .get(field.kind().value.as_str())
                 {
-                    let field_borrow = field_entity.borrow();
+                    let field_borrow = field_entity.deref().borrow();
                     if !operand.inner().kind().is_self() {
                         // otherwise, we need to check if this field can be access in this context.
                         match field_borrow.visibility() {
@@ -457,19 +550,29 @@ impl<'a> Typer<'a> {
 
                     // if the parent is a 'self' then we do not care what the visibility of the field is
                     match field_borrow.kind() {
-                        EntityInfo::Field(field_info) => {
+                        EntityInfo::Field(_field_info) => {
                             let position = field.position();
                             let ty = field_borrow.ty();
-                            std::mem::drop(field_borrow);
 
+                            let parent_mutability_info = operand.inner().mutable();
                             let field_expr = FieldExpr {
                                 operand,
                                 field: field_entity.clone(),
                             };
 
+                            let mutable = MutabilityInfo::new(
+                                parent_mutability_info.mutable,
+                                parent_mutability_info.inherited || true,
+                                parent_mutability_info.mutable_type,
+                                false,
+                                field_borrow.is_type(),
+                            );
+
+                            std::mem::drop(field_borrow);
                             Ok(Rc::new(MirExpr::new(
                                 MirExprInner::new(
                                     AddressMode::Address,
+                                    mutable,
                                     MirExprKind::Field(field_expr),
                                 ),
                                 position,
@@ -521,7 +624,10 @@ impl<'a> Typer<'a> {
                     actuals: mir_actuals,
                 };
 
-                let inner = MirExprInner::new(AddressMode::Value, MirExprKind::Call(call_expr));
+                let mutable =
+                    MutabilityInfo::new(false, false, return_type.is_mutable(), false, false);
+                let inner =
+                    MirExprInner::new(AddressMode::Value, mutable, MirExprKind::Call(call_expr));
                 Ok(Rc::new(MirExpr::new(
                     inner,
                     operand.position(),
@@ -542,20 +648,23 @@ impl<'a> Typer<'a> {
         position: Position,
     ) -> Result<Rc<MirExpr>, Error> {
         assert!(actuals.len() >= 1);
-        let mir_expr = self.resolve_expr(actuals.first().unwrap(), None)?;
-        let mir_expr_inner = mir_expr.inner();
+        let receiver_expr = actuals.first().unwrap();
+        let mir_expr = self.resolve_expr(receiver_expr.as_ref(), None)?;
         let struct_type = mir_expr.ty();
-        let mir_entity = match mir_expr_inner.kind() {
+
+        let mir_entity = match mir_expr.inner().kind() {
             MirExprKind::Field(field_expr) => field_expr.field.clone(),
             MirExprKind::Name(entity) => entity.clone(),
-            _ => panic!(),
-            // let err = Error:
+            _ => {
+                let err = Error::invalid_lvalue();
+                return Err(err.with_position(mir_expr.position()));
+            }
         };
 
         let name_str = name.kind().value.as_str();
         match struct_type.kind() {
             TypeKind::Struct { entity } => {
-                if let EntityInfo::Structure(structure_info) = entity.borrow().kind() {
+                if let EntityInfo::Structure(structure_info) = entity.deref().borrow().kind() {
                     if let Some(method) = structure_info.methods.get(name_str) {
                         self.resolve_method_from_entity(
                             mir_entity.clone(),
@@ -565,7 +674,7 @@ impl<'a> Typer<'a> {
                             name,
                             position,
                         )
-                    } else if let Some(field) = structure_info.fields.get(name_str) {
+                    } else if let Some(_field) = structure_info.fields.get(name_str) {
                         panic!()
                     } else {
                         return Err(Error::unknown_subentity(
@@ -592,11 +701,22 @@ impl<'a> Typer<'a> {
         name: &Identifier,
         position: Position,
     ) -> Result<Rc<MirExpr>, Error> {
-        let method_borrow = method_entity.borrow();
+        let method_borrow = method_entity.deref().borrow();
         match method_borrow.kind() {
             EntityInfo::AssociatedFunction(associated_function_info) => {
                 let method_type = method_borrow.ty();
-                if associated_type.borrow().is_type() {
+                if associated_type.deref().borrow().is_type() {
+                    if associated_function_info.entity.deref().borrow().id()
+                        != associated_type.deref().borrow().id()
+                    {
+                        panic!("Compiler Error: invalid expected receiver type with found receiver: {} -> {}", associated_function_info.entity.deref().borrow().full_name(), associated_type.deref().borrow().full_name());
+                    }
+                    if associated_function_info.takes_self {
+                        let err =
+                            Error::invalid_associated_function_receiver(name.kind().value.as_str());
+                        return Err(err.with_position(name.position()));
+                    }
+
                     match method_type.kind() {
                         TypeKind::Function {
                             params,
@@ -612,17 +732,81 @@ impl<'a> Typer<'a> {
                                 let mir_actual = self.resolve_expr(act, Some(param.clone()))?;
                                 mir_actuals.push(mir_actual);
                             }
+                            let associated_function_expr = AssociatedFunctionExpr {
+                                function_type: method_type.clone(),
+                                name: name.kind().value.clone(),
+                                actuals: mir_actuals,
+                            };
+
+                            let mutable = MutabilityInfo::new(
+                                false,
+                                false,
+                                return_type.is_mutable(),
+                                false,
+                                false,
+                            );
+                            // the address_mode should be determined by the address mode of the returned expression
+                            let inner = MirExprInner::new(
+                                AddressMode::Address,
+                                mutable,
+                                MirExprKind::AssociatedFunction(associated_function_expr),
+                            );
+                            Ok(Rc::new(MirExpr::new(inner, position, return_type.clone())))
+                        }
+                        _ => {
+                            let err = Error::invalid_call_on_type(method_borrow.ty().as_ref());
+                            return Err(err.with_position(name.position()));
+                        }
+                    }
+                } else if associated_type.deref().borrow().is_instance() {
+                    if !associated_function_info.takes_self {
+                        let err =
+                            Error::associated_function_invalid_receiver(name.kind().value.as_str());
+                        return Err(err.with_position(name.position()));
+                    }
+
+                    match method_type.kind() {
+                        TypeKind::Function {
+                            params,
+                            return_type,
+                        } => {
+                            if params.len() != actuals.len() {
+                                let err = Error::invalid_actuals(params.len(), actuals.len())
+                                    .with_position(name.position());
+                                return Err(err);
+                            }
+                            let expected_receiver_type = params.first().unwrap();
+                            if receiver.ty() != *expected_receiver_type {
+                                let err = Error::incompatible_types(
+                                    expected_receiver_type.as_ref(),
+                                    receiver.ty().as_ref(),
+                                );
+                                return Err(err.with_position(name.position()));
+                            }
+
+                            let mut mir_actuals = vec![receiver.clone()];
+                            for (act, param) in actuals.iter().zip(params).skip(1) {
+                                let mir_actual = self.resolve_expr(act, Some(param.clone()))?;
+                                mir_actuals.push(mir_actual);
+                            }
+
                             let method_expr = MethodExpr {
                                 function_type: method_type.clone(),
                                 name: name.kind().value.clone(),
                                 actuals: mir_actuals,
                             };
-                            // operand: mir_operand,
-                            // function_type: function_type.clone(),
-                            // actuals: mir_actuals,
 
+                            let mutable = MutabilityInfo::new(
+                                false,
+                                false,
+                                return_type.is_mutable(),
+                                false,
+                                false,
+                            );
+                            // the address_mode should be determined by the address mode of the returned expression
                             let inner = MirExprInner::new(
                                 AddressMode::Address,
+                                mutable,
                                 MirExprKind::Method(method_expr),
                             );
                             Ok(Rc::new(MirExpr::new(inner, position, return_type.clone())))
@@ -632,13 +816,10 @@ impl<'a> Typer<'a> {
                             return Err(err.with_position(name.position()));
                         }
                     }
-                } else if associated_type.borrow().is_instance() {
-                    unimplemented!()
                 } else {
                     unimplemented!()
                 }
             }
-            EntityInfo::Function(function_info) => panic!("Compiler Error: "),
             _ => {
                 let err = Error::invalid_call_on_type(method_borrow.ty().as_ref())
                     .with_position(name.position());
@@ -703,7 +884,8 @@ impl<'a> Typer<'a> {
             fields: mir_fields,
         };
         let mir_expr = MirExprKind::StructExpr(struct_expr);
-        let mir_inner = MirExprInner::new(AddressMode::Value, mir_expr);
+        let mutable = MutabilityInfo::new(false, false, false, true, false);
+        let mir_inner = MirExprInner::new(AddressMode::Value, mutable, mir_expr);
         Ok(Rc::new(MirExpr::new(mir_inner, position, struct_type)))
     }
 
@@ -1095,7 +1277,7 @@ impl<'a> Typer<'a> {
                             ));
                             start_index += 1;
 
-                            self.insert_entity("self", param.clone());
+                            self.insert_entity(SELF_PARAM_IDENT, param.clone());
                             function_params.push(result_type);
                             mir_items.push(param);
                         }
@@ -1371,9 +1553,11 @@ impl<'a> Typer<'a> {
             }
         };
 
+        let mutable = MutabilityInfo::new(false, false, false, true, false);
         Ok(Rc::new(MirExpr::new(
             MirExprInner::new(
                 address_mode,
+                mutable,
                 MirExprKind::Binary(BinaryExpr { op, left, right }),
             ),
             position,
@@ -1418,8 +1602,13 @@ impl<'a> Typer<'a> {
             UnaryOp::Ampersand => todo!("what is an & supposed to do."),
         };
 
+        let mutable = MutabilityInfo::new(false, false, false, true, false);
         Ok(Rc::new(MirExpr::new(
-            MirExprInner::new(address_mode, MirExprKind::Unary(UnaryExpr { op, operand })),
+            MirExprInner::new(
+                address_mode,
+                mutable,
+                MirExprKind::Unary(UnaryExpr { op, operand }),
+            ),
             expr.position(),
             result_type,
         )))

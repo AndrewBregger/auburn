@@ -47,6 +47,20 @@ define_op!(
     BinaryOp
 );
 
+define_op!(
+    "="   => Assign,
+    "+="  => PlusAssign,
+    "-="  => MinusAssign,
+    "*="  => AstriskAssign,
+    "/="  => SlashAssign,
+    "&="  => AmpersandAssign,
+    "|="  => PipeAssign,
+    "%="  => PercentAssign,
+    "<<=" => LessLessAssign,
+    ">>=" => GreaterGreaterAssign,
+    AssignmentOp
+);
+
 impl TryFrom<Operator> for BinaryOp {
     type Error = Error;
 
@@ -68,6 +82,43 @@ impl TryFrom<Operator> for BinaryOp {
             Operator::EqualEqual => Ok(Self::EqualEqual),
             Operator::BangEqual => Ok(Self::BangEqual),
             _ => Err(Error::invalid_binary_operator(value)),
+        }
+    }
+}
+
+impl AssignmentOp {
+    pub fn get_binary_op(&self) -> Option<BinaryOp> {
+        match self {
+            Self::Assign => None,
+            Self::PlusAssign => Some(BinaryOp::Plus),
+            Self::MinusAssign => Some(BinaryOp::Minus),
+            Self::AstriskAssign => Some(BinaryOp::Astrick),
+            Self::SlashAssign => Some(BinaryOp::Slash),
+            Self::AmpersandAssign => Some(BinaryOp::Ampersand),
+            Self::PipeAssign => Some(BinaryOp::Pipe),
+            Self::PercentAssign => Some(BinaryOp::Percent),
+            Self::LessLessAssign => Some(BinaryOp::LessLess),
+            Self::GreaterGreaterAssign => Some(BinaryOp::GreaterGreater),
+        }
+    }
+}
+
+impl TryFrom<Operator> for AssignmentOp {
+    type Error = Error;
+
+    fn try_from(value: Operator) -> Result<Self, Self::Error> {
+        match value {
+            Operator::Equal => Ok(Self::Assign),
+            Operator::PlusEq => Ok(Self::PlusAssign),
+            Operator::MinusEq => Ok(Self::MinusAssign),
+            Operator::AstriskEq => Ok(Self::AstriskAssign),
+            Operator::SlashEq => Ok(Self::SlashAssign),
+            Operator::AmpersandEq => Ok(Self::AmpersandAssign),
+            Operator::PipeEq => Ok(Self::PipeAssign),
+            Operator::PercentEq => Ok(Self::PercentAssign),
+            Operator::LessLessEq => Ok(Self::LessLessAssign),
+            Operator::GreaterGreaterEq => Ok(Self::GreaterGreaterAssign),
+            _ => Err(Error::invalid_assignment_operator(value)),
         }
     }
 }
@@ -159,6 +210,11 @@ pub enum ExprKind {
 pub enum StmtKind {
     Expr(Box<Expr>),
     Item(Box<Item>),
+    Assignment {
+        op: AssignmentOp,
+        lvalue: Box<Expr>,
+        rhs: Box<Expr>,
+    },
     Empty,
 }
 
@@ -343,6 +399,7 @@ impl NodeType for StmtKind {
             Self::Expr(_) => "Expr Stmt",
             Self::Item(_) => "Item Stmt",
             Self::Empty => "Empty Stmt",
+            Self::Assignment { .. } => "Assignment Stmt",
         }
     }
 

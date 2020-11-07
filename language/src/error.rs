@@ -29,8 +29,11 @@ pub enum ErrorKind {
         found: String,
     },
 
-    #[error("operator is not a valid binary operator: '{}'", op.to_string())]
+    #[error("operator is not a valid binary operator: '{}'", op)]
     InvalidBinaryOp { op: Operator },
+
+    #[error("operator is not a valid assignment operator: '{}'", op)]
+    InvalidAssignmentOp { op: Operator },
 
     #[error("expecting an identifier, found '{0}'")]
     ExpectingIdentifier(String),
@@ -90,11 +93,24 @@ pub enum ErrorKind {
     #[error("invalid 'self' expression")]
     InvalidSelfExpression,
 
-    #[error("unable to access field '{}' of {} '{}'", field, entity_type, struct_type)]
-    InaccessableSubEntity { entity_type: String,struct_type: Type, field: String },
+    #[error(
+        "unable to access field '{}' of {} '{}'",
+        field,
+        entity_type,
+        struct_type
+    )]
+    InaccessableSubEntity {
+        entity_type: String,
+        struct_type: Type,
+        field: String,
+    },
 
     #[error("struct '{}' does not have {} '{}'", struct_type, entity_type, field)]
-    UnknownSubEntity {  entity_type: String, struct_type: Type, field: String },
+    UnknownSubEntity {
+        entity_type: String,
+        struct_type: Type,
+        field: String,
+    },
 
     #[error("attempting to call an invalid type '{}'", ty)]
     InvalidCallOnType { ty: Type },
@@ -106,14 +122,30 @@ pub enum ErrorKind {
     )]
     InvalidActuals { expected: usize, found: usize },
 
-    #[error("use of undeclared {} '{}' of type '{}'", entity_type, name, struct_type)]
+    #[error(
+        "use of undeclared {} '{}' of type '{}'",
+        entity_type,
+        name,
+        struct_type
+    )]
     UndeclaredStructEntity {
         entity_type: String,
         name: String,
         struct_type: Type,
     },
 
-    // #[error("")]
+    #[error("invalid use of associated function '{}' with 'self' receiver", name)]
+    InvalidAssociatedFunctionReceiver { name: String },
+
+    #[error("associated function doesn't take receiver '{}'", name)]
+    AssociatedFunctionInvalidReceiver { name: String },
+
+    #[error("invalid lvalue")]
+    InvalidLValue,
+
+    #[error("attempting to mutable '{}' which is not mutable", name)]
+    ImmutableEntity { name: String },
+
     // #[error("expecting keyword '{}' found '{}'", expected.to_string(), found.text())]
     // ExpectedKeyword {
     //     expected: Keyword,
@@ -232,6 +264,10 @@ impl<'src> Error {
         Self::new_default(ErrorKind::InvalidBinaryOp { op })
     }
 
+    pub fn invalid_assignment_operator(op: Operator) -> Self {
+        Self::new_default(ErrorKind::InvalidAssignmentOp { op })
+    }
+
     pub fn expecting_identifier(token: &Token) -> Self {
         Self::new_default(ErrorKind::ExpectingIdentifier(token.to_string()))
     }
@@ -267,10 +303,10 @@ impl<'src> Error {
         Self::new_default(ErrorKind::DuplicateName(name))
     }
 
-    pub fn incompatible_types(left: &Type, right: &Type) -> Self {
+    pub fn incompatible_types(expected: &Type, found: &Type) -> Self {
         Self::new_default(ErrorKind::IncompatibleTypes {
-            left: left.clone(),
-            right: right.clone(),
+            left: expected.clone(),
+            right: found.clone(),
         })
     }
 
@@ -333,7 +369,29 @@ impl<'src> Error {
         Self::new_default(ErrorKind::UndeclaredStructEntity {
             entity_type: entity_type.to_owned(),
             name: name.to_owned(),
-            struct_type: struct_type.clone()
+            struct_type: struct_type.clone(),
+        })
+    }
+
+    pub fn invalid_associated_function_receiver(name: &str) -> Self {
+        Self::new_default(ErrorKind::InvalidAssociatedFunctionReceiver {
+            name: name.to_owned(),
+        })
+    }
+
+    pub fn associated_function_invalid_receiver(name: &str) -> Self {
+        Self::new_default(ErrorKind::AssociatedFunctionInvalidReceiver {
+            name: name.to_owned(),
+        })
+    }
+
+    pub fn invalid_lvalue() -> Self {
+        Self::new_default(ErrorKind::InvalidLValue)
+    }
+
+    pub fn immutable_entity(name: &str) -> Self {
+        Self::new_default(ErrorKind::ImmutableEntity {
+            name: name.to_owned(),
         })
     }
 

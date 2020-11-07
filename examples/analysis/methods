@@ -4,9 +4,13 @@ struct Foo {
     fn new(x, y, z f32) = Self { x, y, z }
 
     fn get_x(self) = self.x
+
+    fn set_x(mut self, x f32) {
+        self.x = x
+    }
 }
 
 fn test() {
-    let foo = Foo.new(1.0, 2.0, 3.0)
-    let x = foo.get_x()
+    mut foo = Foo.new(1.0, 2.0, 3.0)
+    let x = foo.get_x() * 2.0
 }

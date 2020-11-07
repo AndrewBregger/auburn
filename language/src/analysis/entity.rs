@@ -3,9 +3,10 @@ use crate::mir::{MirExprPtr, MirSpecPtr};
 use crate::syntax::ast::{Item, Visibility};
 use crate::types::Type;
 use crate::utils::{new_ptr, Ptr};
+use itertools::Itertools;
 use std::fmt::{Display, Formatter};
 use std::rc::Rc;
-use itertools::Itertools;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub type EntityRef = Ptr<Entity>;
 
@@ -93,12 +94,31 @@ impl Path {
 
 impl Display for Path {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.segments.iter().map(ToString::to_string).collect_vec().join("."))
+        write!(
+            f,
+            "{}",
+            self.segments
+                .iter()
+                .map(ToString::to_string)
+                .collect_vec()
+                .join(".")
+        )
+    }
+}
+
+#[derive(Debug, Clone, Copy, Hash, Ord, PartialOrd, Eq, PartialEq)]
+pub struct EntityId(pub usize);
+
+impl EntityId {
+    pub fn next() -> Self {
+        static TOKEN: AtomicUsize = AtomicUsize::new(1);
+        Self(TOKEN.fetch_add(1, Ordering::SeqCst))
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Entity {
+    id: EntityId,
     visibility: Visibility,
     name: String,
     ty: Rc<Type>,
@@ -107,6 +127,10 @@ pub struct Entity {
 }
 
 impl Entity {
+    pub fn id(&self) -> EntityId {
+        self.id
+    }
+
     pub fn unresolved(
         visibility: Visibility,
         name: String,
@@ -114,6 +138,7 @@ impl Entity {
         invalid_type: Rc<Type>,
     ) -> Self {
         Self {
+            id: EntityId::next(),
             visibility,
             name,
             ty: invalid_type,
@@ -124,6 +149,7 @@ impl Entity {
 
     pub fn resolving(visibility: Visibility, name: String, invalid_type: Rc<Type>) -> Self {
         Self {
+            id: EntityId::next(),
             visibility,
             name,
             ty: invalid_type,
@@ -146,8 +172,15 @@ impl Entity {
         self.kind = EntityInfo::Resolving;
     }
 
-    pub fn new(visibility: Visibility, name: String, ty: Rc<Type>, kind: EntityInfo, path: Path) -> Self {
+    pub fn new(
+        visibility: Visibility,
+        name: String,
+        ty: Rc<Type>,
+        kind: EntityInfo,
+        path: Path,
+    ) -> Self {
         Self {
+            id: EntityId::next(),
             visibility,
             name,
             ty,
@@ -167,7 +200,7 @@ impl Entity {
         name: String,
         ty: Rc<Type>,
         kind: EntityInfo,
-        path: Path
+        path: Path,
     ) -> EntityRef {
         new_ptr(Self::new(visibility, name, ty, kind, path))
     }
@@ -226,8 +259,7 @@ impl Entity {
 
     pub fn is_instance(&self) -> bool {
         match self.kind {
-            EntityInfo::Variable(..) |
-            EntityInfo::Field(..) => true,
+            EntityInfo::Variable(..) | EntityInfo::Field(..) => true,
             _ => false,
         }
     }

@@ -2,7 +2,7 @@ use crate::syntax::Position;
 use std::convert::TryFrom;
 
 use ordered_float::OrderedFloat;
-use std::fmt::Formatter;
+use std::fmt::{Display, Formatter};
 
 // auto generate the mapping of keyword to string
 macro_rules! string_mapping {
@@ -14,11 +14,11 @@ macro_rules! string_mapping {
             )*
         }
 
-        impl ToString for $ty {
-            fn to_string(&self) -> String {
+        impl Display for $ty {
+            fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
                 match self {
                     $(
-                        Self::$en => $name.to_string(),
+                        Self::$en => write!(f, "{}", $name),
                     )*
                 }
             }
@@ -76,8 +76,8 @@ string_mapping!(
     "&" => Ampersand,
     "|" => Pipe,
     "%" => Percent,
+    "=" => Equal,
     "==" => EqualEqual,
-    "=" =>  Equal,
     "!=" => BangEqual,
     "!"  => Bang,
     "." => Period,
@@ -97,6 +97,25 @@ string_mapping!(
     ">>=" => GreaterGreaterEq,
     Operator
 );
+
+impl Operator {
+    #[inline]
+    pub fn is_assignment(&self) -> bool {
+        match self {
+            Self::Equal
+            | Self::PlusEq
+            | Self::MinusEq
+            | Self::AstriskEq
+            | Self::SlashEq
+            | Self::AmpersandEq
+            | Self::PipeEq
+            | Self::PercentEq
+            | Self::LessLessEq
+            | Self::GreaterGreaterEq => true,
+            _ => false,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Control {
@@ -133,14 +152,17 @@ pub enum Token<'a> {
 }
 
 impl<'a> Token<'a> {
+    #[inline]
     pub fn is_nl(&self) -> bool {
         *self == Token::Newline
     }
 
+    #[inline]
     pub fn is_eof(&self) -> bool {
         *self == Token::Eof
     }
 
+    #[inline]
     pub fn is_comment(&self) -> bool {
         match self {
             Self::Comment(_) => true,
@@ -148,6 +170,7 @@ impl<'a> Token<'a> {
         }
     }
 
+    #[inline]
     pub fn is_op(&self) -> bool {
         match self {
             Self::Op(_) => true,
@@ -155,6 +178,7 @@ impl<'a> Token<'a> {
         }
     }
 
+    #[inline]
     pub fn is_ident(&self) -> bool {
         match self {
             Self::Ident(_) => true,
@@ -162,6 +186,7 @@ impl<'a> Token<'a> {
         }
     }
 
+    #[inline]
     pub fn is_literal(&self) -> bool {
         match self {
             Self::Float(_) | Self::Integer(_) | Self::String(_) => true,
@@ -169,9 +194,18 @@ impl<'a> Token<'a> {
         }
     }
 
+    #[inline]
     pub fn is_keyword(&self) -> bool {
         match self {
             Self::Kw(_) => true,
+            _ => false,
+        }
+    }
+
+    #[inline]
+    pub fn is_assignment(&self) -> bool {
+        match self {
+            Self::Op(op) => op.is_assignment(),
             _ => false,
         }
     }
@@ -219,6 +253,13 @@ impl<'a> Token<'a> {
             _ => Associative::None,
         }
     }
+
+    pub fn as_op(&self) -> Operator {
+        match self {
+            Self::Op(op) => *op,
+            _ => panic!("Unable to get operator of non-operator token"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -251,6 +292,10 @@ impl<'a> PToken<'a> {
 
     pub fn is_eof(&self) -> bool {
         self.token.is_eof()
+    }
+
+    pub fn is_assignment(&self) -> bool {
+        self.token.is_assignment()
     }
 
     pub fn is_comment(&self) -> bool {

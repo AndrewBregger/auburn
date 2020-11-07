@@ -168,9 +168,21 @@ impl<'src> Parser<'src> {
             Token::Newline => Ok(Box::new(Stmt::new_with_position(StmtKind::Empty, position))),
             _ => {
                 let expr = self.parse_expr()?;
-                let position = expr.position();
-                let kind = StmtKind::Expr(expr);
-                Ok(Box::new(Stmt::new_with_position(kind, position)))
+                let assignment_op = self.current_token().clone();
+                if assignment_op.is_assignment() {
+                    self.consume()?;
+                    let rhs = self.parse_expr()?;
+                    let position = expr.position().extended_to(rhs.as_ref());
+                    let kind = StmtKind::Assignment {
+                        op: AssignmentOp::try_from(assignment_op.to_token().as_op())?,
+                        lvalue: expr,
+                        rhs,
+                    };
+                    Ok(Box::new(Stmt::new_with_position(kind, position)))
+                } else {
+                    let kind = StmtKind::Expr(expr);
+                    Ok(Box::new(Stmt::new_with_position(kind, position)))
+                }
             }
         }
     }
@@ -184,7 +196,7 @@ impl<'src> Parser<'src> {
     fn parse_expr_with_res(&mut self, new_res: Restriction) -> Result<Box<Expr>, Error> {
         let res = self.restriction;
         self.restriction = new_res;
-        let result = self.parse_assoc_expr(1);
+        let result = self.parse_assoc_expr(2);
         self.restriction = res;
         result
     }
@@ -206,24 +218,21 @@ impl<'src> Parser<'src> {
             let token = token_tree.to_token();
             let lhs_position = expr.position();
 
-            if let Token::Op(op) = token {
-                self.consume()?;
+            let op = token.as_op();
+            self.consume()?;
 
-                let rhs = self.parse_assoc_expr(token.precedence() + 1)?;
-                let position = lhs_position.extended_to(rhs.as_ref());
+            let rhs = self.parse_assoc_expr(token.precedence() + 1)?;
+            let position = lhs_position.extended_to(rhs.as_ref());
 
-                match BinaryOp::try_from(op.clone()) {
-                    Ok(op) => {
-                        let kind = ExprKind::Binary(op, expr.clone(), rhs);
-                        expr = Box::new(Expr::new_with_position(kind, position))
-                    }
-                    Err(e) => {
-                        let e = e.with_position(position);
-                        return Err(e);
-                    }
+            match BinaryOp::try_from(op.clone()) {
+                Ok(op) => {
+                    let kind = ExprKind::Binary(op, expr.clone(), rhs);
+                    expr = Box::new(Expr::new_with_position(kind, position))
                 }
-            } else {
-                println!("Not An operator")
+                Err(e) => {
+                    let e = e.with_position(position);
+                    return Err(e);
+                }
             }
         }
 
