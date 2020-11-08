@@ -528,6 +528,29 @@ impl<'src> Parser<'src> {
                     position,
                 )))
             }
+            Token::Kw(Keyword::Continue) => {
+                let position = self.current_position();
+                self.consume()?;
+                Ok(Box::new(Expr::new_with_position(
+                    ExprKind::Continue,
+                    position,
+                )))
+            }
+            Token::Kw(Keyword::Break) => {
+                let position = self.current_position();
+                self.consume()?;
+                Ok(Box::new(Expr::new_with_position(ExprKind::Break, position)))
+            }
+            Token::Kw(Keyword::Return) => {
+                let position = self.current_position();
+                self.consume()?;
+                let expr = self.parse_expr()?;
+                let position = position.extended_to(expr.as_ref());
+                Ok(Box::new(Expr::new_with_position(
+                    ExprKind::Return(expr),
+                    position,
+                )))
+            }
             t @ Token::Kw(Keyword::If)
             | t @ Token::Kw(Keyword::While)
             | t @ Token::Kw(Keyword::Loop)

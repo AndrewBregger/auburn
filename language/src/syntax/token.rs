@@ -61,6 +61,9 @@ string_mapping!(
     "in" => In,
     "Self" => SelfType,
     "self" => SelfLit,
+    "continue" => Continue,
+    "break" =>  Break,
+    "return" => Return,
     "stack_alloc" => StackAlloc,
     Keyword
 );

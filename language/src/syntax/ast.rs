@@ -204,6 +204,9 @@ pub enum ExprKind {
     },
     SelfLit,
     SelfType,
+    Continue,
+    Break,
+    Return(Box<Expr>),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -385,6 +388,9 @@ impl NodeType for ExprKind {
             Self::StructExpr { .. } => "Struct Expr",
             Self::SelfType => "Self Type",
             Self::SelfLit => "Self Literal",
+            Self::Break => "Break",
+            Self::Continue => "Continue",
+            Self::Return(..) => "Return",
         }
     }
 
