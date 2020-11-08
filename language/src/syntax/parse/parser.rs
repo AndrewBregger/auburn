@@ -640,7 +640,7 @@ impl<'src> Parser<'src> {
         self.allow_newline()?;
 
         let expr = self.parse_expr()?;
-        let position = expr.position();
+        let position = position.extended_to(expr.as_ref());
 
         Ok(Box::new(Expr::new_with_position(
             ExprKind::Loop(expr),
@@ -655,10 +655,11 @@ impl<'src> Parser<'src> {
 
         let expr = self.parse_expr()?;
 
-        let end = self.expect(Token::ControlPair(Control::Bracket, PairKind::Close))?;
+        let position = position.extended_to(expr.as_ref());
+
         Ok(Box::new(Expr::new_with_position(
             ExprKind::While(cond, expr),
-            position.extended_to_token(end),
+            position,
         )))
     }
 
