@@ -11,7 +11,9 @@ struct Foo {
 }
 
 fn test() {
-    mut foo = Foo.new(1.0, 2.0, 3.0)
-    let x = foo.get_x() * 2.0
-    foo.set_x(1.0)
+    loop {
+        mut foo = Foo.new(1.0, 2.0, 3.0)
+        let x = foo.get_x() * 2.0
+        foo.set_x(1.0)
+    }
 }

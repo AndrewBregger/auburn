@@ -27,11 +27,8 @@
     <list default="true" id="4b17c99f-758c-48ea-b0b5-e3d26e51a8dc" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/examples/analysis/methods" beforeDir="false" afterPath="$PROJECT_DIR$/examples/analysis/methods" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/language/src/analysis/scope.rs" beforeDir="false" afterPath="$PROJECT_DIR$/language/src/analysis/scope.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/language/src/analysis/typer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/language/src/analysis/typer.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/language/src/error.rs" beforeDir="false" afterPath="$PROJECT_DIR$/language/src/error.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/language/src/types/ty.rs" beforeDir="false" afterPath="$PROJECT_DIR$/language/src/types/ty.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/language/src/utils/entity_printer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/language/src/utils/entity_printer.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/language/src/syntax/parse/parser.rs" beforeDir="false" afterPath="$PROJECT_DIR$/language/src/syntax/parse/parser.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/core.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -240,7 +237,7 @@
       <workItem from="1604550635899" duration="5880000" />
       <workItem from="1604725835290" duration="3034000" />
       <workItem from="1604777300495" duration="1915000" />
-      <workItem from="1604784846827" duration="4436000" />
+      <workItem from="1604784846827" duration="9859000" />
     </task>
     <task id="LOCAL-00001" summary="Implemented block and tuple expressions.">
       <created>1601015341655</created>
@@ -326,7 +323,28 @@
       <option name="project" value="LOCAL" />
       <updated>1604728283576</updated>
     </task>
-    <option name="localTasksCounter" value="13" />
+    <task id="LOCAL-00013" summary="Formatted the entire project. Fixed mutable method call error.">
+      <created>1604791732579</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1604791732579</updated>
+    </task>
+    <task id="LOCAL-00014" summary="Added support for analyzing while and looping expressions">
+      <created>1604819663239</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1604819663239</updated>
+    </task>
+    <task id="LOCAL-00015" summary="Adding parser support for continue, break, and return expressions.">
+      <created>1604820007015</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1604820007015</updated>
+    </task>
+    <option name="localTasksCounter" value="16" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -357,7 +375,10 @@
     <MESSAGE value="Restructed the project and added command line arguements." />
     <MESSAGE value="Supports non-instance associated methods" />
     <MESSAGE value="Added assignments to parser and type checker." />
-    <option name="LAST_COMMIT_MESSAGE" value="Added assignments to parser and type checker." />
+    <MESSAGE value="Formatted the entire project. Fixed mutable method call error." />
+    <MESSAGE value="Added support for analyzing while and looping expressions" />
+    <MESSAGE value="Adding parser support for continue, break, and return expressions." />
+    <option name="LAST_COMMIT_MESSAGE" value="Adding parser support for continue, break, and return expressions." />
   </component>
   <component name="WindowStateProjectService">
     <state x="1179" y="600" width="773" height="269" key="#Vim_Emulation" timestamp="1602315256138">
@@ -384,58 +405,58 @@
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="1027" y="590" key="ANALYSIS_DLG_com.intellij.analysis.BaseAnalysisAction$1/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1602818632842" />
-    <state x="92" y="122" width="2376" height="1226" key="DiffContextDialog" timestamp="1602600574406">
+    <state x="92" y="122" width="2376" height="1226" key="DiffContextDialog" timestamp="1604810564523">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="92" y="122" width="2376" height="1226" key="DiffContextDialog/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1602600574406" />
+    <state x="92" y="122" width="2376" height="1226" key="DiffContextDialog/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604810564523" />
     <state x="1059" y="500" key="FileChooserDialogImpl" timestamp="1600055373613">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="1059" y="500" key="FileChooserDialogImpl/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600055373613" />
-    <state width="2517" height="617" key="GridCell.Tab.0.bottom" timestamp="1604789864174">
+    <state width="2517" height="488" key="GridCell.Tab.0.bottom" timestamp="1604820855425">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.bottom/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2517" height="617" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604789864174" />
-    <state width="2517" height="617" key="GridCell.Tab.0.center" timestamp="1604789864173">
+    <state width="2517" height="488" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604820855425" />
+    <state width="2517" height="488" key="GridCell.Tab.0.center" timestamp="1604820855425">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.center/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2517" height="617" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604789864173" />
-    <state width="2517" height="617" key="GridCell.Tab.0.left" timestamp="1604789864173">
+    <state width="2517" height="488" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604820855425" />
+    <state width="2517" height="488" key="GridCell.Tab.0.left" timestamp="1604820855425">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.left/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332313" />
-    <state width="2517" height="617" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604789864173" />
-    <state width="2517" height="617" key="GridCell.Tab.0.right" timestamp="1604789864174">
+    <state width="2517" height="488" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604820855425" />
+    <state width="2517" height="488" key="GridCell.Tab.0.right" timestamp="1604820855425">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.right/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2517" height="617" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604789864174" />
-    <state width="2517" height="488" key="GridCell.Tab.1.bottom" timestamp="1604785535512">
+    <state width="2517" height="488" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604820855425" />
+    <state width="2517" height="488" key="GridCell.Tab.1.bottom" timestamp="1604820856398">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state width="2517" height="488" key="GridCell.Tab.1.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604785535512" />
-    <state width="2517" height="488" key="GridCell.Tab.1.center" timestamp="1604785535512">
+    <state width="2517" height="488" key="GridCell.Tab.1.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604820856398" />
+    <state width="2517" height="488" key="GridCell.Tab.1.center" timestamp="1604820856398">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state width="2517" height="488" key="GridCell.Tab.1.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604785535512" />
-    <state width="2517" height="488" key="GridCell.Tab.1.left" timestamp="1604785535512">
+    <state width="2517" height="488" key="GridCell.Tab.1.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604820856398" />
+    <state width="2517" height="488" key="GridCell.Tab.1.left" timestamp="1604820856398">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state width="2517" height="488" key="GridCell.Tab.1.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604785535512" />
-    <state width="2517" height="488" key="GridCell.Tab.1.right" timestamp="1604785535512">
+    <state width="2517" height="488" key="GridCell.Tab.1.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604820856398" />
+    <state width="2517" height="488" key="GridCell.Tab.1.right" timestamp="1604820856398">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state width="2517" height="488" key="GridCell.Tab.1.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604785535512" />
+    <state width="2517" height="488" key="GridCell.Tab.1.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604820856398" />
     <state x="56" y="346" width="998" height="708" key="SettingsEditor" timestamp="1604790829894">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="56" y="346" width="998" height="708" key="SettingsEditor/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604790829894" />
-    <state x="871" y="466" key="Vcs.Push.Dialog.v2" timestamp="1604728288026">
+    <state x="871" y="466" key="Vcs.Push.Dialog.v2" timestamp="1604791737940">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="871" y="466" key="Vcs.Push.Dialog.v2/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604728288026" />
+    <state x="871" y="466" key="Vcs.Push.Dialog.v2/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604791737940" />
     <state x="1097" y="645" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2" timestamp="1604376942129">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
@@ -452,19 +473,19 @@
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="936" y="348" width="672" height="677" key="run.anything.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604726388934" />
-    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup" timestamp="1604787150545">
+    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup" timestamp="1604820250777">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="707" y="266" width="672" height="505" key="search.everywhere.popup/0.30.1920.1050@0.30.1920.1050" timestamp="1601991482247" />
-    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604787150545" />
+    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604820250777" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/language/src/error.rs</url>
-          <line>331</line>
-          <option name="timeStamp" value="3" />
+          <line>253</line>
+          <option name="timeStamp" value="4" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

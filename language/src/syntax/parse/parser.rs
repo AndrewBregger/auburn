@@ -640,11 +640,11 @@ impl<'src> Parser<'src> {
         self.allow_newline()?;
 
         let expr = self.parse_expr()?;
+        let position = expr.position();
 
-        let end = self.expect(Token::ControlPair(Control::Bracket, PairKind::Close))?;
         Ok(Box::new(Expr::new_with_position(
             ExprKind::Loop(expr),
-            position.extended_to_token(end),
+            position,
         )))
     }
 

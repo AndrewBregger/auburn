@@ -86,20 +86,21 @@ impl Core {
             let start_coord = pos.start();
             let end_coord = pos.end();
 
-            if start_coord.line() == end_coord.line() {
-                let line = file.get_line(start_coord.line());
-                println!(
-                    "{}:{}:{}| {}",
-                    file.path().display(),
-                    start_coord.line(),
-                    start_coord.column(),
-                    err
-                );
-                self.print_file_lines(line, pos);
-            } else {
-                // let line = *file.get_lines(start_coord.0, end_coord.0).first().unwrap();
-                println!("Mutli-line error are not supported");
-            }
+            // if start_coord.line() == end_coord.line() {
+            let line = file.get_line(start_coord.line());
+            println!(
+                "{}:{}:{}| {}",
+                file.path().display(),
+                start_coord.line(),
+                start_coord.column(),
+                err
+            );
+            self.print_file_lines(line, pos);
+        // } else {
+        //     // let line = *file.get_lines(start_coord.0, end_coord.0).first().unwrap();
+        //     // println!("Mutli-line error are not supported");
+        //
+        // }
         } else {
             println!("Unable to find file of id: '{}'", pos.file_id().0);
         }
@@ -115,7 +116,7 @@ impl Core {
             .map(|idx| match line.chars().nth(idx) {
                 Some('\t') => '\t',
                 Some(_) => ' ',
-                None => panic!(),
+                None => panic!("{}|{},{}", line, idx, start_column),
             })
             .collect::<String>();
         let cursor = String::from_utf8(vec![b'^'; end_column - start_column])
