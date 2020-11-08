@@ -8,9 +8,9 @@ use crate::analysis::entity::{FunctionInfo, LocalInfo, StructureInfo, VariableIn
 use crate::analysis::{Entity, EntityInfo, EntityRef};
 use crate::error::Error;
 use crate::mir::{
-    AddressMode, Assignment, AssociatedFunctionExpr, BinaryExpr, BlockExpr, CallExpr, MethodExpr,
-    MirExpr, MirExprKind, MirExprPtr, MirFile, MirNode, MirSpec, MirSpecKind, MirStmt, MirStmtKind,
-    MutabilityInfo, StructExpr, TupleExpr, UnaryExpr,
+    AddressMode, Assignment, AssociatedFunctionExpr, BinaryExpr, BlockExpr, CallExpr, LoopExpr,
+    MethodExpr, MirExpr, MirExprKind, MirExprPtr, MirFile, MirNode, MirSpec, MirSpecKind, MirStmt,
+    MirStmtKind, MutabilityInfo, StructExpr, TupleExpr, UnaryExpr, WhileExpr,
 };
 use crate::syntax::ast::{
     AssignmentOp, BinaryOp, Expr, ExprKind, FunctionBody, Identifier, Item, ItemKind, Node,
@@ -36,6 +36,7 @@ const FUNCTION: State = 1 << 3;
 const FUNCTION_PARAM: State = 1 << 4;
 const FUNCTION_BODY: State = 1 << 5;
 const ASSOCIATIVE_FUNCTION: State = 1 << 6;
+const ALLOW_CONTROL_FLOW_EXPRESSIONS: State = 1 << 7;
 const SELF_PARAM_IDENT: &'static str = "__self__";
 
 macro_rules! with_state {
@@ -477,25 +478,25 @@ impl<'a> Typer<'a> {
                 );
                 Rc::new(MirExpr::new(mir_expr_inner, expr.position(), tuple_type))
             }
-
-            /*
-            ExprKind::Loop(_) => {}
-            ExprKind::While(_, _) => {}
-            ExprKind::For { .. } => {}
-            ExprKind::If { .. } => {}
-            ExprKind::SelfType => {}
-            ExprKind::Tuple(_) => {}
-            ExprKind::Loop(_) => {}
-            ExprKind::While(_, _) => {}
-            ExprKind::For {
-                element,
-                expr,
-                body,
-            } => {}
             ExprKind::If {
                 cond,
                 body,
                 else_if,
+            } => self.resolve_if(
+                cond.as_ref(),
+                body.as_ref(),
+                else_if.as_ref().map(AsRef::as_ref),
+                expr.position(),
+            )?,
+            ExprKind::Loop(body) => self.resolve_loop(body.as_ref(), expr.position())?,
+            ExprKind::While(cond, body) => {
+                self.resolve_while(cond.as_ref(), body.as_ref(), expr.position())?
+            }
+            /*
+            ExprKind::For {
+                element,
+                expr,
+                body,
             } => {}
             */
             _ => todo!(),
@@ -530,6 +531,66 @@ impl<'a> Typer<'a> {
         };
 
         Ok((entity, mir_expr))
+    }
+
+    fn resolve_if(
+        &mut self,
+        cond: &Expr,
+        body: &Expr,
+        else_if: Option<&Expr>,
+        position: Position,
+    ) -> Result<MirExprPtr, Error> {
+        todo!()
+    }
+
+    fn resolve_while(
+        &mut self,
+        cond: &Expr,
+        body: &Expr,
+        position: Position,
+    ) -> Result<MirExprPtr, Error> {
+        let mir_cond = self.resolve_expr(cond, Some(self.type_map.get_bool()))?;
+
+        let mir_body = with_state!(self, ALLOW_CONTROL_FLOW_EXPRESSIONS, {
+            self.resolve_expr(body, None)?
+        });
+
+        let while_expr = WhileExpr {
+            cond: mir_cond,
+            body: mir_body,
+        };
+
+        let inner = MirExprInner::new(
+            AddressMode::Value,
+            MutabilityInfo::default(),
+            MirExprKind::While(while_expr),
+        );
+
+        Ok(Rc::new(MirExpr::new(
+            inner,
+            position,
+            self.type_map.get_unit(),
+        )))
+    }
+
+    fn resolve_loop(&mut self, body: &Expr, position: Position) -> Result<MirExprPtr, Error> {
+        let mir_body = with_state!(self, ALLOW_CONTROL_FLOW_EXPRESSIONS, {
+            self.resolve_expr(body, None)?
+        });
+
+        let loop_expr = LoopExpr { body: mir_body };
+
+        let inner = MirExprInner::new(
+            AddressMode::Value,
+            MutabilityInfo::default(),
+            MirExprKind::Loop(loop_expr),
+        );
+
+        Ok(Rc::new(MirExpr::new(
+            inner,
+            position,
+            self.type_map.get_unit(),
+        )))
     }
 
     fn resolve_field_access(

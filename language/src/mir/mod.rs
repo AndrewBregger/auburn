@@ -127,7 +127,7 @@ pub enum AddressMode {
     Address,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct MutabilityInfo {
     pub mutable: bool,
     pub inherited: bool,
