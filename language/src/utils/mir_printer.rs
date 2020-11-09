@@ -94,8 +94,16 @@ impl MirPrinter {
                 }
             }
             MirExprKind::Tuple(_tuple_expr) => {}
-            MirExprKind::Loop(_loop_expr) => {}
-            MirExprKind::While(_while_expr) => {}
+            MirExprKind::Loop(loop_expr) => {
+                println!("{}Body:", Self::indent(indent));
+                Self::print_expr_inner(loop_expr.body.as_ref(), indent + 1);
+            }
+            MirExprKind::While(while_expr) => {
+                println!("{}Cond:", Self::indent(indent));
+                Self::print_expr_inner(while_expr.cond.as_ref(), indent + 1);
+                println!("{}Body:", Self::indent(indent));
+                Self::print_expr_inner(while_expr.body.as_ref(), indent + 1);
+            }
             MirExprKind::For(_for_expr) => {}
             MirExprKind::If(_if_expr) => {}
             MirExprKind::StructExpr(struct_expr) => {
@@ -104,11 +112,16 @@ impl MirPrinter {
                     Self::print_expr_inner(mir.as_ref(), indent + 1);
                 })
             }
+            MirExprKind::Return(expr) => {
+                Self::print_expr_inner(expr, indent + 1);
+            }
             MirExprKind::SelfLit => {}
             MirExprKind::Integer(_)
             | MirExprKind::Float(_)
             | MirExprKind::String(_)
-            | MirExprKind::Char(_) => {}
+            | MirExprKind::Char(_)
+            | MirExprKind::Continue
+            | MirExprKind::Break => {}
         }
     }
 

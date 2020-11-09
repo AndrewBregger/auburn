@@ -492,6 +492,60 @@ impl<'a> Typer<'a> {
             ExprKind::While(cond, body) => {
                 self.resolve_while(cond.as_ref(), body.as_ref(), expr.position())?
             }
+            ExprKind::Break => {
+                if self.check_state(ALLOW_CONTROL_FLOW_EXPRESSIONS) {
+                    let inner = MirExprInner::new(
+                        AddressMode::Value,
+                        MutabilityInfo::default(),
+                        MirExprKind::Break,
+                    );
+                    Rc::new(MirExpr::new(
+                        inner,
+                        expr.position(),
+                        self.type_map.get_unit(),
+                    ))
+                } else {
+                    let err =
+                        Error::invalid_control_in_loop("break").with_position(expr.position());
+                    return Err(err);
+                }
+            }
+            ExprKind::Continue => {
+                if self.check_state(ALLOW_CONTROL_FLOW_EXPRESSIONS) {
+                    let inner = MirExprInner::new(
+                        AddressMode::Value,
+                        MutabilityInfo::default(),
+                        MirExprKind::Continue,
+                    );
+                    Rc::new(MirExpr::new(
+                        inner,
+                        expr.position(),
+                        self.type_map.get_unit(),
+                    ))
+                } else {
+                    let err =
+                        Error::invalid_control_in_loop("continue").with_position(expr.position());
+                    return Err(err);
+                }
+            }
+            ExprKind::Return(expr) => {
+                if self.check_state(FUNCTION | FUNCTION_BODY)
+                    || self.check_state(ASSOCIATIVE_FUNCTION | FUNCTION_BODY)
+                {
+                    let mir_expr = self.resolve_expr(expr, None)?;
+                    let ty = mir_expr.ty();
+                    let mutable = MutabilityInfo::new(false, false, ty.is_mutable(), false, false);
+                    let inner = MirExprInner::new(
+                        mir_expr.inner().address_mode(),
+                        mutable,
+                        MirExprKind::Return(mir_expr),
+                    );
+                    Rc::new(MirExpr::new(inner, expr.position(), ty))
+                } else {
+                    let err = Error::invalid_return().with_position(expr.position());
+                    return Err(err);
+                }
+            }
             /*
             ExprKind::For {
                 element,

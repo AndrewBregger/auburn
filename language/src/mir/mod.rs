@@ -118,6 +118,9 @@ pub enum MirExprKind {
     If(IfExpr),
     StructExpr(StructExpr),
     SelfLit,
+    Break,
+    Continue,
+    Return(MirExprPtr),
 }
 
 #[repr(C)]
@@ -229,6 +232,9 @@ impl NodeType for MirExprKind {
             Self::If { .. } => "If",
             Self::StructExpr { .. } => "Struct Expr",
             Self::SelfLit => "Self Literal",
+            Self::Break => "Break",
+            Self::Continue => "Continue",
+            Self::Return(..) => "Return",
         }
     }
 

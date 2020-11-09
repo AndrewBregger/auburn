@@ -84,7 +84,7 @@ impl Core {
         println!("Error Pos: {}", pos);
         if let Some(file) = self.file_map.file_by_id(&pos.file_id()) {
             let start_coord = pos.start();
-            let end_coord = pos.end();
+            let _end_coord = pos.end();
 
             // if start_coord.line() == end_coord.line() {
             let line = file.get_line(start_coord.line());

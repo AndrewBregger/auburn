@@ -103,7 +103,7 @@ pub enum ErrorKind {
         entity_type,
         struct_type
     )]
-    InaccessableSubEntity {
+    InaccessibleSubEntity {
         entity_type: String,
         struct_type: Type,
         field: String,
@@ -149,6 +149,12 @@ pub enum ErrorKind {
 
     #[error("attempting to mutable '{}' which is not mutable", name)]
     ImmutableEntity { name: String },
+
+    #[error("'{}' is only allowed in loop, for, or while control loops", name)]
+    InvalidControlInLoop { name: String },
+
+    #[error("return not in function or associated function scope")]
+    InvalidReturn,
 
     // #[error("expecting keyword '{}' found '{}'", expected.to_string(), found.text())]
     // ExpectedKeyword {
@@ -358,7 +364,7 @@ impl<'src> Error {
     }
 
     pub fn inaccessible_subentity(entity_type: &str, struct_type: &Type, field: String) -> Self {
-        Self::new_default(ErrorKind::InaccessableSubEntity {
+        Self::new_default(ErrorKind::InaccessibleSubEntity {
             entity_type: entity_type.to_owned(),
             struct_type: struct_type.clone(),
             field,
@@ -401,6 +407,16 @@ impl<'src> Error {
         Self::new_default(ErrorKind::ImmutableEntity {
             name: name.to_owned(),
         })
+    }
+
+    pub fn invalid_control_in_loop(name: &str) -> Self {
+        Self::new_default(ErrorKind::InvalidControlInLoop {
+            name: name.to_owned(),
+        })
+    }
+
+    pub fn invalid_return() -> Self {
+        Self::new_default(ErrorKind::InvalidReturn)
     }
 
     // fn execpted_keyword(expected: token::Kw, token: &Token) -> Self {
