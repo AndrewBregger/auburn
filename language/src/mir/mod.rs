@@ -84,10 +84,20 @@ pub struct ForExpr {
 }
 
 #[derive(Debug, Clone)]
+pub enum IfExprBranch {
+    Conditional {
+        cond: MirExprPtr,
+        body: MirExprPtr,
+        first: bool,
+    },
+    Unconditional {
+        body: MirExprPtr,
+    },
+}
+
+#[derive(Debug, Clone)]
 pub struct IfExpr {
-    pub cond: Rc<MirExpr>,
-    pub body: Rc<MirExpr>,
-    pub else_if: Option<Rc<MirExpr>>,
+    pub branches: Vec<IfExprBranch>,
 }
 
 #[derive(Debug, Clone)]
@@ -102,6 +112,7 @@ pub enum MirExprKind {
     Float(OrderedFloat<f64>),
     String(String),
     Char(char),
+    Bool(bool),
     Name(EntityRef),
     Binary(BinaryExpr),
     Unary(UnaryExpr),
@@ -128,6 +139,7 @@ pub enum MirExprKind {
 pub enum AddressMode {
     Value,
     Address,
+    Error,
 }
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -216,6 +228,7 @@ impl NodeType for MirExprKind {
             Self::Float(_) => "Float",
             Self::String(_) => "String",
             Self::Char(_) => "Char",
+            Self::Bool(_) => "Bool",
             Self::Name(_) => "Name",
             Self::Binary(..) => "Binary",
             Self::Unary(..) => "Unary",
@@ -458,6 +471,21 @@ impl MirExpr {
             | MirExprKind::String(_)
             | MirExprKind::Char(_) => true,
             _ => false,
+        }
+    }
+
+    pub fn returned_expression(&self) -> Option<&MirExpr> {
+        match self.inner().kind() {
+            MirExprKind::Block(block_expr) => block_expr
+                .stmts
+                .first()
+                .map(|stmt| match stmt.inner() {
+                    MirStmtKind::Expr(expr) => Some(expr.as_ref()),
+                    _ => None,
+                })
+                .unwrap(),
+            MirExprKind::While(..) | MirExprKind::For(..) | MirExprKind::Loop(..) => None,
+            _ => Some(self),
         }
     }
 }

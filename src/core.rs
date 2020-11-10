@@ -108,10 +108,10 @@ impl Core {
 
     fn print_file_lines(&self, line: &str, pos: &Position) {
         println!(">\t{}", line);
-        Self::print_start_cursor(line, pos.start().column(), pos.end().column());
+        Self::print_line_cursor(line, pos.start().column(), pos.end().column());
     }
 
-    fn print_start_cursor(line: &str, start_column: usize, end_column: usize) {
+    fn print_line_cursor(line: &str, start_column: usize, end_column: usize) {
         let offset = (0..(start_column - 1))
             .map(|idx| match line.chars().nth(idx) {
                 Some('\t') => '\t',
@@ -119,9 +119,12 @@ impl Core {
                 None => panic!("{}|{},{}", line, idx, start_column),
             })
             .collect::<String>();
-        let cursor = String::from_utf8(vec![b'^'; end_column - start_column])
-            .expect("cursor string is not valid utf8??");
-        println!(" \t{}{}", offset, cursor);
+
+        if start_column <= end_column {
+            let cursor = String::from_utf8(vec![b'^'; end_column - start_column])
+                .expect("cursor string is not valid utf8??");
+            println!(" \t{}{}", offset, cursor);
+        }
     }
 
     fn execute(&mut self, arg: Arguments) -> Result<(), CoreError> {

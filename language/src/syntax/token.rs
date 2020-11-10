@@ -64,6 +64,8 @@ string_mapping!(
     "continue" => Continue,
     "break" =>  Break,
     "return" => Return,
+    "true" => True,
+    "false" => False,
     "stack_alloc" => StackAlloc,
     Keyword
 );

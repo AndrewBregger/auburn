@@ -8,6 +8,7 @@ use std::{
 use itertools::Itertools;
 
 use crate::analysis::EntityRef;
+use crate::mir::AddressMode;
 
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct TypeId(pub usize);
@@ -194,6 +195,18 @@ impl Type {
         match ty.kind() {
             TypeKind::Mutable { inner } => inner.clone(),
             _ => ty,
+        }
+    }
+
+    pub fn address_mode(&self) -> AddressMode {
+        match self.kind() {
+            TypeKind::Function { .. }
+            | TypeKind::Struct { .. }
+            | TypeKind::String
+            | TypeKind::Tuple { .. } => AddressMode::Address,
+            TypeKind::Mutable { inner } => inner.address_mode(),
+            TypeKind::Invalid => AddressMode::Error,
+            _ => AddressMode::Value,
         }
     }
 }

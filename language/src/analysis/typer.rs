@@ -8,9 +8,10 @@ use crate::analysis::entity::{FunctionInfo, LocalInfo, StructureInfo, VariableIn
 use crate::analysis::{Entity, EntityInfo, EntityRef};
 use crate::error::Error;
 use crate::mir::{
-    AddressMode, Assignment, AssociatedFunctionExpr, BinaryExpr, BlockExpr, CallExpr, LoopExpr,
-    MethodExpr, MirExpr, MirExprKind, MirExprPtr, MirFile, MirNode, MirSpec, MirSpecKind, MirStmt,
-    MirStmtKind, MutabilityInfo, StructExpr, TupleExpr, UnaryExpr, WhileExpr,
+    AddressMode, Assignment, AssociatedFunctionExpr, BinaryExpr, BlockExpr, CallExpr, IfExpr,
+    IfExprBranch, LoopExpr, MethodExpr, MirExpr, MirExprKind, MirExprPtr, MirFile, MirNode,
+    MirSpec, MirSpecKind, MirStmt, MirStmtKind, MutabilityInfo, StructExpr, TupleExpr, UnaryExpr,
+    WhileExpr,
 };
 use crate::syntax::ast::{
     AssignmentOp, BinaryOp, Expr, ExprKind, FunctionBody, Identifier, Item, ItemKind, Node,
@@ -340,6 +341,18 @@ impl<'a> Typer<'a> {
                     ty,
                 ))
             }
+            ExprKind::Bool(val) => {
+                let ty = self.type_map.get_bool();
+                Rc::new(MirExpr::new(
+                    MirExprInner::new(
+                        ty.address_mode(),
+                        MutabilityInfo::literal(),
+                        MirExprKind::Bool(*val),
+                    ),
+                    expr.position(),
+                    ty,
+                ))
+            }
             ExprKind::Binary(op, left, right) => self.resolve_binary(
                 *op,
                 left.as_ref(),
@@ -482,12 +495,7 @@ impl<'a> Typer<'a> {
                 cond,
                 body,
                 else_if,
-            } => self.resolve_if(
-                cond.as_ref(),
-                body.as_ref(),
-                else_if.as_ref().map(AsRef::as_ref),
-                expr.position(),
-            )?,
+            } => self.resolve_if(expr, None, expr.position())?,
             ExprKind::Loop(body) => self.resolve_loop(body.as_ref(), expr.position())?,
             ExprKind::While(cond, body) => {
                 self.resolve_while(cond.as_ref(), body.as_ref(), expr.position())?
@@ -563,9 +571,14 @@ impl<'a> Typer<'a> {
                 expr.ty()
             );
             if *expected_type != expr.ty() {
+                let position = expr
+                    .returned_expression()
+                    .map(|expr| expr.position())
+                    .unwrap_or_else(|| expr.position());
+
                 return Err(
                     Error::incompatible_types(expected_type.as_ref(), expr.ty().as_ref())
-                        .with_position(expr.position()),
+                        .with_position(position),
                 );
             }
         }
@@ -589,12 +602,68 @@ impl<'a> Typer<'a> {
 
     fn resolve_if(
         &mut self,
-        cond: &Expr,
-        body: &Expr,
-        else_if: Option<&Expr>,
-        position: Position,
+        expr: &Expr,
+        mut expected_type: Option<Rc<Type>>,
+        _position: Position,
     ) -> Result<MirExprPtr, Error> {
-        todo!()
+        let mut branches = vec![];
+        let mut curr_expr = expr;
+        let mut first = true;
+
+        loop {
+            match curr_expr.kind() {
+                ExprKind::If {
+                    cond,
+                    body,
+                    else_if,
+                } => {
+                    let mir_expr = self.resolve_expr(cond, Some(self.type_map.get_bool()))?;
+                    let body = self.resolve_expr(body, expected_type.clone())?;
+
+                    if expected_type.is_none() {
+                        expected_type = Some(body.ty());
+                    }
+
+                    let if_expr_branch = IfExprBranch::Conditional {
+                        cond: mir_expr,
+                        body,
+                        first,
+                    };
+
+                    first = false;
+
+                    branches.push(if_expr_branch);
+
+                    if let Some(expr) = else_if.as_ref() {
+                        curr_expr = expr;
+                    } else {
+                        break;
+                    }
+                }
+                _ => {
+                    if first {
+                        panic!("Compiler Error: if: first is {}", first);
+                    }
+
+                    let mir_expr = self.resolve_expr(curr_expr, expected_type.clone())?;
+
+                    let if_expr_branch = IfExprBranch::Unconditional { body: mir_expr };
+
+                    branches.push(if_expr_branch);
+                    break;
+                }
+            }
+        }
+
+        let if_expr = IfExpr { branches };
+
+        if let Some(ty) = expected_type.as_ref() {
+            let mutable = MutabilityInfo::new(false, ty.is_mutable(), false, false, false);
+            let inner = MirExprInner::new(ty.address_mode(), mutable, MirExprKind::If(if_expr));
+            Ok(Rc::new(MirExpr::new(inner, expr.position(), ty.clone())))
+        } else {
+            panic!("Compiler Error: Failed to determine the result type of if expression");
+        }
     }
 
     fn resolve_while(

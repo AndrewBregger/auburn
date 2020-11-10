@@ -464,6 +464,20 @@ impl<'src> Parser<'src> {
                     )))
                 }
             }
+            tk @ Token::Kw(Keyword::True) | tk @ Token::Kw(Keyword::False) => {
+                let val = if let Token::Kw(kw) = tk {
+                    kw == Keyword::True
+                } else {
+                    unreachable!()
+                };
+
+                self.consume()?;
+
+                Ok(Box::new(Expr::new_with_position(
+                    ExprKind::Bool(val),
+                    position,
+                )))
+            }
             t @ Token::ControlPair(Control::Bracket, PairKind::Open) => {
                 if self.check_for_res(TYPE_EXPR) {
                     let kind = Error::invalid_type_expression(&t).with_position(position);
@@ -687,40 +701,54 @@ impl<'src> Parser<'src> {
     }
 
     fn parse_if(&mut self, position: Position) -> Result<Box<Expr>, Error> {
-        let cond = self.parse_expr()?;
+        let cond = self.parse_expr_with_res(NO_STRUCT_EXPR)?;
 
-        self.expected(Token::ControlPair(Control::Bracket, PairKind::Open))?;
-        self.allow_newline()?;
+        if self.check_for(Token::ControlPair(Control::Bracket, PairKind::Open)) {
+            let body = self.parse_expr()?;
+            self.allow_newline()?;
+            println!("Current Token: {}", self.current_token());
+            let else_if = if self.check_for(Token::Kw(Keyword::Elif)) {
+                let position = self.current_position();
+                self.consume()?;
+                Some(self.parse_if(position)?)
+            } else if self.check_for(Token::Kw(Keyword::Else)) {
+                self.consume()?;
+                if self.check_for(Token::ControlPair(Control::Bracket, PairKind::Open)) {
+                    Some(self.parse_expr()?)
+                } else {
+                    let token = self.current_token().token();
+                    let err = Error::unexpected_token(
+                        Token::ControlPair(Control::Bracket, PairKind::Open),
+                        token,
+                    );
+                    return Err(err.with_position(self.current_position()));
+                }
+            } else {
+                None
+            };
 
-        let body = self.parse_expr()?;
+            let position = if let Some(expr) = else_if.as_ref() {
+                position.extended_to(expr.as_ref())
+            } else {
+                position
+            };
 
-        self.expect(Token::ControlPair(Control::Bracket, PairKind::Close))?;
-
-        let else_if = if self.check_for(Token::Kw(Keyword::Elif)) {
-            let position = self.current_position();
-            self.consume()?;
-            Some(self.parse_if(position)?)
-        } else if self.check_for(Token::Kw(Keyword::Else)) {
-            self.consume()?;
-            Some(self.parse_expr()?)
+            Ok(Box::new(Expr::new_with_position(
+                ExprKind::If {
+                    cond,
+                    body,
+                    else_if,
+                },
+                position,
+            )))
         } else {
-            None
-        };
-
-        let position = if let Some(expr) = else_if.as_ref() {
-            position.extended_to(expr.as_ref())
-        } else {
-            position
-        };
-
-        Ok(Box::new(Expr::new_with_position(
-            ExprKind::If {
-                cond,
-                body,
-                else_if,
-            },
-            position,
-        )))
+            let token = self.current_token().token();
+            let err = Error::unexpected_token(
+                Token::ControlPair(Control::Bracket, PairKind::Open),
+                token,
+            );
+            Err(err.with_position(self.current_position()))
+        }
     }
 
     fn allow_newline(&mut self) -> Result<(), Error> {

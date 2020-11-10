@@ -1,8 +1,8 @@
 use std::ops::Deref;
 
 use crate::mir::{
-    MirExpr, MirExprKind, MirField, MirItem, MirItemKind, MirNode, MirNodeBase, MirParam, MirSpec,
-    MirStmt, MirStmtKind,
+    IfExprBranch, MirExpr, MirExprKind, MirField, MirItem, MirItemKind, MirNode, MirNodeBase,
+    MirParam, MirSpec, MirStmt, MirStmtKind,
 };
 use crate::syntax::ast::NodeType;
 use crate::utils::EntityPrinter;
@@ -105,7 +105,23 @@ impl MirPrinter {
                 Self::print_expr_inner(while_expr.body.as_ref(), indent + 1);
             }
             MirExprKind::For(_for_expr) => {}
-            MirExprKind::If(_if_expr) => {}
+            MirExprKind::If(if_expr) => {
+                for branch in if_expr.branches.as_slice() {
+                    match branch {
+                        IfExprBranch::Conditional { cond, body, first } => {
+                            println!("{}Cond:", Self::indent(indent));
+                            Self::print_expr_inner(cond, indent + 1);
+                            println!("{}Body:", Self::indent(indent));
+                            Self::print_expr_inner(body, indent + 1);
+                            println!("{}First: {}", Self::indent(indent), first);
+                        }
+                        IfExprBranch::Unconditional { body } => {
+                            println!("{}Body:", Self::indent(indent));
+                            Self::print_expr_inner(body, indent + 1);
+                        }
+                    }
+                }
+            }
             MirExprKind::StructExpr(struct_expr) => {
                 struct_expr.fields.iter().for_each(|(index, mir)| {
                     println!("{}Index: {}", Self::indent(indent + 1), index);
@@ -120,6 +136,7 @@ impl MirPrinter {
             | MirExprKind::Float(_)
             | MirExprKind::String(_)
             | MirExprKind::Char(_)
+            | MirExprKind::Bool(_)
             | MirExprKind::Continue
             | MirExprKind::Break => {}
         }
