@@ -284,6 +284,7 @@ pub enum ItemKind {
 pub enum SpecKind {
     Named(Box<Expr>),
     Tuple(Vec<Box<Spec>>),
+    Array(Box<Spec>, Option<Box<Expr>>),
     Unit,
     Infer,
     SelfType,
@@ -441,6 +442,7 @@ impl NodeType for SpecKind {
             Self::Unit => "Unit",
             Self::Infer => "Infer",
             Self::SelfType => "Self",
+            Self::Array{..} => "Array",
         }
     }
 

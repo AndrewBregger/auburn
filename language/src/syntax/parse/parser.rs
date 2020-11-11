@@ -788,6 +788,26 @@ impl<'src> Parser<'src> {
                     position.extended_to_token(end),
                 )))
             }
+            Token::ControlPair(Control::Brace, PairKind::Open) => {
+                self.consume()?;
+                let element_type = self.parse_spec()?;
+                let size = if self.check_for(Token::Op(Operator::Semicolon)) {
+                    self.consume()?;
+                    Some(self.parse_expr()?)
+                } else {
+                    None
+                };
+
+                let end = self.expect(Token::ControlPair(Control::Brace, PairKind::Close))?;
+
+                Ok(Box::new(
+                    Spec::new_with_position(
+                        SpecKind::Array(element_type, size),
+                        position.extended_to_token(end))
+                    )
+                )
+
+            }
             Token::Kw(Keyword::SelfType) => {
                 self.consume()?;
                 Ok(Box::new(Spec::new_with_position(

@@ -294,6 +294,8 @@ impl NodeType for MirSpecKind {
             Self::Unit => "Unit",
             Self::SelfType => "Self",
             Self::Infer => "Infer",
+            Self::Array => "Array",
+            Self::Slice => "Slice",
         }
     }
 
@@ -334,6 +336,8 @@ pub enum MirSpecKind {
     Unit,
     SelfType,
     Infer,
+    Array,
+    Slice,
 }
 
 #[derive(Debug, Clone)]
@@ -471,6 +475,13 @@ impl MirExpr {
             | MirExprKind::String(_)
             | MirExprKind::Char(_) => true,
             _ => false,
+        }
+    }
+
+    pub fn as_integer(&self) -> u64 {
+        match self.inner().kind() {
+            MirExprKind::Integer(val) => *val,
+            _ => panic!("Compiler Error: attempting to get an integer from a non-integer node"),
         }
     }
 

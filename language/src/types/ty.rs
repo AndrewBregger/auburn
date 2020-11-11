@@ -51,6 +51,16 @@ pub enum TypeKind {
     Tuple {
         elements: Vec<Rc<Type>>,
     },
+    Array {
+        element_type: Rc<Type>,
+        size: usize,
+    },
+    // Vector {
+    //     element_type: Rc<Type>,
+    // },
+    Slice {
+        element_type: Rc<Type>,
+    }
 }
 
 impl PartialEq for TypeKind {
@@ -83,7 +93,30 @@ impl PartialEq for TypeKind {
                 },
             ) => lparams == rparams && lreturn_type == rreturn_type,
             (Self::Struct { entity: lentity }, Self::Struct { entity: rentityt }) => {
-                lentity.as_ptr() == rentityt.as_ptr()
+                lentity.borrow().id() == rentityt.borrow().id()
+            }
+            (Self::Array {
+                element_type: ltype,
+                size: lsize,
+            }, Self::Array {
+                element_type: rtype,
+                size: rsize,
+            }) => {
+                ltype == rtype && lsize == rsize
+            }
+            // (Self::Vector {
+            //     element_type: ltype
+            // }, Self::Vector {
+            //     element_type: rtype
+            // }) => {
+            //     ltype == rtype
+            // }
+            (Self::Slice {
+                element_type: ltype
+            }, Self::Slice {
+                element_type: rtype
+            }) => {
+                ltype == rtype
             }
             (_, _) => false,
         }
@@ -249,6 +282,22 @@ impl Display for Type {
             }
             TypeKind::Tuple { elements } => {
                 write!(f, "({})", elements.iter().map(|e| e.to_string()).join(", "))
+            }
+            TypeKind::Array {
+                element_type,
+                size
+            } => {
+                write!(f, "[{}; {}]", element_type, size)
+            }
+            // TypeKind::Vector {
+            //     element_type,
+            // } => {
+            //     write!(f, "[{}]", element_type)
+            // }
+            TypeKind::Slice {
+                element_type
+            } => {
+                write!(f, "[{}]", element_type)
             }
         }
     }

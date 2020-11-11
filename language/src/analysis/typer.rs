@@ -492,9 +492,7 @@ impl<'a> Typer<'a> {
                 Rc::new(MirExpr::new(mir_expr_inner, expr.position(), tuple_type))
             }
             ExprKind::If {
-                cond,
-                body,
-                else_if,
+                ..
             } => self.resolve_if(expr, None, expr.position())?,
             ExprKind::Loop(body) => self.resolve_loop(body.as_ref(), expr.position())?,
             ExprKind::While(cond, body) => {
@@ -1633,6 +1631,53 @@ impl<'a> Typer<'a> {
             }
             SpecKind::SelfType => todo!(),
             SpecKind::Tuple(_) | SpecKind::Unit | SpecKind::Infer => todo!(),
+            SpecKind::Array(element_type, size) => {
+                let mir_spec = self.resolve_spec(element_type.as_ref())?;
+                match size.as_ref() {
+                    Some(size) => {
+                        let mir_size = self.resolve_expr(size.as_ref(), None)?;
+                        let mir_size_type = mir_size.ty();
+                        // reduce the expression if possible
+                        // let mir_size = MirExpr::reduce(mir_size)?;
+                        // the resulting expression must be a constant value.
+                        // @TODO: Add support for constant expressions
+                        if mir_size.is_literal() {
+                            if mir_size_type.is_integer() {
+                                let size = mir_size.as_integer() as usize;
+                                let ty = self.insert_type(TypeKind::Array {
+                                    element_type: mir_spec.ty(),
+                                    size
+                                });
+
+                                Ok(Rc::new(MirSpec::new(
+                            MirSpecKind::Array,
+                                    spec.position(),
+                                    ty,
+                                )))
+                            }
+                            else {
+                                let err = Error::invalid_array_size_type(mir_size_type.as_ref());
+                                Err(err)
+                            }
+                        }
+                        else {
+                            let err = Error::invalid_array_size_type(mir_size_type.as_ref());
+                            Err(err)
+                        }
+                    }
+                    None => {
+                        let ty = self.insert_type(TypeKind::Slice {
+                            element_type: mir_spec.ty(),
+                        });
+
+                        Ok(Rc::new(MirSpec::new(
+                    MirSpecKind::Slice,
+                            spec.position(),
+                            ty,
+                        )))
+                    }
+                }
+            }
         }
     }
 

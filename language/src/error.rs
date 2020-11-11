@@ -156,6 +156,11 @@ pub enum ErrorKind {
     #[error("return not in function or associated function scope")]
     InvalidReturn,
 
+    #[error("array size must be an integer, found type '{}'", ty)]
+    InvalidArraySizeType {
+        ty: Type
+    },
+
     // #[error("expecting keyword '{}' found '{}'", expected.to_string(), found.text())]
     // ExpectedKeyword {
     //     expected: Keyword,
@@ -417,6 +422,12 @@ impl<'src> Error {
 
     pub fn invalid_return() -> Self {
         Self::new_default(ErrorKind::InvalidReturn)
+    }
+
+    pub fn invalid_array_size_type(ty: &Type) -> Self {
+        Self::new_default(ErrorKind::InvalidArraySizeType {
+            ty: ty.clone()
+        })
     }
 
     // fn execpted_keyword(expected: token::Kw, token: &Token) -> Self {
