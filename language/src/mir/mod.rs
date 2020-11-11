@@ -31,6 +31,12 @@ pub struct FieldExpr {
 }
 
 #[derive(Debug, Clone)]
+pub struct IndexExpr {
+    pub operand: MirExprPtr,
+    pub index: MirExprPtr,
+}
+
+#[derive(Debug, Clone)]
 pub struct FieldAccessExpr {}
 
 #[derive(Debug, Clone)]
@@ -117,6 +123,7 @@ pub enum MirExprKind {
     Binary(BinaryExpr),
     Unary(UnaryExpr),
     Field(FieldExpr),
+    Index(IndexExpr),
     FieldAccess(FieldAccessExpr),
     Call(CallExpr),
     Method(MethodExpr),
@@ -248,6 +255,7 @@ impl NodeType for MirExprKind {
             Self::Break => "Break",
             Self::Continue => "Continue",
             Self::Return(..) => "Return",
+            Self::Index(..) => "Index",
         }
     }
 

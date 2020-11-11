@@ -9,9 +9,9 @@ use crate::analysis::{Entity, EntityInfo, EntityRef};
 use crate::error::Error;
 use crate::mir::{
     AddressMode, Assignment, AssociatedFunctionExpr, BinaryExpr, BlockExpr, CallExpr, IfExpr,
-    IfExprBranch, LoopExpr, MethodExpr, MirExpr, MirExprKind, MirExprPtr, MirFile, MirNode,
-    MirSpec, MirSpecKind, MirStmt, MirStmtKind, MutabilityInfo, StructExpr, TupleExpr, UnaryExpr,
-    WhileExpr,
+    IfExprBranch, IndexExpr, LoopExpr, MethodExpr, MirExpr, MirExprKind, MirExprPtr, MirFile,
+    MirNode, MirSpec, MirSpecKind, MirStmt, MirStmtKind, MutabilityInfo, StructExpr, TupleExpr,
+    UnaryExpr, WhileExpr,
 };
 use crate::syntax::ast::{
     AssignmentOp, BinaryOp, Expr, ExprKind, FunctionBody, Identifier, Item, ItemKind, Node,
@@ -832,6 +832,42 @@ impl<'a> Typer<'a> {
                     operand.position(),
                     return_type.clone(),
                 )))
+            }
+            TypeKind::Array { element_type, .. } | TypeKind::Slice { element_type } => {
+                if actuals.len() != 1 || actuals.len() == 0 {
+                    let err = Error::invalid_index_on_array_type(actuals.len());
+                    return Err(err.with_position(operand.position()));
+                } else {
+                    let index = actuals.first().unwrap();
+                    let mir_index = self.resolve_expr(index.as_ref(), None)?;
+                    let mir_index_type = mir_index.ty();
+                    if mir_index_type.is_integer() {
+                        let parent_mutable = mir_index.inner().mutable();
+                        let mutable = MutabilityInfo::new(
+                            parent_mutable.mutable,
+                            true,
+                            element_type.is_mutable(),
+                            false,
+                            false,
+                        );
+                        Ok(Rc::new(MirExpr::new(
+                            MirExprInner::new(
+                                element_type.address_mode(),
+                                mutable,
+                                MirExprKind::Index(IndexExpr {
+                                    operand: mir_operand,
+                                    index: mir_index,
+                                }),
+                            ),
+                            operand.position(),
+                            element_type.clone(),
+                        )))
+                    } else {
+                        let err =
+                            Error::incompatible_types(&Type::integer(), mir_index_type.as_ref());
+                        Err(err.with_position(index.position()))
+                    }
+                }
             }
             _ => {
                 let err = Error::invalid_call_on_type(mir_operand.ty().as_ref());

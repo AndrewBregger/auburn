@@ -131,6 +131,12 @@ impl MirPrinter {
             MirExprKind::Return(expr) => {
                 Self::print_expr_inner(expr, indent + 1);
             }
+            MirExprKind::Index(index_expr) => {
+                println!("{}Operand:", Self::indent(indent));
+                Self::print_expr_inner(index_expr.operand.as_ref(), indent + 1);
+                println!("{}Index:", Self::indent(indent));
+                Self::print_expr_inner(index_expr.index.as_ref(), indent + 1);
+            }
             MirExprKind::SelfLit => {}
             MirExprKind::Integer(_)
             | MirExprKind::Float(_)

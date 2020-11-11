@@ -5,9 +5,3 @@ else {
     23.0
 }
 
-if false {
-    1.0
-}
-else {
-    23
-}

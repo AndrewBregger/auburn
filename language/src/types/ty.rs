@@ -61,6 +61,87 @@ pub enum TypeKind {
     Slice {
         element_type: Rc<Type>,
     },
+    Integer,
+    Float,
+}
+
+impl TypeKind {
+    pub fn is_integer(&self) -> bool {
+        match self {
+            TypeKind::U8
+            | TypeKind::U16
+            | TypeKind::U32
+            | TypeKind::U64
+            | TypeKind::I8
+            | TypeKind::I16
+            | TypeKind::I32
+            | TypeKind::I64 => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_float(&self) -> bool {
+        match self {
+            TypeKind::F32 | TypeKind::F64 => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_bool(&self) -> bool {
+        match self {
+            TypeKind::Bool => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_string(&self) -> bool {
+        match self {
+            TypeKind::String => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_char(&self) -> bool {
+        match self {
+            TypeKind::Char => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_primitive(&self) -> bool {
+        self.is_integer() || self.is_float() || self.is_bool() || self.is_char()
+    }
+
+    pub fn is_struct(&self) -> bool {
+        false
+    }
+
+    pub fn is_arithmetic(&self) -> bool {
+        self.is_integer() || self.is_float()
+    }
+
+    pub fn is_signed(&self) -> bool {
+        match self {
+            TypeKind::I8
+            | TypeKind::I16
+            | TypeKind::I32
+            | TypeKind::I64
+            | TypeKind::F32
+            | TypeKind::F64 => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_unsigned(&self) -> bool {
+        !self.is_signed()
+    }
+
+    pub fn is_mutable(&self) -> bool {
+        match self {
+            TypeKind::Mutable { .. } => true,
+            _ => false,
+        }
+    }
 }
 
 impl PartialEq for TypeKind {
@@ -81,6 +162,10 @@ impl PartialEq for TypeKind {
             | (Self::Char, Self::Char)
             | (Self::String, Self::String)
             | (Self::Unit, Self::Unit) => true,
+            (Self::Integer, _) => other.is_integer(),
+            (_, Self::Integer) => self.is_integer(),
+            (Self::Float, _) => other.is_float(),
+            (_, Self::Float) => self.is_float(),
             (Self::Mutable { inner: linner }, Self::Mutable { inner: rinner }) => linner.eq(rinner),
             (
                 Self::Function {
@@ -150,53 +235,31 @@ impl Type {
     }
 
     pub fn is_integer(&self) -> bool {
-        match self.kind {
-            TypeKind::U8
-            | TypeKind::U16
-            | TypeKind::U32
-            | TypeKind::U64
-            | TypeKind::I8
-            | TypeKind::I16
-            | TypeKind::I32
-            | TypeKind::I64 => true,
-            _ => false,
-        }
+        self.kind.is_integer()
     }
 
     pub fn is_float(&self) -> bool {
-        match self.kind {
-            TypeKind::F32 | TypeKind::F64 => true,
-            _ => false,
-        }
+        self.kind.is_float()
     }
 
     pub fn is_bool(&self) -> bool {
-        match self.kind {
-            TypeKind::Bool => true,
-            _ => false,
-        }
+        self.kind.is_bool()
     }
 
     pub fn is_string(&self) -> bool {
-        match self.kind {
-            TypeKind::String => true,
-            _ => false,
-        }
+        self.kind.is_string()
     }
 
     pub fn is_char(&self) -> bool {
-        match self.kind {
-            TypeKind::Char => true,
-            _ => false,
-        }
+        self.kind.is_char()
     }
 
     pub fn is_primitive(&self) -> bool {
-        self.is_integer() || self.is_float() || self.is_bool() || self.is_char()
+        self.kind.is_primitive()
     }
 
     pub fn is_struct(&self) -> bool {
-        false
+        self.kind.is_struct()
     }
 
     pub fn is_arithmetic(&self) -> bool {
@@ -204,15 +267,7 @@ impl Type {
     }
 
     pub fn is_signed(&self) -> bool {
-        match self.kind {
-            TypeKind::I8
-            | TypeKind::I16
-            | TypeKind::I32
-            | TypeKind::I64
-            | TypeKind::F32
-            | TypeKind::F64 => true,
-            _ => false,
-        }
+        self.kind.is_signed()
     }
 
     pub fn is_unsigned(&self) -> bool {
@@ -220,10 +275,7 @@ impl Type {
     }
 
     pub fn is_mutable(&self) -> bool {
-        match self.kind {
-            TypeKind::Mutable { .. } => true,
-            _ => false,
-        }
+        self.kind.is_mutable()
     }
 
     pub fn inner(ty: Rc<Self>) -> Rc<Type> {
@@ -243,6 +295,14 @@ impl Type {
             TypeKind::Invalid => AddressMode::Error,
             _ => AddressMode::Value,
         }
+    }
+
+    pub fn integer() -> Self {
+        Self::new(TypeKind::Integer)
+    }
+
+    pub fn float() -> Self {
+        Self::new(TypeKind::Float)
     }
 }
 
@@ -292,6 +352,8 @@ impl Display for Type {
             //     write!(f, "[{}]", element_type)
             // }
             TypeKind::Slice { element_type } => write!(f, "[{}]", element_type),
+            TypeKind::Float => write!(f, "{{float}}"),
+            TypeKind::Integer => write!(f, "{{integer}}"),
         }
     }
 }
