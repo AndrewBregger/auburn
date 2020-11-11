@@ -800,13 +800,10 @@ impl<'src> Parser<'src> {
 
                 let end = self.expect(Token::ControlPair(Control::Brace, PairKind::Close))?;
 
-                Ok(Box::new(
-                    Spec::new_with_position(
-                        SpecKind::Array(element_type, size),
-                        position.extended_to_token(end))
-                    )
-                )
-
+                Ok(Box::new(Spec::new_with_position(
+                    SpecKind::Array(element_type, size),
+                    position.extended_to_token(end),
+                )))
             }
             Token::Kw(Keyword::SelfType) => {
                 self.consume()?;

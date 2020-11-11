@@ -157,9 +157,7 @@ pub enum ErrorKind {
     InvalidReturn,
 
     #[error("array size must be an integer, found type '{}'", ty)]
-    InvalidArraySizeType {
-        ty: Type
-    },
+    InvalidArraySizeType { ty: Type },
 
     // #[error("expecting keyword '{}' found '{}'", expected.to_string(), found.text())]
     // ExpectedKeyword {
@@ -425,9 +423,7 @@ impl<'src> Error {
     }
 
     pub fn invalid_array_size_type(ty: &Type) -> Self {
-        Self::new_default(ErrorKind::InvalidArraySizeType {
-            ty: ty.clone()
-        })
+        Self::new_default(ErrorKind::InvalidArraySizeType { ty: ty.clone() })
     }
 
     // fn execpted_keyword(expected: token::Kw, token: &Token) -> Self {

@@ -442,7 +442,7 @@ impl NodeType for SpecKind {
             Self::Unit => "Unit",
             Self::Infer => "Infer",
             Self::SelfType => "Self",
-            Self::Array{..} => "Array",
+            Self::Array { .. } => "Array",
         }
     }
 

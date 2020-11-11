@@ -491,9 +491,7 @@ impl<'a> Typer<'a> {
                 );
                 Rc::new(MirExpr::new(mir_expr_inner, expr.position(), tuple_type))
             }
-            ExprKind::If {
-                ..
-            } => self.resolve_if(expr, None, expr.position())?,
+            ExprKind::If { .. } => self.resolve_if(expr, None, expr.position())?,
             ExprKind::Loop(body) => self.resolve_loop(body.as_ref(), expr.position())?,
             ExprKind::While(cond, body) => {
                 self.resolve_while(cond.as_ref(), body.as_ref(), expr.position())?
@@ -1646,21 +1644,19 @@ impl<'a> Typer<'a> {
                                 let size = mir_size.as_integer() as usize;
                                 let ty = self.insert_type(TypeKind::Array {
                                     element_type: mir_spec.ty(),
-                                    size
+                                    size,
                                 });
 
                                 Ok(Rc::new(MirSpec::new(
-                            MirSpecKind::Array,
+                                    MirSpecKind::Array,
                                     spec.position(),
                                     ty,
                                 )))
-                            }
-                            else {
+                            } else {
                                 let err = Error::invalid_array_size_type(mir_size_type.as_ref());
                                 Err(err)
                             }
-                        }
-                        else {
+                        } else {
                             let err = Error::invalid_array_size_type(mir_size_type.as_ref());
                             Err(err)
                         }
@@ -1671,7 +1667,7 @@ impl<'a> Typer<'a> {
                         });
 
                         Ok(Rc::new(MirSpec::new(
-                    MirSpecKind::Slice,
+                            MirSpecKind::Slice,
                             spec.position(),
                             ty,
                         )))
