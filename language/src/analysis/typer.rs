@@ -10,8 +10,8 @@ use crate::error::Error;
 use crate::mir::{
     AddressMode, Assignment, AssociatedFunctionExpr, BinaryExpr, BlockExpr, CallExpr, IfExpr,
     IfExprBranch, IndexExpr, LoopExpr, MethodExpr, MirExpr, MirExprKind, MirExprPtr, MirFile,
-    MirNode, MirSpec, MirSpecKind, MirSpecPtr, MirStmt, MirStmtKind, MirStmtPtr, ResultMeta,
-    StructExpr, TupleExpr, UnaryExpr, WhileExpr,
+    MirNode, MirSpec, MirSpecKind, MirStmt, MirStmtKind, ResultMeta, StructExpr, TupleExpr,
+    UnaryExpr, WhileExpr,
 };
 use crate::syntax::ast::{
     AssignmentOp, BinaryOp, Expr, ExprKind, FunctionBody, Identifier, Item, ItemKind, Node,
@@ -599,7 +599,7 @@ impl<'a> Typer<'a> {
         }
 
         let operand_type = mir_operand.ty();
-        match Type::inner(operand_type).kind() {
+        match Type::inner(operand_type.clone()).kind() {
             TypeKind::Array { element_type, .. } | TypeKind::Slice { element_type } => {
                 let mir_index = self.resolve_expr(index, None)?;
                 let index_meta = mir_index.inner().meta();
