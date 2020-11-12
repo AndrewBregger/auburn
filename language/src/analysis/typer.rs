@@ -10,8 +10,8 @@ use crate::error::Error;
 use crate::mir::{
     AddressMode, Assignment, AssociatedFunctionExpr, BinaryExpr, BlockExpr, CallExpr, IfExpr,
     IfExprBranch, IndexExpr, LoopExpr, MethodExpr, MirExpr, MirExprKind, MirExprPtr, MirFile,
-    MirNode, MirSpec, MirSpecKind, MirStmt, MirStmtKind, MutabilityInfo, StructExpr, TupleExpr,
-    UnaryExpr, WhileExpr,
+    MirNode, MirSpec, MirSpecKind, MirSpecPtr, MirStmt, MirStmtKind, MirStmtPtr, ResultMeta,
+    StructExpr, TupleExpr, UnaryExpr, WhileExpr,
 };
 use crate::syntax::ast::{
     AssignmentOp, BinaryOp, Expr, ExprKind, FunctionBody, Identifier, Item, ItemKind, Node,
@@ -237,7 +237,7 @@ impl<'a> Typer<'a> {
             StmtKind::Assignment { op, lvalue, rhs } => {
                 let (entity, mir_lvalue) = self.resolve_expr_to_entity(lvalue.as_ref())?;
                 // let lvalue_type = mir_lvalue.ty();
-                let mutability = mir_lvalue.inner().mutable();
+                let mutability = mir_lvalue.inner().meta();
                 if !mutability.mutable {
                     let err = Error::immutable_entity(entity.deref().borrow().name());
                     return Err(err.with_position(lvalue.position()));
@@ -277,7 +277,7 @@ impl<'a> Typer<'a> {
                 Rc::new(MirExpr::new(
                     MirExprInner::new(
                         AddressMode::Value,
-                        MutabilityInfo::literal(),
+                        ResultMeta::literal(),
                         MirExprKind::Integer(*val),
                     ),
                     expr.position(),
@@ -289,7 +289,7 @@ impl<'a> Typer<'a> {
                 Rc::new(MirExpr::new(
                     MirExprInner::new(
                         AddressMode::Value,
-                        MutabilityInfo::literal(),
+                        ResultMeta::literal(),
                         MirExprKind::Float(*val),
                     ),
                     expr.position(),
@@ -301,7 +301,7 @@ impl<'a> Typer<'a> {
                 Rc::new(MirExpr::new(
                     MirExprInner::new(
                         AddressMode::Address,
-                        MutabilityInfo::literal(),
+                        ResultMeta::literal(),
                         MirExprKind::String(val.clone()),
                     ),
                     expr.position(),
@@ -313,7 +313,7 @@ impl<'a> Typer<'a> {
                 Rc::new(MirExpr::new(
                     MirExprInner::new(
                         AddressMode::Value,
-                        MutabilityInfo::literal(),
+                        ResultMeta::literal(),
                         MirExprKind::Char(*val),
                     ),
                     expr.position(),
@@ -325,15 +325,15 @@ impl<'a> Typer<'a> {
                 let ty = name.deref().borrow().ty();
                 let mutable = match name.deref().borrow().kind() {
                     EntityInfo::Variable(variable) => {
-                        MutabilityInfo::new(variable.mutable, false, ty.is_mutable(), false, false)
+                        ResultMeta::new(variable.mutable, false, ty.is_mutable(), false, false)
                     }
                     EntityInfo::Structure(_structure) => {
-                        MutabilityInfo::new(false, false, false, false, true)
+                        ResultMeta::new(false, false, false, false, true)
                     }
                     EntityInfo::Param(_local_info) => {
-                        MutabilityInfo::new(false, false, ty.is_mutable(), false, false)
+                        ResultMeta::new(false, false, ty.is_mutable(), false, false)
                     }
-                    _ => MutabilityInfo::new(false, false, false, false, false),
+                    _ => ResultMeta::new(false, false, false, false, false),
                 };
                 Rc::new(MirExpr::new(
                     MirExprInner::new(AddressMode::Address, mutable, MirExprKind::Name(name)),
@@ -346,7 +346,7 @@ impl<'a> Typer<'a> {
                 Rc::new(MirExpr::new(
                     MirExprInner::new(
                         ty.address_mode(),
-                        MutabilityInfo::literal(),
+                        ResultMeta::literal(),
                         MirExprKind::Bool(*val),
                     ),
                     expr.position(),
@@ -382,17 +382,17 @@ impl<'a> Typer<'a> {
                     (
                         AddressMode::Value,
                         self.type_map.get_unit(),
-                        MutabilityInfo::literal(),
+                        ResultMeta::literal(),
                     ),
                     |stmt| match stmt.inner() {
                         MirStmtKind::Expr(expr) => {
                             let inner = expr.inner();
-                            (inner.address_mode(), expr.ty(), inner.mutable())
+                            (inner.address_mode(), expr.ty(), inner.meta())
                         }
                         _ => (
                             AddressMode::Value,
                             stmt.ty(),
-                            MutabilityInfo::new(false, false, false, false, false),
+                            ResultMeta::new(false, false, false, false, false),
                         ),
                     },
                 );
@@ -439,7 +439,7 @@ impl<'a> Typer<'a> {
                     if let EntityInfo::SelfParam { mutable } = self_borrow.kind() {
                         let mir_inner = MirExprInner::new(
                             AddressMode::Address,
-                            MutabilityInfo::new(*mutable, false, false, false, false),
+                            ResultMeta::new(*mutable, false, false, false, false),
                             MirExprKind::SelfLit,
                         );
                         Rc::new(MirExpr::new(
@@ -486,7 +486,7 @@ impl<'a> Typer<'a> {
                 let tuple_type = self.insert_type(TypeKind::Tuple { elements });
                 let mir_expr_inner = MirExprInner::new(
                     AddressMode::Value,
-                    MutabilityInfo::new(false, false, false, true, false),
+                    ResultMeta::new(false, false, false, true, false),
                     MirExprKind::Tuple(tuple_expr),
                 );
                 Rc::new(MirExpr::new(mir_expr_inner, expr.position(), tuple_type))
@@ -500,7 +500,7 @@ impl<'a> Typer<'a> {
                 if self.check_state(ALLOW_CONTROL_FLOW_EXPRESSIONS) {
                     let inner = MirExprInner::new(
                         AddressMode::Value,
-                        MutabilityInfo::default(),
+                        ResultMeta::default(),
                         MirExprKind::Break,
                     );
                     Rc::new(MirExpr::new(
@@ -518,7 +518,7 @@ impl<'a> Typer<'a> {
                 if self.check_state(ALLOW_CONTROL_FLOW_EXPRESSIONS) {
                     let inner = MirExprInner::new(
                         AddressMode::Value,
-                        MutabilityInfo::default(),
+                        ResultMeta::default(),
                         MirExprKind::Continue,
                     );
                     Rc::new(MirExpr::new(
@@ -538,7 +538,7 @@ impl<'a> Typer<'a> {
                 {
                     let mir_expr = self.resolve_expr(expr, None)?;
                     let ty = mir_expr.ty();
-                    let mutable = MutabilityInfo::new(false, false, ty.is_mutable(), false, false);
+                    let mutable = ResultMeta::new(false, false, ty.is_mutable(), false, false);
                     let inner = MirExprInner::new(
                         mir_expr.inner().address_mode(),
                         mutable,
@@ -549,6 +549,9 @@ impl<'a> Typer<'a> {
                     let err = Error::invalid_return().with_position(expr.position());
                     return Err(err);
                 }
+            }
+            ExprKind::Index { operand, index } => {
+                self.resolve_index(operand, index, expr.position())?
             }
             /*
             ExprKind::For {
@@ -580,6 +583,63 @@ impl<'a> Typer<'a> {
         }
 
         Ok(expr)
+    }
+
+    fn resolve_index(
+        &mut self,
+        operand: &Expr,
+        index: &Expr,
+        position: Position,
+    ) -> Result<MirExprPtr, Error> {
+        let mir_operand = self.resolve_expr(operand, None)?;
+        let operand_meta = mir_operand.inner().meta();
+        if operand_meta.is_type {
+            let err = Error::expecting_instance_type(mir_operand.ty().as_ref());
+            return Err(err.with_position(operand.position()));
+        }
+
+        let operand_type = mir_operand.ty();
+        match Type::inner(operand_type).kind() {
+            TypeKind::Array { element_type, .. } | TypeKind::Slice { element_type } => {
+                let mir_index = self.resolve_expr(index, None)?;
+                let index_meta = mir_index.inner().meta();
+                if index_meta.is_type {
+                    let err = Error::expecting_instance_type(mir_index.ty().as_ref());
+                    return Err(err.with_position(operand.position()));
+                }
+
+                let mir_index_type = mir_index.ty();
+                if mir_index_type.is_integer() {
+                    let parent_mutable = mir_index.inner().meta();
+                    let meta = ResultMeta::new(
+                        parent_mutable.mutable,
+                        true,
+                        element_type.is_mutable(),
+                        false,
+                        false,
+                    );
+                    Ok(Rc::new(MirExpr::new(
+                        MirExprInner::new(
+                            element_type.address_mode(),
+                            meta,
+                            MirExprKind::Index(IndexExpr {
+                                operand: mir_operand,
+                                index: mir_index,
+                            }),
+                        ),
+                        operand.position(),
+                        element_type.clone(),
+                    )))
+                } else {
+                    let err = Error::incompatible_types(&Type::integer(), mir_index_type.as_ref());
+                    Err(err.with_position(index.position()))
+                }
+            }
+            _ => {
+                let err = Error::invalid_index_type(operand_type.as_ref());
+                Err(err.with_position(position))
+            }
+        }
     }
 
     fn resolve_expr_to_entity(&mut self, expr: &Expr) -> Result<(EntityRef, Rc<MirExpr>), Error> {
@@ -654,7 +714,7 @@ impl<'a> Typer<'a> {
         let if_expr = IfExpr { branches };
 
         if let Some(ty) = expected_type.as_ref() {
-            let mutable = MutabilityInfo::new(false, ty.is_mutable(), false, false, false);
+            let mutable = ResultMeta::new(false, ty.is_mutable(), false, false, false);
             let inner = MirExprInner::new(ty.address_mode(), mutable, MirExprKind::If(if_expr));
             Ok(Rc::new(MirExpr::new(inner, expr.position(), ty.clone())))
         } else {
@@ -681,7 +741,7 @@ impl<'a> Typer<'a> {
 
         let inner = MirExprInner::new(
             AddressMode::Value,
-            MutabilityInfo::default(),
+            ResultMeta::default(),
             MirExprKind::While(while_expr),
         );
 
@@ -701,7 +761,7 @@ impl<'a> Typer<'a> {
 
         let inner = MirExprInner::new(
             AddressMode::Value,
-            MutabilityInfo::default(),
+            ResultMeta::default(),
             MirExprKind::Loop(loop_expr),
         );
 
@@ -753,13 +813,13 @@ impl<'a> Typer<'a> {
                             let position = field.position();
                             let ty = field_borrow.ty();
 
-                            let parent_mutability_info = operand.inner().mutable();
+                            let parent_mutability_info = operand.inner().meta();
                             let field_expr = FieldExpr {
                                 operand,
                                 field: field_entity.clone(),
                             };
 
-                            let mutable = MutabilityInfo::new(
+                            let mutable = ResultMeta::new(
                                 parent_mutability_info.mutable,
                                 parent_mutability_info.inherited || true,
                                 parent_mutability_info.mutable_type,
@@ -823,8 +883,7 @@ impl<'a> Typer<'a> {
                     actuals: mir_actuals,
                 };
 
-                let mutable =
-                    MutabilityInfo::new(false, false, return_type.is_mutable(), false, false);
+                let mutable = ResultMeta::new(false, false, return_type.is_mutable(), false, false);
                 let inner =
                     MirExprInner::new(AddressMode::Value, mutable, MirExprKind::Call(call_expr));
                 Ok(Rc::new(MirExpr::new(
@@ -832,42 +891,6 @@ impl<'a> Typer<'a> {
                     operand.position(),
                     return_type.clone(),
                 )))
-            }
-            TypeKind::Array { element_type, .. } | TypeKind::Slice { element_type } => {
-                if actuals.len() != 1 || actuals.len() == 0 {
-                    let err = Error::invalid_index_on_array_type(actuals.len());
-                    return Err(err.with_position(operand.position()));
-                } else {
-                    let index = actuals.first().unwrap();
-                    let mir_index = self.resolve_expr(index.as_ref(), None)?;
-                    let mir_index_type = mir_index.ty();
-                    if mir_index_type.is_integer() {
-                        let parent_mutable = mir_index.inner().mutable();
-                        let mutable = MutabilityInfo::new(
-                            parent_mutable.mutable,
-                            true,
-                            element_type.is_mutable(),
-                            false,
-                            false,
-                        );
-                        Ok(Rc::new(MirExpr::new(
-                            MirExprInner::new(
-                                element_type.address_mode(),
-                                mutable,
-                                MirExprKind::Index(IndexExpr {
-                                    operand: mir_operand,
-                                    index: mir_index,
-                                }),
-                            ),
-                            operand.position(),
-                            element_type.clone(),
-                        )))
-                    } else {
-                        let err =
-                            Error::incompatible_types(&Type::integer(), mir_index_type.as_ref());
-                        Err(err.with_position(index.position()))
-                    }
-                }
             }
             _ => {
                 let err = Error::invalid_call_on_type(mir_operand.ty().as_ref());
@@ -973,7 +996,7 @@ impl<'a> Typer<'a> {
                                 actuals: mir_actuals,
                             };
 
-                            let mutable = MutabilityInfo::new(
+                            let mutable = ResultMeta::new(
                                 false,
                                 false,
                                 return_type.is_mutable(),
@@ -1011,7 +1034,7 @@ impl<'a> Typer<'a> {
                                 return Err(err);
                             }
 
-                            let receiver_mutablility = receiver.inner().mutable();
+                            let receiver_mutablility = receiver.inner().meta();
                             let expected_receiver_type = params.first().unwrap();
 
                             if self.compare_types(
@@ -1038,7 +1061,7 @@ impl<'a> Typer<'a> {
                                 actuals: mir_actuals,
                             };
 
-                            let mutable = MutabilityInfo::new(
+                            let mutable = ResultMeta::new(
                                 false,
                                 false,
                                 return_type.is_mutable(),
@@ -1126,7 +1149,7 @@ impl<'a> Typer<'a> {
             fields: mir_fields,
         };
         let mir_expr = MirExprKind::StructExpr(struct_expr);
-        let mutable = MutabilityInfo::new(false, false, false, true, false);
+        let mutable = ResultMeta::new(false, false, false, true, false);
         let mir_inner = MirExprInner::new(AddressMode::Value, mutable, mir_expr);
         Ok(Rc::new(MirExpr::new(mir_inner, position, struct_type)))
     }
@@ -1664,7 +1687,7 @@ impl<'a> Typer<'a> {
                 }
             }
             SpecKind::SelfType => todo!(),
-            SpecKind::Tuple(_) | SpecKind::Unit | SpecKind::Infer => todo!(),
+            SpecKind::Tuple(_) | SpecKind::Unit | SpecKind::Infer => todo!("{:?}", spec),
             SpecKind::Array(element_type, size) => {
                 let mir_spec = self.resolve_spec(element_type.as_ref())?;
                 match size.as_ref() {
@@ -1709,6 +1732,18 @@ impl<'a> Typer<'a> {
                         )))
                     }
                 }
+            }
+            SpecKind::Mutable { inner } => {
+                let mir_inner = self.resolve_spec(inner.as_ref())?;
+                let ty = self.insert_type(TypeKind::Mutable {
+                    inner: mir_inner.ty(),
+                });
+
+                Ok(Rc::new(MirSpec::new(
+                    MirSpecKind::Mutable,
+                    spec.position(),
+                    ty,
+                )))
             }
         }
     }
@@ -1840,7 +1875,7 @@ impl<'a> Typer<'a> {
             }
         };
 
-        let mutable = MutabilityInfo::new(false, false, false, true, false);
+        let mutable = ResultMeta::new(false, false, false, true, false);
         Ok(Rc::new(MirExpr::new(
             MirExprInner::new(
                 address_mode,
@@ -1889,7 +1924,7 @@ impl<'a> Typer<'a> {
             UnaryOp::Ampersand => todo!("what is an & supposed to do."),
         };
 
-        let mutable = MutabilityInfo::new(false, false, false, true, false);
+        let mutable = ResultMeta::new(false, false, false, true, false);
         Ok(Rc::new(MirExpr::new(
             MirExprInner::new(
                 address_mode,

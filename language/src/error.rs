@@ -159,9 +159,11 @@ pub enum ErrorKind {
     #[error("array size must be an integer, found type '{}'", ty)]
     InvalidArraySizeType { ty: Type },
 
-    #[error("indexing an array expects only 1 parameter, found: '{}'", found)]
-    InvalidIndexOnArrayType { found: usize },
+    #[error("expecting an instance, found type '{}'", ty)]
+    ExpectingInstanceType { ty: Type },
 
+    #[error("unable to index type '{}'", ty)]
+    InvalidIndexType { ty: Type },
     // #[error("expecting keyword '{}' found '{}'", expected.to_string(), found.text())]
     // ExpectedKeyword {
     //     expected: Keyword,
@@ -429,8 +431,12 @@ impl<'src> Error {
         Self::new_default(ErrorKind::InvalidArraySizeType { ty: ty.clone() })
     }
 
-    pub fn invalid_index_on_array_type(found: usize) -> Self {
-        Self::new_default(ErrorKind::InvalidIndexOnArrayType { found })
+    pub fn expecting_instance_type(ty: &Type) -> Self {
+        Self::new_default(ErrorKind::ExpectingInstanceType { ty: ty.clone() })
+    }
+
+    pub fn invalid_index_type(ty: &Type) -> Self {
+        Self::new_default(ErrorKind::InvalidIndexType { ty: ty.clone() })
     }
 
     // fn execpted_keyword(expected: token::Kw, token: &Token) -> Self {

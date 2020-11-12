@@ -208,6 +208,10 @@ pub enum ExprKind {
     Continue,
     Break,
     Return(Box<Expr>),
+    Index {
+        operand: Box<Expr>,
+        index: Box<Expr>,
+    },
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -288,6 +292,7 @@ pub enum SpecKind {
     Unit,
     Infer,
     SelfType,
+    Mutable { inner: Box<Spec> },
 }
 
 #[derive(Debug, Clone, Copy, Hash, Ord, PartialOrd, Eq, PartialEq)]
@@ -394,6 +399,7 @@ impl NodeType for ExprKind {
             Self::Break => "Break",
             Self::Continue => "Continue",
             Self::Return(..) => "Return",
+            Self::Index { .. } => "Index",
         }
     }
 
@@ -443,6 +449,7 @@ impl NodeType for SpecKind {
             Self::Infer => "Infer",
             Self::SelfType => "Self",
             Self::Array { .. } => "Array",
+            Self::Mutable { .. } => "Mut",
         }
     }
 

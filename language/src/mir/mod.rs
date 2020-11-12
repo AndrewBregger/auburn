@@ -150,7 +150,7 @@ pub enum AddressMode {
 }
 
 #[derive(Debug, Default, Clone, Copy)]
-pub struct MutabilityInfo {
+pub struct ResultMeta {
     pub mutable: bool,
     pub inherited: bool,
     pub mutable_type: bool,
@@ -158,7 +158,7 @@ pub struct MutabilityInfo {
     pub is_type: bool,
 }
 
-impl MutabilityInfo {
+impl ResultMeta {
     pub fn new(
         mutable: bool,
         inherited: bool,
@@ -183,15 +183,15 @@ impl MutabilityInfo {
 #[derive(Debug, Clone)]
 pub struct MirExprInner {
     address_mode: AddressMode,
-    mutable: MutabilityInfo,
+    meta: ResultMeta,
     kind: MirExprKind,
 }
 
 impl MirExprInner {
-    pub fn new(address_mode: AddressMode, mutable: MutabilityInfo, kind: MirExprKind) -> Self {
+    pub fn new(address_mode: AddressMode, meta: ResultMeta, kind: MirExprKind) -> Self {
         Self {
             address_mode,
-            mutable,
+            meta,
             kind,
         }
     }
@@ -204,8 +204,8 @@ impl MirExprInner {
         self.address_mode
     }
 
-    pub fn mutable(&self) -> MutabilityInfo {
-        self.mutable
+    pub fn meta(&self) -> ResultMeta {
+        self.meta
     }
 }
 
@@ -304,6 +304,7 @@ impl NodeType for MirSpecKind {
             Self::Infer => "Infer",
             Self::Array => "Array",
             Self::Slice => "Slice",
+            Self::Mutable => "Mutable",
         }
     }
 
@@ -346,6 +347,7 @@ pub enum MirSpecKind {
     Infer,
     Array,
     Slice,
+    Mutable,
 }
 
 #[derive(Debug, Clone)]

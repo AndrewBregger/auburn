@@ -384,6 +384,20 @@ impl<'src> Parser<'src> {
                         position.extended_to_token(end),
                     ))
                 }
+                Token::ControlPair(Control::Brace, PairKind::Open) => {
+                    self.consume()?;
+                    self.allow_newline()?;
+                    let expr = self.parse_expr()?;
+                    let end = self.expect(Token::ControlPair(Control::Brace, PairKind::Close))?;
+                    let position = position.extended_to_token(end);
+                    operand = Box::new(Expr::new_with_position(
+                        ExprKind::Index {
+                            operand: operand.clone(),
+                            index: expr,
+                        },
+                        position,
+                    ));
+                }
                 _ => {
                     break;
                 }
@@ -809,6 +823,15 @@ impl<'src> Parser<'src> {
                 self.consume()?;
                 Ok(Box::new(Spec::new_with_position(
                     SpecKind::SelfType,
+                    position,
+                )))
+            }
+            Token::Kw(Keyword::Mut) => {
+                self.consume()?;
+                let spec = self.parse_spec()?;
+                let position = position.extended_to(spec.as_ref());
+                Ok(Box::new(Spec::new_with_position(
+                    SpecKind::Mutable { inner: spec },
                     position,
                 )))
             }

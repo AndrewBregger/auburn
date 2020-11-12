@@ -1,0 +1,2 @@
+let arr mut [mut f32; 10]
+arr[10]
