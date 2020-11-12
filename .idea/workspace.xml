@@ -25,12 +25,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4b17c99f-758c-48ea-b0b5-e3d26e51a8dc" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/examples/analysis/if" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/language/src/analysis/typer/expressions.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/language/src/analysis/typer/items.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/language/src/analysis/typer/mod.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/language/src/analysis/typer/statements.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/language/src/analysis/typer/type_specs.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/language/src/analysis/typer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/language/src/analysis/typer.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/language/src/mir/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/language/src/mir/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/language/src/syntax/parse/parser.rs" beforeDir="false" afterPath="$PROJECT_DIR$/language/src/syntax/parse/parser.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/language/src/types/ty.rs" beforeDir="false" afterPath="$PROJECT_DIR$/language/src/types/ty.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/language/src/analysis/typer.rs" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -49,6 +50,13 @@
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GithubPullRequestsUISettings">
+    <option name="hiddenUrls">
+      <set>
+        <option value="https://github.com/AndrewBregger/langauge" />
+      </set>
+    </option>
   </component>
   <component name="MacroExpansionManager">
     <option name="directoryName" value="n457c8fm" />
@@ -71,20 +79,26 @@
     <property name="settings.editor.selected.configurable" value="preferences.lookFeel" />
   </component>
   <component name="RecentsManager">
-    <key name="CopyFile.RECENT_KEYS">
-      <recent name="D:\Projects\language\examples\parser\item" />
-    </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="E:\Projects\languagec\language\src\analysis\typer" />
       <recent name="D:\Projects\language\src\system" />
       <recent name="D:\Projects\language\examples\parser" />
       <recent name="D:\Projects\language\src" />
       <recent name="D:\Projects\language\bin" />
     </key>
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="D:\Projects\language\examples\parser\item" />
+    </key>
   </component>
   <component name="RunManager" selected="Cargo.Run">
+    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="Run" type="CargoCommandRunConfiguration" factoryName="Cargo Command" nameIsGenerated="true">
       <option name="channel" value="DEFAULT" />
-      <option name="command" value="run -- check examples\analysis\if" />
+      <option name="command" value="run -- check examples\analysis\arrays" />
       <option name="allFeatures" value="false" />
       <option name="emulateTerminal" value="false" />
       <option name="backtrace" value="SHORT" />
@@ -152,11 +166,6 @@
       <envs />
       <method v="2">
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
-      </method>
-    </configuration>
-    <configuration default="true" type="GradleAppRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" PASS_PARENT_ENVS_2="true">
-      <method v="2">
-        <option name="com.jetbrains.cidr.cpp.gradle.execution.GradleNativeBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
     <configuration name="Unittests in E:/Projects/languagec/src/tests" type="tests" factoryName="Unittests" temporary="true" nameIsGenerated="true">
@@ -243,6 +252,9 @@
       <workItem from="1604864285663" duration="2695000" />
       <workItem from="1604871351592" duration="5452000" />
       <workItem from="1604989092935" duration="2172000" />
+      <workItem from="1605085906705" duration="4801000" />
+      <workItem from="1605112431376" duration="6836000" />
+      <workItem from="1605164421996" duration="2858000" />
     </task>
     <task id="LOCAL-00001" summary="Implemented block and tuple expressions.">
       <created>1601015341655</created>
@@ -363,7 +375,35 @@
       <option name="project" value="LOCAL" />
       <updated>1604889982238</updated>
     </task>
-    <option name="localTasksCounter" value="18" />
+    <task id="LOCAL-00018" summary="cargo fmt">
+      <created>1605085953932</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1605085953932</updated>
+    </task>
+    <task id="LOCAL-00019" summary="Implemented array indexing as a function call.">
+      <created>1605070785087</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1605070785087</updated>
+    </task>
+    <task id="LOCAL-00020" summary="Added parser and typer support for mut types. Changed syntax of array index to standard brace syntax.">
+      <created>1605164554398</created>
+      <option name="number" value="00020" />
+      <option name="presentableId" value="LOCAL-00020" />
+      <option name="project" value="LOCAL" />
+      <updated>1605164554398</updated>
+    </task>
+    <task id="LOCAL-00021" summary="Fixed compiler error">
+      <created>1605164672161</created>
+      <option name="number" value="00021" />
+      <option name="presentableId" value="LOCAL-00021" />
+      <option name="project" value="LOCAL" />
+      <updated>1605164672161</updated>
+    </task>
+    <option name="localTasksCounter" value="22" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -399,25 +439,33 @@
     <MESSAGE value="Adding parser support for continue, break, and return expressions." />
     <MESSAGE value="Fixed error in loop parsing." />
     <MESSAGE value="Added support for break, continue, and return." />
-    <option name="LAST_COMMIT_MESSAGE" value="Added support for break, continue, and return." />
+    <MESSAGE value="cargo fmt" />
+    <MESSAGE value="Implemented array indexing as a function call." />
+    <MESSAGE value="Added parser and typer support for mut types. Changed syntax of array index to standard brace syntax." />
+    <MESSAGE value="Fixed compiler error" />
+    <option name="LAST_COMMIT_MESSAGE" value="Fixed compiler error" />
   </component>
   <component name="WindowStateProjectService">
     <state x="1179" y="600" width="773" height="269" key="#Vim_Emulation" timestamp="1602315256138">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="1179" y="600" width="773" height="269" key="#Vim_Emulation/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1602315256138" />
-    <state x="733" y="388" width="1094" height="717" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1604990421440">
+    <state x="733" y="388" width="1094" height="717" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1605070858946">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="733" y="388" width="1094" height="717" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604990421440" />
-    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1604990395288">
+    <state x="733" y="388" width="1094" height="717" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605070858946" />
+    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1605070821962">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604990395288" />
+    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605070821962" />
     <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser" timestamp="1604474566316">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604474566316" />
+    <state x="1010" y="482" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog" timestamp="1605166810272">
+      <screen x="0" y="30" width="2560" height="1410" />
+    </state>
+    <state x="1010" y="482" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605166810272" />
     <state x="1184" y="406" key="#xdebugger.XInspectDialog" timestamp="1604990979817">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
@@ -434,26 +482,26 @@
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="1059" y="500" key="FileChooserDialogImpl/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600055373613" />
-    <state width="2517" height="488" key="GridCell.Tab.0.bottom" timestamp="1604991282384">
+    <state width="2517" height="543" key="GridCell.Tab.0.bottom" timestamp="1605167180691">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.bottom/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2517" height="488" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604991282384" />
-    <state width="2517" height="488" key="GridCell.Tab.0.center" timestamp="1604991282384">
+    <state width="2517" height="543" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605167180691" />
+    <state width="2517" height="543" key="GridCell.Tab.0.center" timestamp="1605167180691">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.center/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2517" height="488" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604991282384" />
-    <state width="2517" height="488" key="GridCell.Tab.0.left" timestamp="1604991282384">
+    <state width="2517" height="543" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605167180691" />
+    <state width="2517" height="543" key="GridCell.Tab.0.left" timestamp="1605167180691">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.left/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332313" />
-    <state width="2517" height="488" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604991282384" />
-    <state width="2517" height="488" key="GridCell.Tab.0.right" timestamp="1604991282384">
+    <state width="2517" height="543" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605167180691" />
+    <state width="2517" height="543" key="GridCell.Tab.0.right" timestamp="1605167180691">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.right/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2517" height="488" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604991282384" />
+    <state width="2517" height="543" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605167180691" />
     <state width="2517" height="488" key="GridCell.Tab.1.bottom" timestamp="1604991282384">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
@@ -474,10 +522,10 @@
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="56" y="346" width="998" height="708" key="SettingsEditor/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604790829894" />
-    <state x="871" y="466" key="Vcs.Push.Dialog.v2" timestamp="1604791737940">
+    <state x="871" y="466" key="Vcs.Push.Dialog.v2" timestamp="1605167235731">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="871" y="466" key="Vcs.Push.Dialog.v2/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604791737940" />
+    <state x="871" y="466" key="Vcs.Push.Dialog.v2/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605167235731" />
     <state x="1097" y="645" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2" timestamp="1604376942129">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
@@ -486,31 +534,26 @@
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="995" y="143" width="960" height="1057" maximized="true" key="dock-window-1/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603057279307" />
-    <state x="987" y="468" width="585" height="592" key="find.popup" timestamp="1603174305278">
+    <state x="987" y="468" width="585" height="592" key="find.popup" timestamp="1605156241402">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="987" y="468" width="585" height="592" key="find.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1603174305278" />
-    <state x="936" y="348" width="672" height="677" key="run.anything.popup" timestamp="1604726388934">
+    <state x="987" y="468" width="585" height="592" key="find.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605156241402" />
+    <state x="936" y="348" width="672" height="677" key="run.anything.popup" timestamp="1605117356483">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="936" y="348" width="672" height="677" key="run.anything.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604726388934" />
-    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup" timestamp="1604989927151">
+    <state x="936" y="348" width="672" height="677" key="run.anything.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605117356483" />
+    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup" timestamp="1605157363386">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="707" y="266" width="672" height="505" key="search.everywhere.popup/0.30.1920.1050@0.30.1920.1050" timestamp="1601991482247" />
-    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604989927151" />
+    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605157363386" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/language/src/error.rs</url>
-          <line>281</line>
-          <option name="timeStamp" value="1" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/language/src/syntax/parse/parser.rs</url>
-          <line>694</line>
+          <line>708</line>
           <option name="timeStamp" value="2" />
         </line-breakpoint>
       </breakpoints>
