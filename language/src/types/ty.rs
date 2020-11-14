@@ -190,13 +190,6 @@ impl PartialEq for TypeKind {
                     size: rsize,
                 },
             ) => ltype == rtype && lsize == rsize,
-            // (Self::Vector {
-            //     element_type: ltype
-            // }, Self::Vector {
-            //     element_type: rtype
-            // }) => {
-            //     ltype == rtype
-            // }
             (
                 Self::Slice {
                     element_type: ltype,

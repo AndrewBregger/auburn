@@ -1,6 +1,12 @@
-struct Foo {
-    x f32
-    y, w i32
-}
+mut x = 1.0
+mut y = 2.0
+x < y
+x > y
+x <= y
+x >= y
+x != y
+x == y
 
-fn foo(x f32, y, w i32) Foo = Foo { x, y, w }
+while x + y {
+    x = x + 1.0
+}

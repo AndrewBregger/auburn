@@ -229,6 +229,8 @@ impl<'a> Token<'a> {
                 Operator::Pipe => 6,
                 // and => 5
                 // or  => 4
+                Operator::LessEq
+                | Operator::GreaterEq => 4,
                 Operator::Bang => 3,
                 Operator::Equal
                 | Operator::PlusEq
@@ -237,8 +239,6 @@ impl<'a> Token<'a> {
                 | Operator::AstriskEq
                 //| Op::AstrickAstrickEq
                 | Operator::PercentEq
-                | Operator::LessEq
-                | Operator::GreaterEq
                 | Operator::PipeEq
                 | Operator::AmpersandEq
                 // | Operator::CarrotEq

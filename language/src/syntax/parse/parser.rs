@@ -96,6 +96,7 @@ impl<'src> Parser<'src> {
         }
     }
 
+    #[allow(unused)]
     fn expected(&self, token: Token) -> Result<(), Error> {
         if self.check_for(token.clone()) {
             Ok(())
@@ -664,31 +665,42 @@ impl<'src> Parser<'src> {
     }
 
     fn parse_loop(&mut self, position: Position) -> Result<Box<Expr>, Error> {
-        self.expected(Token::ControlPair(Control::Bracket, PairKind::Open))?;
-        self.allow_newline()?;
+        if self.check_for(Token::ControlPair(Control::Bracket, PairKind::Open)) {
+            let expr = self.parse_expr()?;
+            let position = position.extended_to(expr.as_ref());
 
-        let expr = self.parse_expr()?;
-        let position = position.extended_to(expr.as_ref());
-
-        Ok(Box::new(Expr::new_with_position(
-            ExprKind::Loop(expr),
-            position,
-        )))
+            Ok(Box::new(Expr::new_with_position(
+                ExprKind::Loop(expr),
+                position,
+            )))
+        } else {
+            let token = self.current_token().token();
+            let err = Error::unexpected_token(
+                Token::ControlPair(Control::Bracket, PairKind::Open),
+                token,
+            );
+            return Err(err.with_position(self.current_position()));
+        }
     }
 
     fn parse_while(&mut self, position: Position) -> Result<Box<Expr>, Error> {
-        let cond = self.parse_expr()?;
-        self.expected(Token::ControlPair(Control::Bracket, PairKind::Open))?;
-        self.allow_newline()?;
+        let cond = self.parse_expr_with_res(NO_STRUCT_EXPR)?;
+        if self.check_for(Token::ControlPair(Control::Bracket, PairKind::Open)) {
+            let expr = self.parse_expr()?;
+            let position = position.extended_to(expr.as_ref());
 
-        let expr = self.parse_expr()?;
-
-        let position = position.extended_to(expr.as_ref());
-
-        Ok(Box::new(Expr::new_with_position(
-            ExprKind::While(cond, expr),
-            position,
-        )))
+            Ok(Box::new(Expr::new_with_position(
+                ExprKind::While(cond, expr),
+                position,
+            )))
+        } else {
+            let token = self.current_token().token();
+            let err = Error::unexpected_token(
+                Token::ControlPair(Control::Bracket, PairKind::Open),
+                token,
+            );
+            return Err(err.with_position(self.current_position()));
+        }
     }
 
     fn parse_for(&mut self, position: Position) -> Result<Box<Expr>, Error> {
@@ -698,20 +710,26 @@ impl<'src> Parser<'src> {
 
         let expr = self.parse_expr_with_res(NO_STRUCT_EXPR)?;
 
-        self.expected(Token::ControlPair(Control::Bracket, PairKind::Open))?;
-        self.allow_newline()?;
+        if self.check_for(Token::ControlPair(Control::Bracket, PairKind::Open)) {
+            let body = self.parse_expr()?;
 
-        let body = self.parse_expr()?;
-
-        let end = self.expect(Token::ControlPair(Control::Bracket, PairKind::Close))?;
-        Ok(Box::new(Expr::new_with_position(
-            ExprKind::For {
-                element,
-                expr,
-                body,
-            },
-            position.extended_to_token(end),
-        )))
+            let end = self.expect(Token::ControlPair(Control::Bracket, PairKind::Close))?;
+            Ok(Box::new(Expr::new_with_position(
+                ExprKind::For {
+                    element,
+                    expr,
+                    body,
+                },
+                position.extended_to_token(end),
+            )))
+        } else {
+            let token = self.current_token().token();
+            let err = Error::unexpected_token(
+                Token::ControlPair(Control::Bracket, PairKind::Open),
+                token,
+            );
+            return Err(err.with_position(self.current_position()));
+        }
     }
 
     fn parse_if(&mut self, position: Position) -> Result<Box<Expr>, Error> {

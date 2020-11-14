@@ -25,13 +25,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4b17c99f-758c-48ea-b0b5-e3d26e51a8dc" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/language/src/analysis/typer/expressions.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/language/src/analysis/typer/items.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/language/src/analysis/typer/mod.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/language/src/analysis/typer/statements.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/language/src/analysis/typer/type_specs.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/language/src/analysis/typer.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/test" beforeDir="false" afterPath="$PROJECT_DIR$/examples/test" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/language/src/analysis/typer/expressions.rs" beforeDir="false" afterPath="$PROJECT_DIR$/language/src/analysis/typer/expressions.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/language/src/syntax/parse/parser.rs" beforeDir="false" afterPath="$PROJECT_DIR$/language/src/syntax/parse/parser.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/language/src/syntax/token.rs" beforeDir="false" afterPath="$PROJECT_DIR$/language/src/syntax/token.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/language/src/types/ty.rs" beforeDir="false" afterPath="$PROJECT_DIR$/language/src/types/ty.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/language/src/utils/mir_printer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/language/src/utils/mir_printer.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -91,14 +91,9 @@
     </key>
   </component>
   <component name="RunManager" selected="Cargo.Run">
-    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" PASS_PARENT_ENVS_2="true">
-      <method v="2">
-        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
-      </method>
-    </configuration>
     <configuration name="Run" type="CargoCommandRunConfiguration" factoryName="Cargo Command" nameIsGenerated="true">
       <option name="channel" value="DEFAULT" />
-      <option name="command" value="run -- check examples\analysis\arrays" />
+      <option name="command" value="run -- check examples\test" />
       <option name="allFeatures" value="false" />
       <option name="emulateTerminal" value="false" />
       <option name="backtrace" value="SHORT" />
@@ -108,7 +103,7 @@
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
-    <configuration name="Test syntax::tokenizer::tests::hierarchy_tokenizer" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
+    <configuration name="Test syntax::tokenizer::tests::hierarchy_tokenizer" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
       <option name="channel" value="DEFAULT" />
       <option name="command" value="test --package language --lib syntax::tokenizer::tests::hierarchy_tokenizer -- --exact" />
       <option name="allFeatures" value="false" />
@@ -184,8 +179,8 @@
     </configuration>
     <list>
       <item itemvalue="Cargo.Run" />
-      <item itemvalue="Cargo.Test tokenizer" />
       <item itemvalue="Cargo.Test syntax::tokenizer::tests::hierarchy_tokenizer" />
+      <item itemvalue="Cargo.Test tokenizer" />
       <item itemvalue="Cargo.Test syntax::tokenizer::tests::multi_tokens_tokenizer" />
       <item itemvalue="Cargo.Test syntax::tokenizer::tests::test_simple_op_tokenizer" />
       <item itemvalue="Cargo.Test tokenizer::tests" />
@@ -197,7 +192,6 @@
         <item itemvalue="Cargo.Test tokenizer::tests" />
         <item itemvalue="Cargo.Test syntax::tokenizer::tests::test_simple_op_tokenizer" />
         <item itemvalue="Cargo.Test syntax::tokenizer::tests::multi_tokens_tokenizer" />
-        <item itemvalue="Cargo.Test syntax::tokenizer::tests::hierarchy_tokenizer" />
       </list>
     </recent_temporary>
   </component>
@@ -254,7 +248,10 @@
       <workItem from="1604989092935" duration="2172000" />
       <workItem from="1605085906705" duration="4801000" />
       <workItem from="1605112431376" duration="6836000" />
-      <workItem from="1605164421996" duration="2858000" />
+      <workItem from="1605164421996" duration="4384000" />
+      <workItem from="1605230414233" duration="1737000" />
+      <workItem from="1605377679526" duration="45000" />
+      <workItem from="1605377734876" duration="2017000" />
     </task>
     <task id="LOCAL-00001" summary="Implemented block and tuple expressions.">
       <created>1601015341655</created>
@@ -403,7 +400,14 @@
       <option name="project" value="LOCAL" />
       <updated>1605164672161</updated>
     </task>
-    <option name="localTasksCounter" value="22" />
+    <task id="LOCAL-00022" summary="Restructure the typer to be easier to use.">
+      <created>1605167376468</created>
+      <option name="number" value="00022" />
+      <option name="presentableId" value="LOCAL-00022" />
+      <option name="project" value="LOCAL" />
+      <updated>1605167376468</updated>
+    </task>
+    <option name="localTasksCounter" value="23" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -443,17 +447,18 @@
     <MESSAGE value="Implemented array indexing as a function call." />
     <MESSAGE value="Added parser and typer support for mut types. Changed syntax of array index to standard brace syntax." />
     <MESSAGE value="Fixed compiler error" />
-    <option name="LAST_COMMIT_MESSAGE" value="Fixed compiler error" />
+    <MESSAGE value="Restructure the typer to be easier to use." />
+    <option name="LAST_COMMIT_MESSAGE" value="Restructure the typer to be easier to use." />
   </component>
   <component name="WindowStateProjectService">
     <state x="1179" y="600" width="773" height="269" key="#Vim_Emulation" timestamp="1602315256138">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="1179" y="600" width="773" height="269" key="#Vim_Emulation/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1602315256138" />
-    <state x="733" y="388" width="1094" height="717" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1605070858946">
+    <state x="733" y="388" width="1094" height="717" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1605377973342">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="733" y="388" width="1094" height="717" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605070858946" />
+    <state x="733" y="388" width="1094" height="717" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605377973342" />
     <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1605070821962">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
@@ -482,50 +487,50 @@
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="1059" y="500" key="FileChooserDialogImpl/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600055373613" />
-    <state width="2517" height="543" key="GridCell.Tab.0.bottom" timestamp="1605167180691">
+    <state width="2517" height="543" key="GridCell.Tab.0.bottom" timestamp="1605381034074">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.bottom/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2517" height="543" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605167180691" />
-    <state width="2517" height="543" key="GridCell.Tab.0.center" timestamp="1605167180691">
+    <state width="2517" height="543" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605381034074" />
+    <state width="2517" height="543" key="GridCell.Tab.0.center" timestamp="1605381034073">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.center/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2517" height="543" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605167180691" />
-    <state width="2517" height="543" key="GridCell.Tab.0.left" timestamp="1605167180691">
+    <state width="2517" height="543" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605381034073" />
+    <state width="2517" height="543" key="GridCell.Tab.0.left" timestamp="1605381034073">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.left/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332313" />
-    <state width="2517" height="543" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605167180691" />
-    <state width="2517" height="543" key="GridCell.Tab.0.right" timestamp="1605167180691">
+    <state width="2517" height="543" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605381034073" />
+    <state width="2517" height="543" key="GridCell.Tab.0.right" timestamp="1605381034074">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.right/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2517" height="543" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605167180691" />
-    <state width="2517" height="488" key="GridCell.Tab.1.bottom" timestamp="1604991282384">
+    <state width="2517" height="543" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605381034074" />
+    <state width="2517" height="488" key="GridCell.Tab.1.bottom" timestamp="1605380610035">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state width="2517" height="488" key="GridCell.Tab.1.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604991282384" />
-    <state width="2517" height="488" key="GridCell.Tab.1.center" timestamp="1604991282384">
+    <state width="2517" height="488" key="GridCell.Tab.1.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605380610035" />
+    <state width="2517" height="488" key="GridCell.Tab.1.center" timestamp="1605380610035">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state width="2517" height="488" key="GridCell.Tab.1.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604991282384" />
-    <state width="2517" height="488" key="GridCell.Tab.1.left" timestamp="1604991282384">
+    <state width="2517" height="488" key="GridCell.Tab.1.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605380610035" />
+    <state width="2517" height="488" key="GridCell.Tab.1.left" timestamp="1605380610035">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state width="2517" height="488" key="GridCell.Tab.1.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604991282384" />
-    <state width="2517" height="488" key="GridCell.Tab.1.right" timestamp="1604991282384">
+    <state width="2517" height="488" key="GridCell.Tab.1.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605380610035" />
+    <state width="2517" height="488" key="GridCell.Tab.1.right" timestamp="1605380610035">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state width="2517" height="488" key="GridCell.Tab.1.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604991282384" />
+    <state width="2517" height="488" key="GridCell.Tab.1.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605380610035" />
     <state x="56" y="346" width="998" height="708" key="SettingsEditor" timestamp="1604790829894">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="56" y="346" width="998" height="708" key="SettingsEditor/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604790829894" />
-    <state x="871" y="466" key="Vcs.Push.Dialog.v2" timestamp="1605167235731">
+    <state x="871" y="466" key="Vcs.Push.Dialog.v2" timestamp="1605167381598">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="871" y="466" key="Vcs.Push.Dialog.v2/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605167235731" />
+    <state x="871" y="466" key="Vcs.Push.Dialog.v2/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605167381598" />
     <state x="1097" y="645" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2" timestamp="1604376942129">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
@@ -542,19 +547,24 @@
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="936" y="348" width="672" height="677" key="run.anything.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605117356483" />
-    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup" timestamp="1605157363386">
+    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup" timestamp="1605380646024">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="707" y="266" width="672" height="505" key="search.everywhere.popup/0.30.1920.1050@0.30.1920.1050" timestamp="1601991482247" />
-    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605157363386" />
+    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605380646024" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/src/core.rs</url>
+          <line>145</line>
+          <option name="timeStamp" value="3" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/language/src/syntax/parse/parser.rs</url>
-          <line>708</line>
-          <option name="timeStamp" value="2" />
+          <line>227</line>
+          <option name="timeStamp" value="4" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

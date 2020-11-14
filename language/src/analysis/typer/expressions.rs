@@ -124,7 +124,8 @@ impl<'src> Typer<'src> {
                 *op,
                 left.as_ref(),
                 right.as_ref(),
-                expected_type.clone(),
+                // expected_type.clone(),
+                None,
                 expr.position(),
             )?,
             ExprKind::Unary(op, expr) => {
@@ -965,8 +966,8 @@ impl<'src> Typer<'src> {
     ) -> Result<Rc<MirExpr>, Error> {
         let left = self.resolve_expr(lhs, expected_type.clone())?;
         let right = self.resolve_expr(rhs, Some(left.ty()))?;
-        let left_type = left.ty();
-        let right_type = right.ty();
+        let left_type = Type::inner(left.ty());
+        let right_type = Type::inner(right.ty());
         let (address_mode, result_type) = match op {
             BinaryOp::Plus | BinaryOp::Minus | BinaryOp::Astrick | BinaryOp::Slash => {
                 if left_type.is_primitive() && right_type.is_primitive() {
@@ -990,8 +991,7 @@ impl<'src> Typer<'src> {
                     todo!()
                 }
             }
-            BinaryOp::Percent
-            | BinaryOp::Less
+            BinaryOp::Less
             | BinaryOp::Greater
             | BinaryOp::LessEq
             | BinaryOp::GreaterEq
@@ -1014,7 +1014,8 @@ impl<'src> Typer<'src> {
                     todo!()
                 }
             }
-            BinaryOp::Pipe
+            BinaryOp::Percent
+            | BinaryOp::Pipe
             | BinaryOp::Ampersand
             | BinaryOp::LessLess
             | BinaryOp::GreaterGreater => {
@@ -1046,7 +1047,7 @@ impl<'src> Typer<'src> {
         position: Position,
     ) -> Result<Rc<MirExpr>, Error> {
         let operand = self.resolve_expr(expr, expected_type.clone())?;
-        let ty = operand.ty();
+        let ty = Type::inner(operand.ty());
         let (address_mode, result_type) = match op {
             UnaryOp::Bang => {
                 if ty.is_bool() || ty.is_integer() {

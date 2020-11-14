@@ -50,10 +50,12 @@ impl MirPrinter {
         match expr.inner().kind() {
             MirExprKind::Name(_) => {}
             MirExprKind::Binary(binary_expr) => {
+                println!("{}Op: {}", Self::indent(indent + 1), binary_expr.op);
                 Self::print_expr_inner(binary_expr.left.as_ref(), indent + 1);
                 Self::print_expr_inner(binary_expr.right.as_ref(), indent + 1);
             }
             MirExprKind::Unary(unary_expr) => {
+                println!("{}Op: {}", Self::indent(indent + 1), unary_expr.op);
                 Self::print_expr_inner(unary_expr.operand.as_ref(), indent + 1);
             }
             MirExprKind::Field(field_expr) => {
