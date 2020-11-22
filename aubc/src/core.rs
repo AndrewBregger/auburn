@@ -5,13 +5,13 @@ use std::path::Path;
 use std::rc::Rc;
 
 use clap::Clap;
-use language::analysis::Analysis;
-use language::error::Error;
-use language::mir::MirFile;
-use language::syntax::{ParsedFile, Parser, Position};
-use language::system::{File, FileMap};
-use language::utils::{EntityPrinter, MirPrinter};
-use language::Executor;
+use auburn::analysis::Analysis;
+use auburn::error::Error;
+use auburn::mir::MirFile;
+use auburn::syntax::{ParsedFile, Parser, Position};
+use auburn::system::{File, FileMap};
+use auburn::utils::{EntityPrinter, MirPrinter};
+use auburn::Executor;
 
 #[derive(Clap, Debug)]
 enum Command {

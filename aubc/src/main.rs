@@ -1,4 +1,4 @@
-extern crate language;
+extern crate auburn;
 
 use std::error::Error;
 
