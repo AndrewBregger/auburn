@@ -25,13 +25,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4b17c99f-758c-48ea-b0b5-e3d26e51a8dc" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/language.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/language.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/test" beforeDir="false" afterPath="$PROJECT_DIR$/examples/test" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/language/src/analysis/typer/expressions.rs" beforeDir="false" afterPath="$PROJECT_DIR$/language/src/analysis/typer/expressions.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/language/src/syntax/parse/parser.rs" beforeDir="false" afterPath="$PROJECT_DIR$/language/src/syntax/parse/parser.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/language/src/syntax/token.rs" beforeDir="false" afterPath="$PROJECT_DIR$/language/src/syntax/token.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/language/src/types/ty.rs" beforeDir="false" afterPath="$PROJECT_DIR$/language/src/types/ty.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/language/src/utils/mir_printer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/language/src/utils/mir_printer.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Cargo.lock" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/aubc/src/core.rs" beforeDir="false" afterPath="$PROJECT_DIR$/aubc/src/core.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/aubc/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/aubc/src/main.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/auburn/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/Cargo.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/auburn/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/lib.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -163,6 +164,11 @@
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
+    <configuration default="true" type="GradleAppRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="com.jetbrains.cidr.cpp.gradle.execution.GradleNativeBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="Unittests in E:/Projects/languagec/src/tests" type="tests" factoryName="Unittests" temporary="true" nameIsGenerated="true">
       <module name="language" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -252,6 +258,8 @@
       <workItem from="1605230414233" duration="1737000" />
       <workItem from="1605377679526" duration="45000" />
       <workItem from="1605377734876" duration="2017000" />
+      <workItem from="1606092260242" duration="5846000" />
+      <workItem from="1606104774742" duration="3470000" />
     </task>
     <task id="LOCAL-00001" summary="Implemented block and tuple expressions.">
       <created>1601015341655</created>
@@ -463,10 +471,10 @@
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605070821962" />
-    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser" timestamp="1604474566316">
+    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser" timestamp="1606098970915">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604474566316" />
+    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606098970915" />
     <state x="1010" y="482" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog" timestamp="1605166810272">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
@@ -487,26 +495,26 @@
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="1059" y="500" key="FileChooserDialogImpl/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600055373613" />
-    <state width="2517" height="543" key="GridCell.Tab.0.bottom" timestamp="1605381034074">
+    <state width="2517" height="345" key="GridCell.Tab.0.bottom" timestamp="1606098940938">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.bottom/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2517" height="543" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605381034074" />
-    <state width="2517" height="543" key="GridCell.Tab.0.center" timestamp="1605381034073">
+    <state width="2517" height="345" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606098940938" />
+    <state width="2517" height="345" key="GridCell.Tab.0.center" timestamp="1606098940937">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.center/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2517" height="543" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605381034073" />
-    <state width="2517" height="543" key="GridCell.Tab.0.left" timestamp="1605381034073">
+    <state width="2517" height="345" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606098940937" />
+    <state width="2517" height="345" key="GridCell.Tab.0.left" timestamp="1606098940937">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.left/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332313" />
-    <state width="2517" height="543" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605381034073" />
-    <state width="2517" height="543" key="GridCell.Tab.0.right" timestamp="1605381034074">
+    <state width="2517" height="345" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606098940937" />
+    <state width="2517" height="345" key="GridCell.Tab.0.right" timestamp="1606098940937">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.right/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2517" height="543" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605381034074" />
+    <state width="2517" height="345" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606098940937" />
     <state width="2517" height="488" key="GridCell.Tab.1.bottom" timestamp="1605380610035">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
@@ -547,11 +555,11 @@
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="936" y="348" width="672" height="677" key="run.anything.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605117356483" />
-    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup" timestamp="1605380646024">
+    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup" timestamp="1606108783247">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="707" y="266" width="672" height="505" key="search.everywhere.popup/0.30.1920.1050@0.30.1920.1050" timestamp="1601991482247" />
-    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605380646024" />
+    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606108783247" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

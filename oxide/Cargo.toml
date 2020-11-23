@@ -1,14 +1,11 @@
 [package]
-name = "auburn"
-version = "0.1.1"
+name = "oxide"
+version = "0.1.0"
 authors = ["Andrew Bregger <adb3649@tamu.edu>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-oxide = { path = "../oxide" }
 thiserror = "1.0.20"
 ordered-float = "2.0.0"
-debug-cell = "0.1.1"
-itertools = "0.9.0"
