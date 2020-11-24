@@ -34,7 +34,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     section.write_bytes(&0.5f32.to_be_bytes());
     section.write_op(OpCode::LessEqF32);
     section.write_op(OpCode::Print);
-    section.debug_print();
+    let disassemble = section.disassemble();
+    for inst in disassemble {
+        println!("{}", inst);
+    }
     let mut vm = Vm::new();
     vm.run(&section)?;
     Ok(())

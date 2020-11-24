@@ -1,3 +1,4 @@
+mod mem;
 mod runtime;
 mod value;
 pub mod vm;

@@ -1,33 +1,15 @@
 mod op_codes;
+use crate::mem::{read_to, FromBytes};
 use crate::runtime;
 use crate::Value;
-pub use op_codes::OpCode;
+pub use op_codes::{Instruction, OpCode};
 use ordered_float::OrderedFloat;
 use runtime::Error as RuntimeError;
 use runtime::Section;
-use std::convert::TryInto;
 
 pub struct Vm {
     stack: Vec<Value>,
     ip: usize,
-}
-
-pub trait FromBytes {
-    fn from_bytes(bytes: &[u8], len: usize) -> Self;
-}
-
-macro_rules! from_bytes {
-    ($T:ty) => {
-        impl FromBytes for $T {
-            fn from_bytes(bytes: &[u8], len: usize) -> Self {
-                Self::from_be_bytes(
-                    (&bytes[0..len])
-                        .try_into()
-                        .expect("invalid length for slice"),
-                )
-            }
-        }
-    };
 }
 
 macro_rules! binary_op {
@@ -150,24 +132,6 @@ macro_rules! conditional_binary_op {
             }
         }
     };
-}
-
-from_bytes!(i8);
-from_bytes!(i16);
-from_bytes!(i32);
-from_bytes!(i64);
-
-from_bytes!(u8);
-from_bytes!(u16);
-from_bytes!(u32);
-from_bytes!(u64);
-
-from_bytes!(f32);
-from_bytes!(f64);
-
-pub fn read_to<T: FromBytes>(data: &[u8]) -> T {
-    println!("{:?} {}", data, std::mem::size_of::<T>());
-    T::from_bytes(data, std::mem::size_of::<T>())
 }
 
 impl Vm {
@@ -395,10 +359,14 @@ impl Vm {
                 OpCode::Pop => {
                     self.pop();
                 }
+                OpCode::JmpTrue => {}
+                OpCode::JmpFalse => {}
+                OpCode::Call => {}
                 OpCode::Print => {
                     let value = self.top();
                     println!("{}", value)
                 }
+                OpCode::Label => {}
                 OpCode::NumOps => {}
             }
         }

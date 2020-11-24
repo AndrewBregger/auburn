@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter};
 
+#[derive(Debug, Clone)]
 pub enum Value {
     I8(i8),
     I16(i16),
@@ -13,7 +14,6 @@ pub enum Value {
     F64(f64),
     Bool(bool),
 }
-
 
 impl Value {
     pub fn ty(&self) -> &'static str {
@@ -147,7 +147,6 @@ macro_rules! value_from {
         }
     };
 }
-
 
 value_from!(I8, i8);
 value_from!(I16, i16);
