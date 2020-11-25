@@ -5,6 +5,7 @@ use crate::Value;
 use std::fmt::{Display, Formatter};
 use std::slice::SliceIndex;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::convert::TryInto;
 
 use ordered_float::OrderedFloat;
 
@@ -63,6 +64,7 @@ pub struct Section {
     data: Vec<u8>,
     id: SectionId,
     constants: Vec<Value>,
+    globals: Vec<Value>,
 }
 
 impl Section {
@@ -71,12 +73,26 @@ impl Section {
             data: vec![],
             id: SectionId::next(),
             constants: vec![],
+            globals: vec![],
         }
     }
 
     pub fn add_constant(&mut self, value: Value) -> usize {
         self.constants.push(value);
-        self.constants.len() - 2
+        self.constants.len() - 1
+    }
+
+    pub fn get_constant(&self, index: usize) -> Value {
+        self.constants[index].clone()
+    }
+
+    pub fn add_global(&mut self, value: Value) -> usize {
+        self.globals.push(value);
+        self.globals.len() - 1
+    }
+
+    pub fn get_global(&self, index: usize) -> Value {
+        self.globals[index].clone()
     }
 
     pub fn id(&self) -> SectionId {
@@ -106,7 +122,11 @@ impl Section {
 
     /// writes a new label and returns the opcode index after the label.
     pub fn write_label(&mut self, bytes: &str) -> usize {
-        self.write_constant(OpCode::Label, bytes.as_bytes());
+        // let len: u8 = u8::try_from(bytes.len()).expect("label is too long");
+        let len = bytes.len().try_into().expect("label is too long");
+        self.write_op(OpCode::Label);
+        self.write_byte(len);
+        self.write_bytes(bytes.as_bytes());
         self.data.len()
     }
 
@@ -122,6 +142,10 @@ impl Section {
         I: SliceIndex<[u8]>,
     {
         self.data.get_unchecked(index)
+    }
+
+    pub fn debug_print(&self) {
+        println!("{:#x?}", self.data);
     }
 
     pub fn disassemble(&self) -> Vec<SectionInstruction> {
@@ -233,10 +257,50 @@ impl Section {
                     ));
                     ip += 8;
                 }
-                OpCode::Label => {}
-                OpCode::JmpTrue => {}
-                OpCode::JmpFalse => {}
-                OpCode::LoadTrue
+                OpCode::Label => {
+                    let data = self.read(ip..).expect("unable to read buffer");
+                    let len = read_to::<u8>(data);
+                    let start = ip;
+                    ip += 1;
+                    let data = &data[1..1 + len as usize];
+                    let label = std::str::from_utf8(data).expect("expecting utf8 string");
+                    let inst = Instruction::Label(label.to_owned());
+                    res.push(SectionInstruction::new(
+                        start - 1,
+                        inst,
+                    ));
+                    ip += len as usize;
+                }
+                OpCode::LoadGlobal => {
+                    let data = self.read(ip..).expect("unable to read buffer");
+                    let value = read_to::<u32>(data);
+                    let inst = Instruction::LoadGlobal(value);
+                    res.push(SectionInstruction::new(ip - 1, inst));
+                    ip += 4;
+                }
+                OpCode::JmpTrue => {
+                    let data = self.read(ip..).expect("unable to read buffer");
+                    let value = read_to::<u32>(data);
+                    let inst = Instruction::JmpTrue(value);
+                    res.push(SectionInstruction::new(ip - 1, inst));
+                    ip += 4;
+                }
+                OpCode::JmpFalse => {
+                    let data = self.read(ip..).expect("unable to read buffer");
+                    let value = read_to::<u32>(data);
+                    let inst = Instruction::JmpFalse(value);
+                    res.push(SectionInstruction::new(ip - 1, inst));
+                    ip += 4;
+                }
+                OpCode::Jmp => {
+                    let data = self.read(ip..).expect("unable to read buffer");
+                    let value = read_to::<u32>(data);
+                    let inst = Instruction::Jmp(value);
+                    res.push(SectionInstruction::new(ip - 1, inst));
+                    ip += 4;
+                }
+                OpCode::Exit
+                | OpCode::LoadTrue
                 | OpCode::LoadFalse
                 | OpCode::AddI8
                 | OpCode::AddI16

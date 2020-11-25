@@ -122,10 +122,14 @@ define_opcodes!(
     "greatereq_f32" => GreaterEqF32,
     "greatereq_f64" => GreaterEqF64,
 
+    "load_global" => LoadGlobal,
+
     "load_true" => LoadTrue,
     "load_false" => LoadFalse,
     "jmp_if_true" => JmpTrue,
     "jmp_if_false" => JmpFalse,
+    "jmp" => Jmp,
+    "exit" => Exit,
     "call" => Call,
     "label" => Label,
     "pop" => Pop,
@@ -159,6 +163,11 @@ pub enum Instruction {
     LoadU64(u64),
     LoadF32(OrderedFloat<f32>),
     LoadF64(OrderedFloat<f64>),
+    LoadGlobal(u32),
+    JmpTrue(u32),
+    JmpFalse(u32),
+    Jmp(u32),
+    Label(String),
     AddI8,
     AddI16,
     AddI32,
@@ -241,12 +250,10 @@ pub enum Instruction {
     GreaterEqF64,
     LoadTrue,
     LoadFalse,
-    JmpTrue(u32),
-    JmpFalse(u32),
     Call,
-    Label(String),
     Pop,
     Print,
+    Exit,
 }
 
 impl Instruction {
@@ -264,7 +271,10 @@ impl Instruction {
             Self::LoadF64(_) => OpCode::LoadF64,
             Self::JmpTrue(_) => OpCode::JmpTrue,
             Self::JmpFalse(_) => OpCode::JmpFalse,
+            Self::Jmp(_) => OpCode::Jmp,
             Self::Label(_) => OpCode::Label,
+            Self::LoadGlobal(_) => OpCode::LoadGlobal,
+            Self::Exit => OpCode::Exit,
             Self::Call => OpCode::Call,
             Self::LoadTrue => OpCode::LoadTrue,
             Self::LoadFalse => OpCode::LoadFalse,
@@ -357,8 +367,7 @@ impl Instruction {
 impl From<OpCode> for Instruction {
     fn from(other: OpCode) -> Self {
         match other {
-            OpCode::LoadTrue => Self::LoadTrue,
-            OpCode::LoadFalse => Self::LoadFalse,
+            OpCode::Exit => Self::Exit,
             OpCode::AddI8 => Self::AddI8,
             OpCode::AddI16 => Self::AddI16,
             OpCode::AddI32 => Self::AddI32,
@@ -483,11 +492,15 @@ impl Display for Instruction {
                 write!(f, "{:014} {}", op_code, val)
             }
             Self::JmpFalse(val) |
-            Self::JmpTrue(val) => {
+            Self::JmpTrue(val) |
+            Self::Jmp(val) => {
                 write!(f, "{:014} {}", op_code, val)
             }
             Self::Label(label) => {
                 write!(f, "{:014} {}", op_code, label)
+            }
+            Self::LoadGlobal(idx) => {
+                write!(f, "{:014} {}", op_code, idx)
             }
             _ => {
                 write!(f, "{:014}", op_code)

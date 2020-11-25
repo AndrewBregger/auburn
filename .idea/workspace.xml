@@ -24,14 +24,7 @@
     <cargoProject FILE="$PROJECT_DIR$/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4b17c99f-758c-48ea-b0b5-e3d26e51a8dc" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/oxide/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/oxide/src/lib.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/oxide/src/runtime/section.rs" beforeDir="false" afterPath="$PROJECT_DIR$/oxide/src/runtime/section.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/oxide/src/value.rs" beforeDir="false" afterPath="$PROJECT_DIR$/oxide/src/value.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/oxide/src/vm/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/oxide/src/vm/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/oxide/src/vm/op_codes.rs" beforeDir="false" afterPath="$PROJECT_DIR$/oxide/src/vm/op_codes.rs" afterDir="false" />
-    </list>
+    <list default="true" id="4b17c99f-758c-48ea-b0b5-e3d26e51a8dc" name="Default Changelist" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -253,7 +246,7 @@
       <workItem from="1605377734876" duration="2017000" />
       <workItem from="1606092260242" duration="5846000" />
       <workItem from="1606104774742" duration="10116000" />
-      <workItem from="1606189695344" duration="1131000" />
+      <workItem from="1606189695344" duration="1775000" />
     </task>
     <task id="LOCAL-00001" summary="Implemented block and tuple expressions.">
       <created>1601015341655</created>
@@ -416,7 +409,14 @@
       <option name="project" value="LOCAL" />
       <updated>1606109510651</updated>
     </task>
-    <option name="localTasksCounter" value="24" />
+    <task id="LOCAL-00024" summary="implemented bytecode disassembly">
+      <created>1606192694811</created>
+      <option name="number" value="00024" />
+      <option name="presentableId" value="LOCAL-00024" />
+      <option name="project" value="LOCAL" />
+      <updated>1606192694811</updated>
+    </task>
+    <option name="localTasksCounter" value="25" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -458,7 +458,8 @@
     <MESSAGE value="Fixed compiler error" />
     <MESSAGE value="Restructure the typer to be easier to use." />
     <MESSAGE value="basic arithmetic op in opcode and executable." />
-    <option name="LAST_COMMIT_MESSAGE" value="basic arithmetic op in opcode and executable." />
+    <MESSAGE value="implemented bytecode disassembly" />
+    <option name="LAST_COMMIT_MESSAGE" value="implemented bytecode disassembly" />
   </component>
   <component name="WindowStateProjectService">
     <state x="1179" y="600" width="773" height="269" key="#Vim_Emulation" timestamp="1602315256138">
@@ -497,26 +498,26 @@
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="1059" y="500" key="FileChooserDialogImpl/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600055373613" />
-    <state width="2517" height="345" key="GridCell.Tab.0.bottom" timestamp="1606189980137">
+    <state width="2517" height="345" key="GridCell.Tab.0.bottom" timestamp="1606192699322">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.bottom/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2517" height="345" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606189980137" />
-    <state width="2517" height="345" key="GridCell.Tab.0.center" timestamp="1606189980136">
+    <state width="2517" height="345" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606192699322" />
+    <state width="2517" height="345" key="GridCell.Tab.0.center" timestamp="1606192699322">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.center/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2517" height="345" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606189980136" />
-    <state width="2517" height="345" key="GridCell.Tab.0.left" timestamp="1606189980136">
+    <state width="2517" height="345" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606192699322" />
+    <state width="2517" height="345" key="GridCell.Tab.0.left" timestamp="1606192699322">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.left/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332313" />
-    <state width="2517" height="345" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606189980136" />
-    <state width="2517" height="345" key="GridCell.Tab.0.right" timestamp="1606189980137">
+    <state width="2517" height="345" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606192699322" />
+    <state width="2517" height="345" key="GridCell.Tab.0.right" timestamp="1606192699322">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.right/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2517" height="345" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606189980137" />
+    <state width="2517" height="345" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606192699322" />
     <state width="2517" height="488" key="GridCell.Tab.1.bottom" timestamp="1605380610035">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>

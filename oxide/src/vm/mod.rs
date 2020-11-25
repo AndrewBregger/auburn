@@ -18,53 +18,53 @@ macro_rules! binary_op {
             let type_index = op as u8 - OpCode::$start_op as u8;
             match type_index {
                 0 => {
-                    let lhs = self.pop().as_i8();
                     let rhs = self.pop().as_i8();
+                    let lhs = self.pop().as_i8();
                     Value::from(lhs $op rhs)
                 }
                 1 => {
-                    let lhs = self.pop().as_i16();
                     let rhs = self.pop().as_i16();
+                    let lhs = self.pop().as_i16();
                     Value::from(lhs $op rhs)
                 }
                 2 => {
-                    let lhs = self.pop().as_i32();
                     let rhs = self.pop().as_i32();
+                    let lhs = self.pop().as_i32();
                     Value::from(lhs $op rhs)
                 }
                 3 => {
-                    let lhs = self.pop().as_i64();
                     let rhs = self.pop().as_i64();
+                    let lhs = self.pop().as_i64();
                     Value::from(lhs $op rhs)
                 }
                 4 => {
-                    let lhs = self.pop().as_u8();
                     let rhs = self.pop().as_u8();
+                    let lhs = self.pop().as_u8();
                     Value::from(lhs $op rhs)
                 }
                 5 => {
-                    let lhs = self.pop().as_u16();
                     let rhs = self.pop().as_u16();
+                    let lhs = self.pop().as_u16();
                     Value::from(lhs $op rhs)
                 }
                 6 => {
-                    let lhs = self.pop().as_u32();
                     let rhs = self.pop().as_u32();
+                    let lhs = self.pop().as_u32();
                     Value::from(lhs $op rhs)
                 }
                 7 => {
-                    let lhs = self.pop().as_u64();
                     let rhs = self.pop().as_u64();
+                    let lhs = self.pop().as_u64();
                     Value::from(lhs $op rhs)
                 }
                 8 => {
-                    let lhs = self.pop().as_f32();
                     let rhs = self.pop().as_f32();
+                    let lhs = self.pop().as_f32();
                     Value::from(lhs $op rhs)
                 }
                 9 => {
-                    let lhs = self.pop().as_f64();
                     let rhs = self.pop().as_f64();
+                    let lhs = self.pop().as_f64();
                     Value::from(lhs $op rhs)
                 }
                 _ => panic!("Invalid Opcode {} for {}", op, stringify!($name)),
@@ -79,48 +79,48 @@ macro_rules! conditional_binary_op {
             let type_index = op as u8 - OpCode::$start_op as u8;
             match type_index {
                 0 => {
-                    let lhs = self.pop().as_i8();
                     let rhs = self.pop().as_i8();
+                    let lhs = self.pop().as_i8();
                     Value::from(lhs $op rhs)
                 }
                 1 => {
-                    let lhs = self.pop().as_i16();
                     let rhs = self.pop().as_i16();
+                    let lhs = self.pop().as_i16();
                     Value::from(lhs $op rhs)
                 }
                 2 => {
-                    let lhs = self.pop().as_i32();
                     let rhs = self.pop().as_i32();
+                    let lhs = self.pop().as_i32();
                     Value::from(lhs $op rhs)
                 }
                 3 => {
-                    let lhs = self.pop().as_i64();
                     let rhs = self.pop().as_i64();
+                    let lhs = self.pop().as_i64();
                     Value::from(lhs $op rhs)
                 }
                 4 => {
-                    let lhs = self.pop().as_u8();
                     let rhs = self.pop().as_u8();
+                    let lhs = self.pop().as_u8();
                     Value::from(lhs $op rhs)
                 }
                 5 => {
-                    let lhs = self.pop().as_u16();
                     let rhs = self.pop().as_u16();
+                    let lhs = self.pop().as_u16();
                     Value::from(lhs $op rhs)
                 }
                 6 => {
-                    let lhs = self.pop().as_u32();
                     let rhs = self.pop().as_u32();
+                    let lhs = self.pop().as_u32();
                     Value::from(lhs $op rhs)
                 }
                 7 => {
-                    let lhs = self.pop().as_u64();
                     let rhs = self.pop().as_u64();
+                    let lhs = self.pop().as_u64();
                     Value::from(lhs $op rhs)
                 }
                 8 => {
-                    let lhs = OrderedFloat::from(self.pop().as_f32());
                     let rhs = OrderedFloat::from(self.pop().as_f32());
+                    let lhs = OrderedFloat::from(self.pop().as_f32());
                     Value::from(lhs $op rhs)
                 }
                 9 => {
@@ -168,12 +168,15 @@ impl Vm {
                 break;
             }
 
+
+            // for (idx, value) in self.stack.iter().enumerate() {
+            //     println!("{}| {}", idx, value);
+            // }
+
             // read the next op code and advance the instruction pointer.
             let op_code_raw = unsafe { section.read_unchecked(self.ip) };
             self.ip += 1;
-            println!("Raw Opcode: {}", op_code_raw);
             let op_code = OpCode::from_u8(*op_code_raw).unwrap();
-            println!("Getting Opcode: {}", op_code);
             match op_code {
                 OpCode::LoadI8 => {
                     let data = section.read(self.ip..).expect("unable to read buffer");
@@ -251,6 +254,45 @@ impl Vm {
                 }
                 OpCode::LoadFalse => {
                     self.push_stack(Value::from(false));
+                }
+                OpCode::LoadGlobal => {
+                    let data = section.read(self.ip..).expect("unable to read buffer");
+                    let value = read_to::<u8>(data);
+                    self.ip += 4;
+                    self.push_stack(section.get_global(value as usize));
+                }
+                OpCode::Label => {
+                    // skip the label I am not sure how else to reprsent this.
+                    let data = section.read(self.ip..).expect("unable to read buffer");
+                    let len = read_to::<u8>(data);
+                    self.ip += 1 + len as usize;
+                }
+                OpCode::JmpTrue => {
+                    let data = section.read(self.ip..).expect("unable to read buffer");
+                    let value = read_to::<u32>(data);
+                    let cond = self.pop().as_bool();
+                    if cond {
+                        self.ip = value as usize;
+                    }
+                    else {
+                        self.ip += 4;
+                    }
+                }
+                OpCode::JmpFalse => {
+                    let data = section.read(self.ip..).expect("unable to read buffer");
+                    let value = read_to::<u32>(data);
+                    let cond = self.pop().as_bool();
+                    if cond == false {
+                        self.ip = value as usize;
+                    }
+                    else {
+                        self.ip += 4;
+                    }
+                }
+                OpCode::Jmp => {
+                    let data = section.read(self.ip..).expect("unable to read buffer");
+                    let value = read_to::<u32>(data);
+                    self.ip = value as usize;
                 }
                 OpCode::AddI8
                 | OpCode::AddI16
@@ -359,14 +401,12 @@ impl Vm {
                 OpCode::Pop => {
                     self.pop();
                 }
-                OpCode::JmpTrue => {}
-                OpCode::JmpFalse => {}
                 OpCode::Call => {}
                 OpCode::Print => {
                     let value = self.top();
                     println!("{}", value)
                 }
-                OpCode::Label => {}
+                OpCode::Exit => { break }
                 OpCode::NumOps => {}
             }
         }
