@@ -86,6 +86,7 @@ macro_rules! conditional_binary_op {
                 1 => {
                     let rhs = self.pop().as_i16();
                     let lhs = self.pop().as_i16();
+                    println!("{} {}", rhs, lhs);
                     Value::from(lhs $op rhs)
                 }
                 2 => {
@@ -134,6 +135,19 @@ macro_rules! conditional_binary_op {
     };
 }
 
+macro_rules! load_constant {
+    ($cond:ident, $name:literal, $self:expr, $section:expr) => {
+        let idx = *unsafe { $section.read_unchecked($self.ip) };
+        $self.ip += 1;
+        let value = $section.get_constant(idx as usize);
+        if value.$cond() {
+            $self.push_stack(value);
+        }
+        else {
+            panic!("loading {} constant that is not an {}", $name, $name);
+        }
+    }
+}
 impl Vm {
     pub fn new() -> Self {
         Self {
@@ -142,7 +156,7 @@ impl Vm {
         }
     }
 
-    pub fn run(&mut self, section: &Section) -> Result<(), RuntimeError> {
+    pub fn run(&mut self, section: &mut Section) -> Result<(), RuntimeError> {
         self.run_from(section, 0)
     }
 
@@ -158,7 +172,7 @@ impl Vm {
         self.stack.last().expect("stack is empty")
     }
 
-    pub fn run_from(&mut self, section: &Section, start_ip: usize) -> Result<(), RuntimeError> {
+    pub fn run_from(&mut self, section: &mut Section, start_ip: usize) -> Result<(), RuntimeError> {
         println!("Section {} begin", section.id());
         self.ip = start_ip;
 
@@ -179,75 +193,34 @@ impl Vm {
             let op_code = OpCode::from_u8(*op_code_raw).unwrap();
             match op_code {
                 OpCode::LoadI8 => {
-                    let data = section.read(self.ip..).expect("unable to read buffer");
-                    let value = read_to::<i8>(data);
-                    self.ip += 1;
-
-                    self.push_stack(Value::from(value));
+                    load_constant!(is_i8, "i8", self, section);
                 }
                 OpCode::LoadI16 => {
-                    let data = section.read(self.ip..).expect("unable to read buffer");
-                    let value = read_to::<i16>(data);
-                    self.ip += 2;
-
-                    self.push_stack(Value::from(value));
+                    load_constant!(is_i16, "i16", self, section);
                 }
                 OpCode::LoadI32 => {
-                    let data = section.read(self.ip..).expect("unable to read buffer");
-                    let value = read_to::<i32>(data);
-                    self.ip += 4;
-
-                    self.push_stack(Value::from(value));
+                    load_constant!(is_i32, "i32", self, section);
                 }
                 OpCode::LoadI64 => {
-                    let data = section.read(self.ip..).expect("unable to read buffer");
-                    let value = read_to::<i64>(data);
-                    self.ip += 8;
-
-                    self.push_stack(Value::from(value));
+                    load_constant!(is_i64, "i64", self, section);
                 }
-
                 OpCode::LoadU8 => {
-                    let data = section.read(self.ip..).expect("unable to read buffer");
-                    let value = read_to::<u8>(data);
-                    self.ip += 1;
-
-                    self.push_stack(Value::from(value));
+                    load_constant!(is_u8,  "u8", self, section);
                 }
                 OpCode::LoadU16 => {
-                    let data = section.read(self.ip..).expect("unable to read buffer");
-                    let value = read_to::<u16>(data);
-                    self.ip += 2;
-
-                    self.push_stack(Value::from(value));
+                    load_constant!(is_u16, "u16", self, section);
                 }
                 OpCode::LoadU32 => {
-                    let data = section.read(self.ip..).expect("unable to read buffer");
-                    let value = read_to::<u32>(data);
-                    self.ip += 4;
-
-                    self.push_stack(Value::from(value));
+                    load_constant!(is_u32, "u32", self, section);
                 }
                 OpCode::LoadU64 => {
-                    let data = section.read(self.ip..).expect("unable to read buffer");
-                    let value = read_to::<u64>(data);
-                    self.ip += 8;
-
-                    self.push_stack(Value::from(value));
+                    load_constant!(is_u64, "u64", self, section);
                 }
                 OpCode::LoadF32 => {
-                    let data = section.read(self.ip..).expect("unable to read buffer");
-                    let value = read_to::<f32>(data);
-                    self.ip += 4;
-
-                    self.push_stack(Value::from(value));
+                    load_constant!(is_f32, "f8", self, section);
                 }
                 OpCode::LoadF64 => {
-                    let data = section.read(self.ip..).expect("unable to read buffer");
-                    let value = read_to::<f64>(data);
-                    self.ip += 8;
-
-                    self.push_stack(Value::from(value));
+                    load_constant!(is_f64, "f64", self, section);
                 }
                 OpCode::LoadTrue => {
                     self.push_stack(Value::from(true));
@@ -256,43 +229,40 @@ impl Vm {
                     self.push_stack(Value::from(false));
                 }
                 OpCode::LoadGlobal => {
-                    let data = section.read(self.ip..).expect("unable to read buffer");
-                    let value = read_to::<u8>(data);
-                    self.ip += 4;
+                    let value = read_to::<u8>(section.data(), &mut self.ip);
                     self.push_stack(section.get_global(value as usize));
                 }
                 OpCode::Label => {
                     // skip the label I am not sure how else to reprsent this.
-                    let data = section.read(self.ip..).expect("unable to read buffer");
-                    let len = read_to::<u8>(data);
+                    let len = read_to::<u8>(section.data(), &mut self.ip);
                     self.ip += 1 + len as usize;
                 }
                 OpCode::JmpTrue => {
-                    let data = section.read(self.ip..).expect("unable to read buffer");
-                    let value = read_to::<u32>(data);
-                    let cond = self.pop().as_bool();
+                    let value = read_to::<u16>(section.data(), &mut self.ip);
+                    let cond = self.top().as_bool();
                     if cond {
-                        self.ip = value as usize;
-                    }
-                    else {
-                        self.ip += 4;
+                        self.ip += value as usize;
                     }
                 }
                 OpCode::JmpFalse => {
-                    let data = section.read(self.ip..).expect("unable to read buffer");
-                    let value = read_to::<u32>(data);
-                    let cond = self.pop().as_bool();
+                    let value = read_to::<u16>(section.data(), &mut self.ip);
+                    let cond = self.top().as_bool();
                     if cond == false {
-                        self.ip = value as usize;
-                    }
-                    else {
-                        self.ip += 4;
+                        self.ip += value as usize;
                     }
                 }
                 OpCode::Jmp => {
-                    let data = section.read(self.ip..).expect("unable to read buffer");
-                    let value = read_to::<u32>(data);
-                    self.ip = value as usize;
+                    let value = read_to::<u16>(section.data(), &mut self.ip);
+                    self.ip += value as usize;
+                }
+                OpCode::Loop => {
+                    let value = read_to::<u16>(section.data(), &mut self.ip);
+                    self.ip -= value as usize;
+                }
+                OpCode::SetGlobal => {
+                    let idx= read_to::<u8>(section.data(), &mut self.ip);
+                    let top = self.pop();
+                    section.set_global(idx as usize, top);
                 }
                 OpCode::AddI8
                 | OpCode::AddI16

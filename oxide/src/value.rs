@@ -136,6 +136,84 @@ impl Value {
             );
         }
     }
+
+    pub fn is_i8(&self) -> bool {
+        match self {
+            Self::I8(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_i16(&self) -> bool {
+        match self {
+            Self::I16(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_i32(&self) -> bool {
+        match self {
+            Self::I32(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_i64(&self) -> bool {
+        match self {
+            Self::I64(_) => true,
+            _ => false,
+        }
+    }
+    
+    pub fn is_u8(&self) -> bool {
+        match self {
+            Self::U8(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_u16(&self) -> bool {
+        match self {
+            Self::U16(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_u32(&self) -> bool {
+        match self {
+            Self::U32(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_u64(&self) -> bool {
+        match self {
+            Self::U64(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_f32(&self) -> bool {
+        match self {
+            Self::F32(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_f64(&self) -> bool {
+        match self {
+            Self::F64(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_bool(&self) -> bool {
+        match self {
+            Self::Bool(_) => true,
+            _ => false,
+        }
+    }
+
 }
 
 macro_rules! value_from {

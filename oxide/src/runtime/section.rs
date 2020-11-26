@@ -26,35 +26,6 @@ impl Display for SectionId {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SectionInstruction {
-    byte: usize,
-    instruction: Instruction,
-}
-
-impl SectionInstruction {
-    fn new(byte: usize, instruction: Instruction) -> Self {
-        Self {
-            byte,
-            instruction
-        }
-    }
-
-    pub fn byte(&self) -> usize {
-        self.byte
-    }
-
-    pub fn instruction(&self) -> Instruction {
-        self.instruction.clone()
-    }
-}
-
-impl Display for SectionInstruction {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:#08x} {}", self.byte(), self.instruction())
-    }
-}
-
 /// section of executable byte code.
 #[derive(Debug, Clone, Default)]
 pub struct Section {
@@ -77,22 +48,26 @@ impl Section {
         }
     }
 
-    pub fn add_constant(&mut self, value: Value) -> usize {
+    pub fn add_constant(&mut self, value: Value) -> u8 {
         self.constants.push(value);
-        self.constants.len() - 1
+        (self.constants.len() - 1).try_into().unwrap()
     }
 
     pub fn get_constant(&self, index: usize) -> Value {
         self.constants[index].clone()
     }
 
-    pub fn add_global(&mut self, value: Value) -> usize {
+    pub fn add_global(&mut self, value: Value) -> u8 {
         self.globals.push(value);
-        self.globals.len() - 1
+        (self.globals.len() - 1).try_into().unwrap()
     }
 
     pub fn get_global(&self, index: usize) -> Value {
         self.globals[index].clone()
+    }
+
+    pub fn set_global(&mut self, index: usize, value: Value) {
+        self.globals[index] = value;
     }
 
     pub fn id(&self) -> SectionId {
@@ -107,9 +82,9 @@ impl Section {
         self.data.push(byte);
     }
 
-    pub fn write_constant(&mut self, op: OpCode, bytes: &[u8]) {
+    pub fn write_load(&mut self, op: OpCode, index: u8) {
         self.write_op(op);
-        self.write_bytes(bytes);
+        self.write_byte(index);
     }
 
     pub fn write_op(&mut self, op: OpCode) {
@@ -118,6 +93,25 @@ impl Section {
 
     pub fn write_bytes(&mut self, bytes: &[u8]) {
         self.data.extend_from_slice(bytes)
+    }
+
+    // returns the first byte of the jmp operand.
+    pub fn write_jmp(&mut self, op: OpCode) -> usize {
+        self.write_op(op);
+        self.write_bytes(&[0xff, 0xff]);
+        self.len() - 2
+    }
+
+    pub fn patch_jmp(&mut self, offset: usize) {
+        let jump: u16 = (self.len() - offset - 2).try_into().expect("attempting to jump too far");
+        self.data[offset] = ((jump >> 8) & 0xff) as u8;
+        self.data[offset + 1] = (jump & 0xff) as u8;
+    }
+
+    pub fn write_loop(&mut self, start: usize) {
+        self.write_op(OpCode::Loop);
+        let offset = (self.len() - start + 2) as u16;
+        self.write_bytes(&offset.to_be_bytes());
     }
 
     /// writes a new label and returns the opcode index after the label.
@@ -144,11 +138,15 @@ impl Section {
         self.data.get_unchecked(index)
     }
 
-    pub fn debug_print(&self) {
-        println!("{:#x?}", self.data);
+    pub fn data(&self) -> &[u8] {
+        self.data.as_slice()
     }
 
-    pub fn disassemble(&self) -> Vec<SectionInstruction> {
+    pub fn debug_print(&self) {
+        println!("{:#?}", self.data);
+    }
+
+    pub fn disassemble(&self) -> Vec<Instruction> {
         let mut ip = 0;
         let mut res = vec![];
         while ip < self.len() {
@@ -156,149 +154,31 @@ impl Section {
             ip += 1;
             let op_code = OpCode::from_u8(*op_code_raw).unwrap();
             match op_code {
-                OpCode::LoadI8 => {
-                    let data = self.read(ip..).expect("unable to read buffer");
-                    let value = read_to::<i8>(data);
-                    let inst = Instruction::LoadI8(value);
-                    res.push(SectionInstruction::new(
-                        ip - 1,
-                        inst
-                    ));
+                OpCode::LoadI8
+                | OpCode::LoadI16
+                | OpCode::LoadI32
+                | OpCode::LoadI64
+                | OpCode::LoadU8
+                | OpCode::LoadU16
+                | OpCode::LoadU32
+                | OpCode::LoadU64
+                | OpCode::LoadF32
+                | OpCode::LoadF64
+                | OpCode::LoadGlobal
+                | OpCode::SetGlobal => {
+                    let value = *unsafe { self.read_unchecked(ip) };
+                    res.push(Instruction::with_arg(ip, op_code, value as u16));
                     ip += 1;
                 }
-                OpCode::LoadI16 => {
-                    let data = self.read(ip..).expect("unable to read buffer");
-                    let value = read_to::<i16>(data);
-                    let inst = Instruction::LoadI16(value);
-                    res.push(SectionInstruction::new(
-                        ip - 1,
-                        inst
-                    ));
-                    ip += 2;
+                OpCode::Loop
+                | OpCode::JmpTrue
+                | OpCode::JmpFalse
+                | OpCode::Jmp => {
+                    let value = read_to::<u16>(self.data(), &mut ip);
+                    res.push(Instruction::with_arg(ip - std::mem::size_of::<u16>(), op_code, value as u16));
                 }
-                OpCode::LoadI32 => {
-                    let data = self.read(ip..).expect("unable to read buffer");
-                    let value = read_to::<i32>(data);
-                    let inst = Instruction::LoadI32(value);
-                    res.push(SectionInstruction::new(
-                        ip - 1,
-                        inst
-                    ));
-                    ip += 4;
-                }
-                OpCode::LoadI64 => {
-                    let data = self.read(ip..).expect("unable to read buffer");
-                    let value = read_to::<i64>(data);
-                    let inst = Instruction::LoadI64(value);
-                    res.push(SectionInstruction::new(
-                        ip - 1,
-                        inst
-                    ));
-                    ip += 8;
-                }
-
-                OpCode::LoadU8 => {
-                    let data = self.read(ip..).expect("unable to read buffer");
-                    let value = read_to::<u8>(data);
-                    let inst = Instruction::LoadU8(value);
-                    res.push(SectionInstruction::new(
-                        ip - 1,
-                        inst
-                    ));
-                    ip += 1;
-                }
-                OpCode::LoadU16 => {
-                    let data = self.read(ip..).expect("unable to read buffer");
-                    let value = read_to::<u16>(data);
-                    let inst = Instruction::LoadU16(value);
-                    res.push(SectionInstruction::new(
-                        ip - 1,
-                        inst
-                    ));
-                    ip += 2;
-                }
-                OpCode::LoadU32 => {
-                    let data = self.read(ip..).expect("unable to read buffer");
-                    let value = read_to::<u32>(data);
-                    let inst = Instruction::LoadU32(value);
-                    res.push(SectionInstruction::new(
-                        ip - 1,
-                        inst
-                    ));
-                    ip += 4;
-                }
-                OpCode::LoadU64 => {
-                    let data = self.read(ip..).expect("unable to read buffer");
-                    let value = read_to::<u64>(data);
-                    let inst = Instruction::LoadU64(value);
-                    res.push(SectionInstruction::new(
-                        ip - 1,
-                        inst
-                    ));
-                    ip += 8;
-                }
-                OpCode::LoadF32 => {
-                    let data = self.read(ip..).expect("unable to read buffer");
-                    let value = read_to::<f32>(data);
-                    let inst = Instruction::LoadF32(OrderedFloat::from(value));
-                    res.push(SectionInstruction::new(
-                        ip - 1,
-                        inst
-                    ));
-                    ip += 4;
-                }
-                OpCode::LoadF64 => {
-                    let data = self.read(ip..).expect("unable to read buffer");
-                    let value = read_to::<f64>(data);
-                    let inst = Instruction::LoadF64(OrderedFloat::from(value));
-                    res.push(SectionInstruction::new(
-                        ip - 1,
-                        inst
-                    ));
-                    ip += 8;
-                }
-                OpCode::Label => {
-                    let data = self.read(ip..).expect("unable to read buffer");
-                    let len = read_to::<u8>(data);
-                    let start = ip;
-                    ip += 1;
-                    let data = &data[1..1 + len as usize];
-                    let label = std::str::from_utf8(data).expect("expecting utf8 string");
-                    let inst = Instruction::Label(label.to_owned());
-                    res.push(SectionInstruction::new(
-                        start - 1,
-                        inst,
-                    ));
-                    ip += len as usize;
-                }
-                OpCode::LoadGlobal => {
-                    let data = self.read(ip..).expect("unable to read buffer");
-                    let value = read_to::<u32>(data);
-                    let inst = Instruction::LoadGlobal(value);
-                    res.push(SectionInstruction::new(ip - 1, inst));
-                    ip += 4;
-                }
-                OpCode::JmpTrue => {
-                    let data = self.read(ip..).expect("unable to read buffer");
-                    let value = read_to::<u32>(data);
-                    let inst = Instruction::JmpTrue(value);
-                    res.push(SectionInstruction::new(ip - 1, inst));
-                    ip += 4;
-                }
-                OpCode::JmpFalse => {
-                    let data = self.read(ip..).expect("unable to read buffer");
-                    let value = read_to::<u32>(data);
-                    let inst = Instruction::JmpFalse(value);
-                    res.push(SectionInstruction::new(ip - 1, inst));
-                    ip += 4;
-                }
-                OpCode::Jmp => {
-                    let data = self.read(ip..).expect("unable to read buffer");
-                    let value = read_to::<u32>(data);
-                    let inst = Instruction::Jmp(value);
-                    res.push(SectionInstruction::new(ip - 1, inst));
-                    ip += 4;
-                }
+                OpCode::Call => {}
+                OpCode::Label => {}
                 OpCode::Exit
                 | OpCode::LoadTrue
                 | OpCode::LoadFalse
@@ -384,12 +264,12 @@ impl Section {
                 | OpCode::GreaterEqF64
                 | OpCode::Pop
                 | OpCode::Print => {
-                    res.push(SectionInstruction::new(
+                    res.push(Instruction::simple(
                         ip - 1,
-                        Instruction::from(op_code)
+                        op_code,
                     ));
                 }
-                OpCode::Call | _ => {}
+                OpCode::NumOps => {}
             }
         }
         res
