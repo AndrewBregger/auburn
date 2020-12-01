@@ -1,14 +1,13 @@
-use crate::vm::{Instruction, OpCode};
 use crate::mem::{read_to, FromBytes};
+use crate::vm::{Instruction, OpCode};
 use crate::Value;
 
+use std::convert::TryInto;
 use std::fmt::{Display, Formatter};
 use std::slice::SliceIndex;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::convert::TryInto;
 
 use ordered_float::OrderedFloat;
-
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct SectionId(usize);
@@ -103,7 +102,9 @@ impl Section {
     }
 
     pub fn patch_jmp(&mut self, offset: usize) {
-        let jump: u16 = (self.len() - offset - 2).try_into().expect("attempting to jump too far");
+        let jump: u16 = (self.len() - offset - 2)
+            .try_into()
+            .expect("attempting to jump too far");
         self.data[offset] = ((jump >> 8) & 0xff) as u8;
         self.data[offset + 1] = (jump & 0xff) as u8;
     }
@@ -164,22 +165,27 @@ impl Section {
                 | OpCode::LoadU64
                 | OpCode::LoadF32
                 | OpCode::LoadF64
+                | OpCode::LoadStr
                 | OpCode::LoadGlobal
-                | OpCode::SetGlobal => {
+                | OpCode::SetGlobal
+                | OpCode::LoadLocal
+                | OpCode::SetLocal => {
                     let value = *unsafe { self.read_unchecked(ip) };
                     res.push(Instruction::with_arg(ip, op_code, value as u16));
                     ip += 1;
                 }
-                OpCode::Loop
-                | OpCode::JmpTrue
-                | OpCode::JmpFalse
-                | OpCode::Jmp => {
+                OpCode::Loop | OpCode::JmpTrue | OpCode::JmpFalse | OpCode::Jmp => {
                     let value = read_to::<u16>(self.data(), &mut ip);
-                    res.push(Instruction::with_arg(ip - std::mem::size_of::<u16>(), op_code, value as u16));
+                    res.push(Instruction::with_arg(
+                        ip - std::mem::size_of::<u16>(),
+                        op_code,
+                        value as u16,
+                    ));
                 }
                 OpCode::Call => {}
                 OpCode::Label => {}
-                OpCode::Exit
+                OpCode::Return
+                | OpCode::Exit
                 | OpCode::LoadTrue
                 | OpCode::LoadFalse
                 | OpCode::AddI8
@@ -264,10 +270,7 @@ impl Section {
                 | OpCode::GreaterEqF64
                 | OpCode::Pop
                 | OpCode::Print => {
-                    res.push(Instruction::simple(
-                        ip - 1,
-                        op_code,
-                    ));
+                    res.push(Instruction::simple(ip - 1, op_code));
                 }
                 OpCode::NumOps => {}
             }

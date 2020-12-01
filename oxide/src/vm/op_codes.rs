@@ -33,6 +33,9 @@ define_opcodes!(
     "load_u64" => LoadU64,
     "load_f32" => LoadF32,
     "load_f64" => LoadF64,
+    "load_str" => LoadStr,
+    "load_local" => LoadLocal,
+    "set_local" => SetLocal,
 
     "add_i8"  => AddI8,
     "add_i16" => AddI16,
@@ -122,6 +125,8 @@ define_opcodes!(
     "greatereq_f32" => GreaterEqF32,
     "greatereq_f64" => GreaterEqF64,
 
+    "return" => Return,
+
     "load_global" => LoadGlobal,
     "set_global" => SetGlobal,
 
@@ -157,7 +162,7 @@ impl OpCode {
 pub struct Instruction {
     offset: usize,
     op_code: OpCode,
-    args: Option<u16>
+    args: Option<u16>,
 }
 
 impl Instruction {
@@ -166,22 +171,26 @@ impl Instruction {
     }
 
     pub fn with_arg(offset: usize, op_code: OpCode, args: u16) -> Self {
-        Self::new(offset, op_code, Some(args)) 
+        Self::new(offset, op_code, Some(args))
     }
 
     pub fn new(offset: usize, op_code: OpCode, args: Option<u16>) -> Self {
         Self {
             offset,
             op_code,
-            args
+            args,
         }
     }
 }
 
-
-
 impl Display for Instruction {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:014x} {} {}", self.offset, self.op_code, self.args.map_or("".to_string(), |arg| arg.to_string()))
+        write!(
+            f,
+            "{:014x} {} {}",
+            self.offset,
+            self.op_code,
+            self.args.map_or("".to_string(), |arg| arg.to_string())
+        )
     }
 }

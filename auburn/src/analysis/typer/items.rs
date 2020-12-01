@@ -9,8 +9,8 @@ use crate::analysis::typer::{
 };
 use crate::analysis::{Entity, EntityInfo, EntityRef};
 use crate::error::Error;
-use crate::mir::{MirExprPtr, MirNode, MirSpec, MirSpecKind, MirSpecPtr};
-use crate::syntax::ast::{Expr, FunctionBody, Identifier, Item, ItemKind, Node, Spec, Visibility};
+use crate::ir::ast::{Expr, FunctionBody, Identifier, Item, ItemKind, Node, Spec, Visibility};
+use crate::ir::hir::{HirExprPtr, HirSpec, HirSpecKind, HirSpecPtr, MirNode};
 use crate::syntax::Position;
 use crate::types::{Type, TypeKind};
 use crate::utils::{new_ptr, Ptr};
@@ -273,7 +273,7 @@ impl<'src> Typer<'src> {
         spec: Option<&Box<Spec>>,
         init: Option<&Box<Expr>>,
         position: Position,
-    ) -> Result<(Option<MirSpecPtr>, Option<MirExprPtr>, Rc<Type>), Error> {
+    ) -> Result<(Option<HirSpecPtr>, Option<HirExprPtr>, Rc<Type>), Error> {
         let spec = match spec {
             Some(spec) => Some(self.resolve_spec(spec.as_ref())?),
             None => None,
@@ -435,8 +435,8 @@ impl<'src> Typer<'src> {
                 match body {
                     FunctionBody::Block(expr) => {
                         let mir_spec = if return_spec.is_infer() {
-                            Rc::new(MirSpec::new(
-                                MirSpecKind::Infer,
+                            Rc::new(HirSpec::new(
+                                HirSpecKind::Infer,
                                 position,
                                 self.type_map.get_unit(),
                             ))
@@ -460,7 +460,7 @@ impl<'src> Typer<'src> {
                         let return_spec = match mir_spec {
                             Some(ty) => ty,
                             None => {
-                                Rc::new(MirSpec::new(MirSpecKind::Infer, position, mir_expr.ty()))
+                                Rc::new(HirSpec::new(HirSpecKind::Infer, position, mir_expr.ty()))
                             }
                         };
 

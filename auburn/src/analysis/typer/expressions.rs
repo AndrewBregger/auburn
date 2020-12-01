@@ -6,13 +6,13 @@ use crate::analysis::typer::{
 };
 use crate::analysis::{EntityInfo, EntityRef};
 use crate::error::Error;
-use crate::mir::{
-    AddressMode, AssociatedFunctionExpr, BinaryExpr, BlockExpr, CallExpr, FieldExpr, IfExpr,
-    IfExprBranch, IndexExpr, LoopExpr, MethodExpr, MirExpr, MirExprInner, MirExprKind, MirExprPtr,
-    MirNode, MirStmtKind, ResultMeta, StructExpr, TupleExpr, UnaryExpr, WhileExpr,
-};
-use crate::syntax::ast::{
+use crate::ir::ast::{
     BinaryOp, Expr, ExprKind, Identifier, Node, NodeType, StructExprField, UnaryOp, Visibility,
+};
+use crate::ir::hir::{
+    AddressMode, AssociatedFunctionExpr, BinaryExpr, BlockExpr, CallExpr, FieldExpr, HirExpr,
+    HirExprInner, HirExprKind, HirExprPtr, HirStmtKind, IfExpr, IfExprBranch, IndexExpr, LoopExpr,
+    MethodExpr, MirNode, ResultMeta, StructExpr, TupleExpr, UnaryExpr, WhileExpr,
 };
 use crate::syntax::Position;
 use crate::types::{Type, TypeKind};
@@ -36,16 +36,16 @@ impl<'src> Typer<'src> {
         &mut self,
         expr: &Expr,
         expected_type: Option<Rc<Type>>,
-    ) -> Result<Rc<MirExpr>, Error> {
+    ) -> Result<Rc<HirExpr>, Error> {
         println!("Resolving Expr: {}", expr.kind().name());
         let expr = match expr.kind() {
             ExprKind::Integer(val) => {
                 let ty = self.type_map.get_u32();
-                Rc::new(MirExpr::new(
-                    MirExprInner::new(
+                Rc::new(HirExpr::new(
+                    HirExprInner::new(
                         AddressMode::Value,
                         ResultMeta::literal(),
-                        MirExprKind::Integer(*val),
+                        HirExprKind::Integer(*val as i64),
                     ),
                     expr.position(),
                     ty,
@@ -53,11 +53,11 @@ impl<'src> Typer<'src> {
             }
             ExprKind::Float(val) => {
                 let ty = self.type_map.get_f32();
-                Rc::new(MirExpr::new(
-                    MirExprInner::new(
+                Rc::new(HirExpr::new(
+                    HirExprInner::new(
                         AddressMode::Value,
                         ResultMeta::literal(),
-                        MirExprKind::Float(*val),
+                        HirExprKind::Float(*val),
                     ),
                     expr.position(),
                     ty,
@@ -65,11 +65,11 @@ impl<'src> Typer<'src> {
             }
             ExprKind::String(val) => {
                 let ty = self.type_map.get_string();
-                Rc::new(MirExpr::new(
-                    MirExprInner::new(
+                Rc::new(HirExpr::new(
+                    HirExprInner::new(
                         AddressMode::Address,
                         ResultMeta::literal(),
-                        MirExprKind::String(val.clone()),
+                        HirExprKind::String(val.clone()),
                     ),
                     expr.position(),
                     ty,
@@ -77,11 +77,11 @@ impl<'src> Typer<'src> {
             }
             ExprKind::Char(val) => {
                 let ty = self.type_map.get_char();
-                Rc::new(MirExpr::new(
-                    MirExprInner::new(
+                Rc::new(HirExpr::new(
+                    HirExprInner::new(
                         AddressMode::Value,
                         ResultMeta::literal(),
-                        MirExprKind::Char(*val),
+                        HirExprKind::Char(*val),
                     ),
                     expr.position(),
                     ty,
@@ -102,19 +102,19 @@ impl<'src> Typer<'src> {
                     }
                     _ => ResultMeta::new(false, false, false, false, false),
                 };
-                Rc::new(MirExpr::new(
-                    MirExprInner::new(AddressMode::Address, mutable, MirExprKind::Name(name)),
+                Rc::new(HirExpr::new(
+                    HirExprInner::new(AddressMode::Address, mutable, HirExprKind::Name(name)),
                     expr.position(),
                     ty,
                 ))
             }
             ExprKind::Bool(val) => {
                 let ty = self.type_map.get_bool();
-                Rc::new(MirExpr::new(
-                    MirExprInner::new(
+                Rc::new(HirExpr::new(
+                    HirExprInner::new(
                         ty.address_mode(),
                         ResultMeta::literal(),
-                        MirExprKind::Bool(*val),
+                        HirExprKind::Bool(*val),
                     ),
                     expr.position(),
                     ty,
@@ -153,7 +153,7 @@ impl<'src> Typer<'src> {
                         ResultMeta::literal(),
                     ),
                     |stmt| match stmt.inner() {
-                        MirStmtKind::Expr(expr) => {
+                        HirStmtKind::Expr(expr) => {
                             let inner = expr.inner();
                             (inner.address_mode(), expr.ty(), inner.meta())
                         }
@@ -170,8 +170,8 @@ impl<'src> Typer<'src> {
                     return_used: self.check_state(EXPR_RESULT_USED),
                 };
 
-                Rc::new(MirExpr::new(
-                    MirExprInner::new(address_mode, mutable, MirExprKind::Block(block_expr)),
+                Rc::new(HirExpr::new(
+                    HirExprInner::new(address_mode, mutable, HirExprKind::Block(block_expr)),
                     expr.position(),
                     return_type,
                 ))
@@ -205,12 +205,12 @@ impl<'src> Typer<'src> {
 
                     let self_borrow = self_entity.deref().borrow();
                     if let EntityInfo::SelfParam { mutable } = self_borrow.kind() {
-                        let mir_inner = MirExprInner::new(
+                        let mir_inner = HirExprInner::new(
                             AddressMode::Address,
                             ResultMeta::new(*mutable, false, false, false, false),
-                            MirExprKind::SelfLit,
+                            HirExprKind::SelfLit,
                         );
-                        Rc::new(MirExpr::new(
+                        Rc::new(HirExpr::new(
                             mir_inner,
                             expr.position(),
                             self_entity.deref().borrow().ty(),
@@ -252,12 +252,12 @@ impl<'src> Typer<'src> {
                 };
 
                 let tuple_type = self.insert_type(TypeKind::Tuple { elements });
-                let mir_expr_inner = MirExprInner::new(
+                let mir_expr_inner = HirExprInner::new(
                     AddressMode::Value,
                     ResultMeta::new(false, false, false, true, false),
-                    MirExprKind::Tuple(tuple_expr),
+                    HirExprKind::Tuple(tuple_expr),
                 );
-                Rc::new(MirExpr::new(mir_expr_inner, expr.position(), tuple_type))
+                Rc::new(HirExpr::new(mir_expr_inner, expr.position(), tuple_type))
             }
             ExprKind::If { .. } => self.resolve_if(expr, None, expr.position())?,
             ExprKind::Loop(body) => self.resolve_loop(body.as_ref(), expr.position())?,
@@ -266,12 +266,12 @@ impl<'src> Typer<'src> {
             }
             ExprKind::Break => {
                 if self.check_state(ALLOW_CONTROL_FLOW_EXPRESSIONS) {
-                    let inner = MirExprInner::new(
+                    let inner = HirExprInner::new(
                         AddressMode::Value,
                         ResultMeta::default(),
-                        MirExprKind::Break,
+                        HirExprKind::Break,
                     );
-                    Rc::new(MirExpr::new(
+                    Rc::new(HirExpr::new(
                         inner,
                         expr.position(),
                         self.type_map.get_unit(),
@@ -284,12 +284,12 @@ impl<'src> Typer<'src> {
             }
             ExprKind::Continue => {
                 if self.check_state(ALLOW_CONTROL_FLOW_EXPRESSIONS) {
-                    let inner = MirExprInner::new(
+                    let inner = HirExprInner::new(
                         AddressMode::Value,
                         ResultMeta::default(),
-                        MirExprKind::Continue,
+                        HirExprKind::Continue,
                     );
-                    Rc::new(MirExpr::new(
+                    Rc::new(HirExpr::new(
                         inner,
                         expr.position(),
                         self.type_map.get_unit(),
@@ -307,12 +307,12 @@ impl<'src> Typer<'src> {
                     let mir_expr = self.resolve_expr(expr, None)?;
                     let ty = mir_expr.ty();
                     let mutable = ResultMeta::new(false, false, ty.is_mutable(), false, false);
-                    let inner = MirExprInner::new(
+                    let inner = HirExprInner::new(
                         mir_expr.inner().address_mode(),
                         mutable,
-                        MirExprKind::Return(mir_expr),
+                        HirExprKind::Return(mir_expr),
                     );
-                    Rc::new(MirExpr::new(inner, expr.position(), ty))
+                    Rc::new(HirExpr::new(inner, expr.position(), ty))
                 } else {
                     let err = Error::invalid_return().with_position(expr.position());
                     return Err(err);
@@ -358,7 +358,7 @@ impl<'src> Typer<'src> {
         operand: &Expr,
         index: &Expr,
         position: Position,
-    ) -> Result<MirExprPtr, Error> {
+    ) -> Result<HirExprPtr, Error> {
         let mir_operand = self.resolve_expr(operand, None)?;
         let operand_meta = mir_operand.inner().meta();
         if operand_meta.is_type {
@@ -386,11 +386,11 @@ impl<'src> Typer<'src> {
                         false,
                         false,
                     );
-                    Ok(Rc::new(MirExpr::new(
-                        MirExprInner::new(
+                    Ok(Rc::new(HirExpr::new(
+                        HirExprInner::new(
                             element_type.address_mode(),
                             meta,
-                            MirExprKind::Index(IndexExpr {
+                            HirExprKind::Index(IndexExpr {
                                 operand: mir_operand,
                                 index: mir_index,
                             }),
@@ -413,11 +413,11 @@ impl<'src> Typer<'src> {
     pub(crate) fn resolve_expr_to_entity(
         &mut self,
         expr: &Expr,
-    ) -> Result<(EntityRef, Rc<MirExpr>), Error> {
+    ) -> Result<(EntityRef, Rc<HirExpr>), Error> {
         let mir_expr = self.resolve_expr(expr, None)?;
         let entity = match mir_expr.inner().kind() {
-            MirExprKind::Field(field_expr) => field_expr.field.clone(),
-            MirExprKind::Name(entity) => entity.clone(),
+            HirExprKind::Field(field_expr) => field_expr.field.clone(),
+            HirExprKind::Name(entity) => entity.clone(),
             _ => {
                 let err = Error::invalid_lvalue();
                 return Err(err.with_position(expr.position()));
@@ -432,7 +432,7 @@ impl<'src> Typer<'src> {
         expr: &Expr,
         mut expected_type: Option<Rc<Type>>,
         _position: Position,
-    ) -> Result<MirExprPtr, Error> {
+    ) -> Result<HirExprPtr, Error> {
         let mut branches = vec![];
         let mut curr_expr = expr;
         let mut first = true;
@@ -486,8 +486,8 @@ impl<'src> Typer<'src> {
 
         if let Some(ty) = expected_type.as_ref() {
             let mutable = ResultMeta::new(false, ty.is_mutable(), false, false, false);
-            let inner = MirExprInner::new(ty.address_mode(), mutable, MirExprKind::If(if_expr));
-            Ok(Rc::new(MirExpr::new(inner, expr.position(), ty.clone())))
+            let inner = HirExprInner::new(ty.address_mode(), mutable, HirExprKind::If(if_expr));
+            Ok(Rc::new(HirExpr::new(inner, expr.position(), ty.clone())))
         } else {
             panic!("Compiler Error: Failed to determine the result type of if expression");
         }
@@ -498,7 +498,7 @@ impl<'src> Typer<'src> {
         cond: &Expr,
         body: &Expr,
         position: Position,
-    ) -> Result<MirExprPtr, Error> {
+    ) -> Result<HirExprPtr, Error> {
         let mir_cond = self.resolve_expr(cond, Some(self.type_map.get_bool()))?;
 
         let mir_body = with_state!(self, ALLOW_CONTROL_FLOW_EXPRESSIONS, {
@@ -510,13 +510,13 @@ impl<'src> Typer<'src> {
             body: mir_body,
         };
 
-        let inner = MirExprInner::new(
+        let inner = HirExprInner::new(
             AddressMode::Value,
             ResultMeta::default(),
-            MirExprKind::While(while_expr),
+            HirExprKind::While(while_expr),
         );
 
-        Ok(Rc::new(MirExpr::new(
+        Ok(Rc::new(HirExpr::new(
             inner,
             position,
             self.type_map.get_unit(),
@@ -527,20 +527,20 @@ impl<'src> Typer<'src> {
         &mut self,
         body: &Expr,
         position: Position,
-    ) -> Result<MirExprPtr, Error> {
+    ) -> Result<HirExprPtr, Error> {
         let mir_body = with_state!(self, ALLOW_CONTROL_FLOW_EXPRESSIONS, {
             self.resolve_expr(body, None)?
         });
 
         let loop_expr = LoopExpr { body: mir_body };
 
-        let inner = MirExprInner::new(
+        let inner = HirExprInner::new(
             AddressMode::Value,
             ResultMeta::default(),
-            MirExprKind::Loop(loop_expr),
+            HirExprKind::Loop(loop_expr),
         );
 
-        Ok(Rc::new(MirExpr::new(
+        Ok(Rc::new(HirExpr::new(
             inner,
             position,
             self.type_map.get_unit(),
@@ -551,7 +551,7 @@ impl<'src> Typer<'src> {
         &mut self,
         operand: &Expr,
         field: &Identifier,
-    ) -> Result<Rc<MirExpr>, Error> {
+    ) -> Result<Rc<HirExpr>, Error> {
         let operand = self.resolve_expr(operand, None)?;
         // get any inner type when appropriate (ie. mut T -> T)
         let operand_type = Type::inner(operand.ty());
@@ -603,11 +603,11 @@ impl<'src> Typer<'src> {
                             );
 
                             std::mem::drop(field_borrow);
-                            Ok(Rc::new(MirExpr::new(
-                                MirExprInner::new(
+                            Ok(Rc::new(HirExpr::new(
+                                HirExprInner::new(
                                     AddressMode::Address,
                                     mutable,
-                                    MirExprKind::Field(field_expr),
+                                    HirExprKind::Field(field_expr),
                                 ),
                                 position,
                                 ty,
@@ -633,7 +633,7 @@ impl<'src> Typer<'src> {
         &mut self,
         operand: &Expr,
         actuals: &[Box<Expr>],
-    ) -> Result<Rc<MirExpr>, Error> {
+    ) -> Result<Rc<HirExpr>, Error> {
         let mir_operand = self.resolve_expr(operand, None)?;
         println!("Function Type: {}", mir_operand.ty());
         let function_type = mir_operand.ty();
@@ -660,8 +660,8 @@ impl<'src> Typer<'src> {
 
                 let mutable = ResultMeta::new(false, false, return_type.is_mutable(), false, false);
                 let inner =
-                    MirExprInner::new(AddressMode::Value, mutable, MirExprKind::Call(call_expr));
-                Ok(Rc::new(MirExpr::new(
+                    HirExprInner::new(AddressMode::Value, mutable, HirExprKind::Call(call_expr));
+                Ok(Rc::new(HirExpr::new(
                     inner,
                     operand.position(),
                     return_type.clone(),
@@ -679,15 +679,15 @@ impl<'src> Typer<'src> {
         name: &Identifier,
         actuals: &[Box<Expr>],
         position: Position,
-    ) -> Result<Rc<MirExpr>, Error> {
+    ) -> Result<Rc<HirExpr>, Error> {
         assert!(actuals.len() >= 1);
         let receiver_expr = actuals.first().unwrap();
         let mir_expr = self.resolve_expr(receiver_expr.as_ref(), None)?;
         let struct_type = mir_expr.ty();
 
         let mir_entity = match mir_expr.inner().kind() {
-            MirExprKind::Field(field_expr) => field_expr.field.clone(),
-            MirExprKind::Name(entity) => entity.clone(),
+            HirExprKind::Field(field_expr) => field_expr.field.clone(),
+            HirExprKind::Name(entity) => entity.clone(),
             _ => {
                 let err = Error::invalid_lvalue();
                 return Err(err.with_position(mir_expr.position()));
@@ -729,11 +729,11 @@ impl<'src> Typer<'src> {
         &mut self,
         associated_type: EntityRef,
         method_entity: EntityRef,
-        receiver: Rc<MirExpr>,
+        receiver: Rc<HirExpr>,
         actuals: &[Box<Expr>],
         name: &Identifier,
         position: Position,
-    ) -> Result<Rc<MirExpr>, Error> {
+    ) -> Result<Rc<HirExpr>, Error> {
         let method_borrow = method_entity.deref().borrow();
         match method_borrow.kind() {
             EntityInfo::AssociatedFunction(associated_function_info) => {
@@ -779,12 +779,12 @@ impl<'src> Typer<'src> {
                                 false,
                             );
                             // the address_mode should be determined by the address mode of the returned expression
-                            let inner = MirExprInner::new(
+                            let inner = HirExprInner::new(
                                 AddressMode::Address,
                                 mutable,
-                                MirExprKind::AssociatedFunction(associated_function_expr),
+                                HirExprKind::AssociatedFunction(associated_function_expr),
                             );
-                            Ok(Rc::new(MirExpr::new(inner, position, return_type.clone())))
+                            Ok(Rc::new(HirExpr::new(inner, position, return_type.clone())))
                         }
                         _ => {
                             let err = Error::invalid_call_on_type(method_borrow.ty().as_ref());
@@ -844,12 +844,12 @@ impl<'src> Typer<'src> {
                                 false,
                             );
                             // the address_mode should be determined by the address mode of the returned expression
-                            let inner = MirExprInner::new(
+                            let inner = HirExprInner::new(
                                 AddressMode::Address,
                                 mutable,
-                                MirExprKind::Method(method_expr),
+                                HirExprKind::Method(method_expr),
                             );
-                            Ok(Rc::new(MirExpr::new(inner, position, return_type.clone())))
+                            Ok(Rc::new(HirExpr::new(inner, position, return_type.clone())))
                         }
                         _ => {
                             let err = Error::invalid_call_on_type(method_borrow.ty().as_ref());
@@ -874,7 +874,7 @@ impl<'src> Typer<'src> {
         fields: &[StructExprField],
         structure: &StructureInfo,
         position: Position,
-    ) -> Result<MirExprPtr, Error> {
+    ) -> Result<HirExprPtr, Error> {
         let mut mir_fields = vec![];
         for field in fields {
             match field {
@@ -923,10 +923,10 @@ impl<'src> Typer<'src> {
             struct_type: struct_type.clone(),
             fields: mir_fields,
         };
-        let mir_expr = MirExprKind::StructExpr(struct_expr);
+        let mir_expr = HirExprKind::StructExpr(struct_expr);
         let mutable = ResultMeta::new(false, false, false, true, false);
-        let mir_inner = MirExprInner::new(AddressMode::Value, mutable, mir_expr);
-        Ok(Rc::new(MirExpr::new(mir_inner, position, struct_type)))
+        let mir_inner = HirExprInner::new(AddressMode::Value, mutable, mir_expr);
+        Ok(Rc::new(HirExpr::new(mir_inner, position, struct_type)))
     }
 
     pub(crate) fn resolve_type_expr(&mut self, expr: &Expr) -> Result<EntityRef, Error> {
@@ -963,7 +963,7 @@ impl<'src> Typer<'src> {
         rhs: &Expr,
         expected_type: Option<Rc<Type>>,
         position: Position,
-    ) -> Result<Rc<MirExpr>, Error> {
+    ) -> Result<Rc<HirExpr>, Error> {
         let left = self.resolve_expr(lhs, expected_type.clone())?;
         let right = self.resolve_expr(rhs, Some(left.ty()))?;
         let left_type = Type::inner(left.ty());
@@ -1028,11 +1028,11 @@ impl<'src> Typer<'src> {
         };
 
         let mutable = ResultMeta::new(false, false, false, true, false);
-        Ok(Rc::new(MirExpr::new(
-            MirExprInner::new(
+        Ok(Rc::new(HirExpr::new(
+            HirExprInner::new(
                 address_mode,
                 mutable,
-                MirExprKind::Binary(BinaryExpr { op, left, right }),
+                HirExprKind::Binary(BinaryExpr { op, left, right }),
             ),
             position,
             result_type,
@@ -1045,7 +1045,7 @@ impl<'src> Typer<'src> {
         expr: &Expr,
         expected_type: Option<Rc<Type>>,
         position: Position,
-    ) -> Result<Rc<MirExpr>, Error> {
+    ) -> Result<Rc<HirExpr>, Error> {
         let operand = self.resolve_expr(expr, expected_type.clone())?;
         let ty = Type::inner(operand.ty());
         let (address_mode, result_type) = match op {
@@ -1077,11 +1077,11 @@ impl<'src> Typer<'src> {
         };
 
         let mutable = ResultMeta::new(false, false, false, true, false);
-        Ok(Rc::new(MirExpr::new(
-            MirExprInner::new(
+        Ok(Rc::new(HirExpr::new(
+            HirExprInner::new(
                 address_mode,
                 mutable,
-                MirExprKind::Unary(UnaryExpr { op, operand }),
+                HirExprKind::Unary(UnaryExpr { op, operand }),
             ),
             expr.position(),
             result_type,

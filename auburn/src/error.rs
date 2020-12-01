@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter};
 
-use crate::syntax::ast::{BinaryOp, UnaryOp};
+use crate::ir::ast::{BinaryOp, UnaryOp};
 use crate::syntax::{Operator, Position, Token};
 use crate::types::Type;
 

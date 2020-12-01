@@ -1,7 +1,7 @@
 use crate::analysis::typer::*;
 use crate::error::Error;
-use crate::mir::{MirNode, MirSpec, MirSpecKind};
-use crate::syntax::ast::{Node, Spec, SpecKind};
+use crate::ir::ast::{Node, Spec, SpecKind};
+use crate::ir::hir::{HirSpec, HirSpecKind, MirNode};
 use crate::types::TypeKind;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -18,14 +18,14 @@ macro_rules! with_state {
 }
 
 impl<'src> Typer<'src> {
-    pub(crate) fn resolve_spec(&mut self, spec: &Spec) -> Result<Rc<MirSpec>, Error> {
+    pub(crate) fn resolve_spec(&mut self, spec: &Spec) -> Result<Rc<HirSpec>, Error> {
         match spec.kind() {
             SpecKind::Named(expr) => {
                 let entity = self.resolve_type_expr(expr.as_ref())?;
                 if entity.deref().borrow().is_type() {
                     let ty = entity.deref().borrow().ty();
-                    Ok(Rc::new(MirSpec::new(
-                        MirSpecKind::Named,
+                    Ok(Rc::new(HirSpec::new(
+                        HirSpecKind::Named,
                         spec.position(),
                         ty,
                     )))
@@ -53,8 +53,8 @@ impl<'src> Typer<'src> {
                                     size,
                                 });
 
-                                Ok(Rc::new(MirSpec::new(
-                                    MirSpecKind::Array,
+                                Ok(Rc::new(HirSpec::new(
+                                    HirSpecKind::Array,
                                     spec.position(),
                                     ty,
                                 )))
@@ -72,8 +72,8 @@ impl<'src> Typer<'src> {
                             element_type: mir_spec.ty(),
                         });
 
-                        Ok(Rc::new(MirSpec::new(
-                            MirSpecKind::Slice,
+                        Ok(Rc::new(HirSpec::new(
+                            HirSpecKind::Slice,
                             spec.position(),
                             ty,
                         )))
@@ -86,8 +86,8 @@ impl<'src> Typer<'src> {
                     inner: mir_inner.ty(),
                 });
 
-                Ok(Rc::new(MirSpec::new(
-                    MirSpecKind::Mutable,
+                Ok(Rc::new(HirSpec::new(
+                    HirSpecKind::Mutable,
                     spec.position(),
                     ty,
                 )))

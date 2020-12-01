@@ -4,8 +4,8 @@ use crate::analysis::scope::{Scope, ScopeKind};
 use crate::analysis::typer::Typer;
 use crate::analysis::Entity;
 use crate::error::Error;
-use crate::mir::MirFile;
-use crate::syntax::ast::Visibility;
+use crate::ir::ast::Visibility;
+use crate::ir::hir::HirFile;
 use crate::syntax::ParsedFile;
 use crate::types::TypeMap;
 
@@ -66,7 +66,7 @@ impl Analysis {
         // load prelude
     }
 
-    pub fn check(&mut self, file: ParsedFile) -> Result<MirFile, Error> {
+    pub fn check(&mut self, file: ParsedFile) -> Result<HirFile, Error> {
         let typed_file =
             Typer::new(&mut self.type_map, &mut self.scope_stack).resolve_file(file)?;
 

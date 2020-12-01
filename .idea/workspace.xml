@@ -24,7 +24,36 @@
     <cargoProject FILE="$PROJECT_DIR$/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4b17c99f-758c-48ea-b0b5-e3d26e51a8dc" name="Default Changelist" comment="" />
+    <list default="true" id="4b17c99f-758c-48ea-b0b5-e3d26e51a8dc" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/auburn/src/generator/lir_builder.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/auburn/src/generator/mod.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/auburn/src/ir/lir.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/auburn/src/ir/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/aubc/src/core.rs" beforeDir="false" afterPath="$PROJECT_DIR$/aubc/src/core.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/aubc/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/aubc/src/main.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/auburn/src/analysis/analysis.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/analysis/analysis.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/auburn/src/analysis/entity.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/analysis/entity.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/auburn/src/analysis/typer/expressions.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/analysis/typer/expressions.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/auburn/src/analysis/typer/items.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/analysis/typer/items.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/auburn/src/analysis/typer/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/analysis/typer/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/auburn/src/analysis/typer/statements.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/analysis/typer/statements.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/auburn/src/analysis/typer/type_specs.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/analysis/typer/type_specs.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/auburn/src/error.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/error.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/auburn/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/lib.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/auburn/src/mir/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/ir/hir.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/auburn/src/syntax/ast.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/ir/ast.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/auburn/src/syntax/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/syntax/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/auburn/src/syntax/parse/parser.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/syntax/parse/parser.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/auburn/src/types/ty.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/types/ty.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/auburn/src/utils/mir_printer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/utils/mir_printer.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/oxide/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/oxide/src/lib.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/oxide/src/runtime/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/oxide/src/runtime/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/oxide/src/runtime/section.rs" beforeDir="false" afterPath="$PROJECT_DIR$/oxide/src/runtime/section.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/oxide/src/value.rs" beforeDir="false" afterPath="$PROJECT_DIR$/oxide/src/value.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/oxide/src/vm/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/oxide/src/vm/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/oxide/src/vm/op_codes.rs" beforeDir="false" afterPath="$PROJECT_DIR$/oxide/src/vm/op_codes.rs" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -71,15 +100,15 @@
     <property name="settings.editor.selected.configurable" value="preferences.lookFeel" />
   </component>
   <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="D:\Projects\language\examples\parser\item" />
+    </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="E:\Projects\auburn\auburn\src\ir" />
       <recent name="E:\Projects\languagec\language\src\analysis\typer" />
       <recent name="D:\Projects\language\src\system" />
       <recent name="D:\Projects\language\examples\parser" />
       <recent name="D:\Projects\language\src" />
-      <recent name="D:\Projects\language\bin" />
-    </key>
-    <key name="CopyFile.RECENT_KEYS">
-      <recent name="D:\Projects\language\examples\parser\item" />
     </key>
   </component>
   <component name="RunManager" selected="Cargo.Run">
@@ -155,7 +184,7 @@
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
-    <configuration name="Unittests in E:/Projects/languagec/src/tests" type="tests" factoryName="Unittests" temporary="true" nameIsGenerated="true">
+    <configuration name="Unittests in E:/Projects/auburn/src/tests" type="tests" factoryName="Unittests" temporary="true" nameIsGenerated="true">
       <module name="language" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -176,11 +205,11 @@
       <item itemvalue="Cargo.Test syntax::tokenizer::tests::multi_tokens_tokenizer" />
       <item itemvalue="Cargo.Test syntax::tokenizer::tests::test_simple_op_tokenizer" />
       <item itemvalue="Cargo.Test tokenizer::tests" />
-      <item itemvalue="Python tests.Unittests in E:/Projects/languagec/src/tests" />
+      <item itemvalue="Python tests.Unittests in E:/Projects/auburn/src/tests" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python tests.Unittests in E:/Projects/languagec/src/tests" />
+        <item itemvalue="Python tests.Unittests in E:/Projects/auburn/src/tests" />
         <item itemvalue="Cargo.Test tokenizer::tests" />
         <item itemvalue="Cargo.Test syntax::tokenizer::tests::test_simple_op_tokenizer" />
         <item itemvalue="Cargo.Test syntax::tokenizer::tests::multi_tokens_tokenizer" />
@@ -247,6 +276,10 @@
       <workItem from="1606092260242" duration="5846000" />
       <workItem from="1606104774742" duration="10116000" />
       <workItem from="1606189695344" duration="1775000" />
+      <workItem from="1606674220027" duration="1155000" />
+      <workItem from="1606708310638" duration="3888000" />
+      <workItem from="1606715342525" duration="3480000" />
+      <workItem from="1606796050253" duration="7731000" />
     </task>
     <task id="LOCAL-00001" summary="Implemented block and tuple expressions.">
       <created>1601015341655</created>
@@ -470,14 +503,14 @@
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="733" y="388" width="1094" height="717" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605377973342" />
-    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1605070821962">
+    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1606708333305">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605070821962" />
-    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser" timestamp="1606098970915">
+    <state x="1029" y="535" key="#com.intellij.fileTypes.FileTypeChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606708333305" />
+    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser" timestamp="1606801880994">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606098970915" />
+    <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606801880994" />
     <state x="1010" y="482" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog" timestamp="1605166810272">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
@@ -498,26 +531,26 @@
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="1059" y="500" key="FileChooserDialogImpl/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600055373613" />
-    <state width="2517" height="345" key="GridCell.Tab.0.bottom" timestamp="1606192699322">
+    <state width="2517" height="345" key="GridCell.Tab.0.bottom" timestamp="1606805501239">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.bottom/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2517" height="345" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606192699322" />
-    <state width="2517" height="345" key="GridCell.Tab.0.center" timestamp="1606192699322">
+    <state width="2517" height="345" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606805501239" />
+    <state width="2517" height="345" key="GridCell.Tab.0.center" timestamp="1606805501239">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.center/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2517" height="345" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606192699322" />
-    <state width="2517" height="345" key="GridCell.Tab.0.left" timestamp="1606192699322">
+    <state width="2517" height="345" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606805501239" />
+    <state width="2517" height="345" key="GridCell.Tab.0.left" timestamp="1606805501239">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.left/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332313" />
-    <state width="2517" height="345" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606192699322" />
-    <state width="2517" height="345" key="GridCell.Tab.0.right" timestamp="1606192699322">
+    <state width="2517" height="345" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606805501239" />
+    <state width="2517" height="345" key="GridCell.Tab.0.right" timestamp="1606805501239">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.right/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2517" height="345" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606192699322" />
+    <state width="2517" height="345" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606805501239" />
     <state width="2517" height="488" key="GridCell.Tab.1.bottom" timestamp="1605380610035">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
@@ -534,10 +567,10 @@
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="2517" height="488" key="GridCell.Tab.1.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605380610035" />
-    <state x="56" y="346" width="998" height="708" key="SettingsEditor" timestamp="1604790829894">
+    <state x="56" y="346" width="998" height="708" key="SettingsEditor" timestamp="1606721474518">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
-    <state x="56" y="346" width="998" height="708" key="SettingsEditor/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1604790829894" />
+    <state x="56" y="346" width="998" height="708" key="SettingsEditor/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606721474518" />
     <state x="871" y="466" key="Vcs.Push.Dialog.v2" timestamp="1606109607688">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
@@ -558,11 +591,11 @@
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="936" y="348" width="672" height="677" key="run.anything.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1605117356483" />
-    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup" timestamp="1606108783247">
+    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup" timestamp="1606721466611">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="707" y="266" width="672" height="505" key="search.everywhere.popup/0.30.1920.1050@0.30.1920.1050" timestamp="1601991482247" />
-    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606108783247" />
+    <state x="943" y="347" width="672" height="678" key="search.everywhere.popup/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606721466611" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

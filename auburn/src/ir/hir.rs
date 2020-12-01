@@ -4,7 +4,7 @@ use std::rc::Rc;
 use ordered_float::OrderedFloat;
 
 use crate::analysis::EntityRef;
-use crate::syntax::ast::{
+use crate::ir::ast::{
     AssignmentOp, AstNodeType, BinaryOp, Identifier, NodeId, NodeType, UnaryOp, Visibility,
 };
 use crate::syntax::Position;
@@ -14,26 +14,26 @@ use crate::types::Type;
 #[derive(Debug, Clone)]
 pub struct BinaryExpr {
     pub op: BinaryOp,
-    pub left: Rc<MirExpr>,
-    pub right: Rc<MirExpr>,
+    pub left: Rc<HirExpr>,
+    pub right: Rc<HirExpr>,
 }
 
 #[derive(Debug, Clone)]
 pub struct UnaryExpr {
     pub op: UnaryOp,
-    pub operand: Rc<MirExpr>,
+    pub operand: Rc<HirExpr>,
 }
 
 #[derive(Debug, Clone)]
 pub struct FieldExpr {
-    pub operand: Rc<MirExpr>,
+    pub operand: Rc<HirExpr>,
     pub field: EntityRef,
 }
 
 #[derive(Debug, Clone)]
 pub struct IndexExpr {
-    pub operand: MirExprPtr,
-    pub index: MirExprPtr,
+    pub operand: HirExprPtr,
+    pub index: HirExprPtr,
 }
 
 #[derive(Debug, Clone)]
@@ -41,23 +41,23 @@ pub struct FieldAccessExpr {}
 
 #[derive(Debug, Clone)]
 pub struct CallExpr {
-    pub operand: Rc<MirExpr>,
+    pub operand: Rc<HirExpr>,
     pub function_type: Rc<Type>,
-    pub actuals: Vec<Rc<MirExpr>>,
+    pub actuals: Vec<Rc<HirExpr>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct MethodExpr {
     pub function_type: Rc<Type>,
     pub name: String,
-    pub actuals: Vec<Rc<MirExpr>>,
+    pub actuals: Vec<Rc<HirExpr>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct AssociatedFunctionExpr {
     pub function_type: Rc<Type>,
     pub name: String,
-    pub actuals: Vec<Rc<MirExpr>>,
+    pub actuals: Vec<Rc<HirExpr>>,
 }
 
 #[derive(Debug, Clone)]
@@ -68,36 +68,36 @@ pub struct BlockExpr {
 
 #[derive(Debug, Clone)]
 pub struct TupleExpr {
-    pub elements: Vec<Rc<MirExpr>>,
+    pub elements: Vec<Rc<HirExpr>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct LoopExpr {
-    pub body: Rc<MirExpr>,
+    pub body: Rc<HirExpr>,
 }
 
 #[derive(Debug, Clone)]
 pub struct WhileExpr {
-    pub cond: Rc<MirExpr>,
-    pub body: Rc<MirExpr>,
+    pub cond: Rc<HirExpr>,
+    pub body: Rc<HirExpr>,
 }
 
 #[derive(Debug, Clone)]
 pub struct ForExpr {
     pub element: Identifier,
-    pub expr: Rc<MirExpr>,
-    pub body: Rc<MirExpr>,
+    pub expr: Rc<HirExpr>,
+    pub body: Rc<HirExpr>,
 }
 
 #[derive(Debug, Clone)]
 pub enum IfExprBranch {
     Conditional {
-        cond: MirExprPtr,
-        body: MirExprPtr,
+        cond: HirExprPtr,
+        body: HirExprPtr,
         first: bool,
     },
     Unconditional {
-        body: MirExprPtr,
+        body: HirExprPtr,
     },
 }
 
@@ -109,12 +109,12 @@ pub struct IfExpr {
 #[derive(Debug, Clone)]
 pub struct StructExpr {
     pub struct_type: Rc<Type>,
-    pub fields: Vec<(usize, Rc<MirExpr>)>,
+    pub fields: Vec<(usize, Rc<HirExpr>)>,
 }
 
 #[derive(Debug, Clone)]
-pub enum MirExprKind {
-    Integer(u64),
+pub enum HirExprKind {
+    Integer(i64),
     Float(OrderedFloat<f64>),
     String(String),
     Char(char),
@@ -138,7 +138,7 @@ pub enum MirExprKind {
     SelfLit,
     Break,
     Continue,
-    Return(MirExprPtr),
+    Return(HirExprPtr),
 }
 
 #[repr(C)]
@@ -181,14 +181,14 @@ impl ResultMeta {
 }
 
 #[derive(Debug, Clone)]
-pub struct MirExprInner {
+pub struct HirExprInner {
     address_mode: AddressMode,
     meta: ResultMeta,
-    kind: MirExprKind,
+    kind: HirExprKind,
 }
 
-impl MirExprInner {
-    pub fn new(address_mode: AddressMode, meta: ResultMeta, kind: MirExprKind) -> Self {
+impl HirExprInner {
+    pub fn new(address_mode: AddressMode, meta: ResultMeta, kind: HirExprKind) -> Self {
         Self {
             address_mode,
             meta,
@@ -196,7 +196,7 @@ impl MirExprInner {
         }
     }
 
-    pub fn kind(&self) -> &MirExprKind {
+    pub fn kind(&self) -> &HirExprKind {
         &self.kind
     }
 
@@ -209,7 +209,7 @@ impl MirExprInner {
     }
 }
 
-impl NodeType for MirExprInner {
+impl NodeType for HirExprInner {
     fn name(&self) -> &'static str {
         self.kind.name()
     }
@@ -219,7 +219,7 @@ impl NodeType for MirExprInner {
     }
 }
 
-impl MirExprKind {
+impl HirExprKind {
     pub fn is_self(&self) -> bool {
         match self {
             Self::SelfLit => true,
@@ -228,7 +228,7 @@ impl MirExprKind {
     }
 }
 
-impl NodeType for MirExprKind {
+impl NodeType for HirExprKind {
     fn name(&self) -> &'static str {
         match self {
             Self::Integer(_) => "Integer",
@@ -264,7 +264,7 @@ impl NodeType for MirExprKind {
     }
 }
 
-impl NodeType for MirStmtKind {
+impl NodeType for HirStmtKind {
     fn name(&self) -> &'static str {
         match self {
             Self::Expr(_) => "Expr Stmt",
@@ -278,7 +278,7 @@ impl NodeType for MirStmtKind {
     }
 }
 
-impl NodeType for MirItemKind {
+impl NodeType for HirItemKind {
     fn name(&self) -> &'static str {
         match self {
             Self::Variable { .. } => "Variable",
@@ -294,7 +294,7 @@ impl NodeType for MirItemKind {
     }
 }
 
-impl NodeType for MirSpecKind {
+impl NodeType for HirSpecKind {
     fn name(&self) -> &'static str {
         match self {
             Self::Named => "Named",
@@ -327,19 +327,19 @@ impl NodeType for MirSpecKind {
 pub struct Assignment {
     pub op: AssignmentOp,
     pub lvalue: EntityRef,
-    pub rhs: Rc<MirExpr>,
+    pub rhs: Rc<HirExpr>,
 }
 
 #[derive(Debug, Clone)]
-pub enum MirStmtKind {
-    Expr(Rc<MirExpr>),
+pub enum HirStmtKind {
+    Expr(Rc<HirExpr>),
     Item(EntityRef),
     Assignment(Assignment),
 }
 
 // the actual type will be the ty() of MirNode
 #[derive(Debug, Clone)]
-pub enum MirSpecKind {
+pub enum HirSpecKind {
     Named,
     Tuple,
     Unit,
@@ -355,40 +355,40 @@ pub struct Variable {
     pub vis: Visibility,
     pub mutable: bool,
     pub name: Identifier,
-    pub init: Option<Rc<MirExpr>>,
-    pub spec: Option<Rc<MirSpec>>,
+    pub init: Option<Rc<HirExpr>>,
+    pub spec: Option<Rc<HirSpec>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Structure {
     pub vis: Visibility,
     pub name: Identifier,
-    pub fields: Vec<Rc<MirField>>,
-    pub methods: Vec<Rc<MirItem>>,
+    pub fields: Vec<Rc<HirField>>,
+    pub methods: Vec<Rc<HirItem>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Function {
     pub vis: Visibility,
     pub name: Identifier,
-    pub params: Vec<Rc<MirParam>>,
-    pub ret: Rc<MirSpec>,
-    pub body: Rc<MirExpr>,
+    pub params: Vec<Rc<HirParam>>,
+    pub ret: Rc<HirSpec>,
+    pub body: Rc<HirExpr>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Param {
     pub name: Identifier,
-    pub spec: Option<Rc<MirSpec>>,
-    pub init: Option<Rc<MirExpr>>,
+    pub spec: Option<Rc<HirSpec>>,
+    pub init: Option<Rc<HirExpr>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Field {
     pub vis: Visibility,
     pub name: Identifier,
-    pub spec: Option<Rc<MirSpec>>,
-    pub init: Option<Rc<MirExpr>>,
+    pub spec: Option<Rc<HirSpec>>,
+    pub init: Option<Rc<HirExpr>>,
 }
 
 impl NodeType for Param {
@@ -412,14 +412,14 @@ impl NodeType for Field {
 }
 
 #[derive(Debug, Clone)]
-pub enum MirItemKind {
+pub enum HirItemKind {
     Variable(Variable),
     Struct(Structure),
     Function(Function),
 }
 
 #[derive(Debug, Clone)]
-pub struct MirNodeBase<Inner> {
+pub struct HirNodeBase<Inner> {
     id: NodeId,
     position: Position,
     inner: Inner,
@@ -434,7 +434,7 @@ pub trait MirNode {
     fn ty(&self) -> Rc<Type>;
 }
 
-impl<Inner: NodeType> MirNodeBase<Inner> {
+impl<Inner: NodeType> HirNodeBase<Inner> {
     pub fn new(inner: Inner, position: Position, ty: Rc<Type>) -> Self {
         Self {
             id: NodeId::next(),
@@ -449,7 +449,7 @@ impl<Inner: NodeType> MirNodeBase<Inner> {
     }
 }
 
-impl<Inner> MirNode for MirNodeBase<Inner> {
+impl<Inner> MirNode for HirNodeBase<Inner> {
     fn position(&self) -> Position {
         self.position
     }
@@ -463,67 +463,63 @@ impl<Inner> MirNode for MirNodeBase<Inner> {
     }
 }
 
-pub type MirExpr = MirNodeBase<MirExprInner>;
-pub type MirStmt = MirNodeBase<MirStmtKind>;
-pub type MirSpec = MirNodeBase<MirSpecKind>;
-pub type MirItem = MirNodeBase<MirItemKind>;
-pub type MirParam = MirNodeBase<Param>;
-pub type MirField = MirNodeBase<Field>;
+pub type HirExpr = HirNodeBase<HirExprInner>;
+pub type MirStmt = HirNodeBase<HirStmtKind>;
+pub type HirSpec = HirNodeBase<HirSpecKind>;
+pub type HirItem = HirNodeBase<HirItemKind>;
+pub type HirParam = HirNodeBase<Param>;
+pub type HirField = HirNodeBase<Field>;
 
-pub type MirExprPtr = Rc<MirExpr>;
-pub type MirStmtPtr = Rc<MirStmt>;
-pub type MirSpecPtr = Rc<MirSpec>;
-pub type MirItemPtr = Rc<MirItem>;
-pub type MirParamPtr = Rc<MirParam>;
-pub type MirFieldPtr = Rc<MirField>;
+pub type HirExprPtr = Rc<HirExpr>;
+pub type HirStmtPtr = Rc<MirStmt>;
+pub type HirSpecPtr = Rc<HirSpec>;
+pub type HirItemPtr = Rc<HirItem>;
+pub type HirParamPtr = Rc<HirParam>;
+pub type HirFieldPtr = Rc<HirField>;
 
-impl MirExpr {
+impl HirExpr {
     pub fn is_literal(&self) -> bool {
         match self.inner().kind() {
-            MirExprKind::Integer(_)
-            | MirExprKind::Float(_)
-            | MirExprKind::String(_)
-            | MirExprKind::Char(_) => true,
+            HirExprKind::Integer(_)
+            | HirExprKind::Float(_)
+            | HirExprKind::String(_)
+            | HirExprKind::Char(_) => true,
             _ => false,
         }
     }
 
-    pub fn as_integer(&self) -> u64 {
+    pub fn as_integer(&self) -> i64 {
         match self.inner().kind() {
-            MirExprKind::Integer(val) => *val,
+            HirExprKind::Integer(val) => *val,
             _ => panic!("Compiler Error: attempting to get an integer from a non-integer node"),
         }
     }
 
-    pub fn returned_expression(&self) -> Option<&MirExpr> {
+    pub fn returned_expression(&self) -> Option<&HirExpr> {
         match self.inner().kind() {
-            MirExprKind::Block(block_expr) => block_expr
+            HirExprKind::Block(block_expr) => block_expr
                 .stmts
                 .first()
                 .map(|stmt| match stmt.inner() {
-                    MirStmtKind::Expr(expr) => Some(expr.as_ref()),
+                    HirStmtKind::Expr(expr) => Some(expr.as_ref()),
                     _ => None,
                 })
                 .unwrap(),
-            MirExprKind::While(..) | MirExprKind::For(..) | MirExprKind::Loop(..) => None,
+            HirExprKind::While(..) | HirExprKind::For(..) | HirExprKind::Loop(..) => None,
             _ => Some(self),
         }
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct MirFile {
+pub struct HirFile {
     id: FileId,
-    global_expressions: Vec<MirStmtPtr>,
+    global_expressions: Vec<HirStmtPtr>,
     entities: Vec<EntityRef>,
 }
 
-impl MirFile {
-    pub(crate) fn new(
-        id: FileId,
-        global_expressions: Vec<MirStmtPtr>,
-        entities: Vec<EntityRef>,
-    ) -> Self {
+impl HirFile {
+    pub fn new(id: FileId, global_expressions: Vec<HirStmtPtr>, entities: Vec<EntityRef>) -> Self {
         Self {
             id,
             global_expressions,
@@ -531,7 +527,7 @@ impl MirFile {
         }
     }
 
-    pub fn globals(&self) -> &[MirStmtPtr] {
+    pub fn globals(&self) -> &[HirStmtPtr] {
         self.global_expressions.as_slice()
     }
 

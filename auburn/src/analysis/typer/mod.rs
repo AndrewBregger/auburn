@@ -2,8 +2,8 @@ use crate::analysis::entity::Path;
 use crate::analysis::scope::{Scope, ScopeKind, ScopeRef};
 use crate::analysis::{Entity, EntityInfo, EntityRef};
 use crate::error::Error;
-use crate::mir::{MirFile, MirStmtKind};
-use crate::syntax::ast::{Identifier, ItemKind, Node, StmtKind};
+use crate::ir::ast::{Identifier, ItemKind, Node, StmtKind};
+use crate::ir::hir::{HirFile, HirStmtKind};
 use crate::syntax::ParsedFile;
 use crate::types::{Type, TypeKind, TypeMap};
 use std::cell::RefCell;
@@ -134,7 +134,7 @@ impl<'a> Typer<'a> {
 }
 
 impl<'src> Typer<'src> {
-    pub fn resolve_file(mut self, parsed_file: ParsedFile) -> Result<MirFile, Error> {
+    pub fn resolve_file(mut self, parsed_file: ParsedFile) -> Result<HirFile, Error> {
         self.push_scope(ScopeKind::File {
             file_id: parsed_file.file_id,
             file_name: parsed_file.file_name.clone(),
@@ -165,7 +165,7 @@ impl<'src> Typer<'src> {
         for stmt in &parsed_file.stmts {
             let stmt = self.resolve_stmt_inner(stmt.as_ref(), true)?;
             match stmt.inner() {
-                MirStmtKind::Expr(..) | MirStmtKind::Assignment(..) => globals.push(stmt.clone()),
+                HirStmtKind::Expr(..) | HirStmtKind::Assignment(..) => globals.push(stmt.clone()),
                 _ => {}
             }
         }
@@ -179,7 +179,7 @@ impl<'src> Typer<'src> {
 
         self.pop_scope();
 
-        Ok(MirFile::new(parsed_file.file_id, globals, entities))
+        Ok(HirFile::new(parsed_file.file_id, globals, entities))
     }
 
     fn resolve_ident(&mut self, ident: &Identifier) -> Result<EntityRef, Error> {

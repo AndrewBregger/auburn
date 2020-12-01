@@ -6,7 +6,7 @@ use std::rc::Rc;
 
 use auburn::analysis::Analysis;
 use auburn::error::Error;
-use auburn::mir::MirFile;
+use auburn::ir::hir::HirFile;
 use auburn::syntax::{ParsedFile, Parser, Position};
 use auburn::system::{File, FileMap};
 use auburn::utils::{EntityPrinter, MirPrinter};
@@ -188,7 +188,7 @@ impl Executor for Core {
         parser.parse_file()
     }
 
-    fn resolve_root(&mut self, file: ParsedFile) -> Result<MirFile, Error> {
+    fn resolve_root(&mut self, file: ParsedFile) -> Result<HirFile, Error> {
         // got though imports and resolve them
         self.analysis.check(file)
     }

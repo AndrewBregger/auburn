@@ -1,16 +1,14 @@
+mod call_frame;
 mod op_codes;
+
 use crate::mem::{read_to, FromBytes};
 use crate::runtime;
 use crate::Value;
+use call_frame::CallFrame;
 pub use op_codes::{Instruction, OpCode};
 use ordered_float::OrderedFloat;
-use runtime::Error as RuntimeError;
 use runtime::Section;
-
-pub struct Vm {
-    stack: Vec<Value>,
-    ip: usize,
-}
+use runtime::{Error as RuntimeError, OxFunction};
 
 macro_rules! binary_op {
     ($name:ident, $start_op:ident, $op:tt) => {
@@ -136,28 +134,33 @@ macro_rules! conditional_binary_op {
 }
 
 macro_rules! load_constant {
-    ($cond:ident, $name:literal, $self:expr, $section:expr) => {
-        let idx = *unsafe { $section.read_unchecked($self.ip) };
-        $self.ip += 1;
-        let value = $section.get_constant(idx as usize);
+    ($cond:ident, $name:literal, $self:expr) => {
+        let frame = $self.frame_mut();
+        let idx = *unsafe {
+            let section = frame.section();
+            section.read_unchecked(frame.ip)
+        };
+        frame.ip += 1;
+        let value = frame.section().get_constant(idx as usize);
         if value.$cond() {
             $self.push_stack(value);
-        }
-        else {
+        } else {
             panic!("loading {} constant that is not an {}", $name, $name);
         }
-    }
+    };
 }
+
+pub struct Vm {
+    stack: Vec<Value>,
+    call_stack: Vec<CallFrame>,
+}
+
 impl Vm {
     pub fn new() -> Self {
         Self {
             stack: vec![],
-            ip: 0,
+            call_stack: Vec::with_capacity(512),
         }
-    }
-
-    pub fn run(&mut self, section: &mut Section) -> Result<(), RuntimeError> {
-        self.run_from(section, 0)
     }
 
     pub fn push_stack(&mut self, data: Value) {
@@ -172,55 +175,97 @@ impl Vm {
         self.stack.last().expect("stack is empty")
     }
 
-    pub fn run_from(&mut self, section: &mut Section, start_ip: usize) -> Result<(), RuntimeError> {
-        println!("Section {} begin", section.id());
-        self.ip = start_ip;
+    pub fn peek(&self, offset: usize) -> &Value {
+        &self.stack[self.stack.len() - offset]
+    }
+
+    pub fn frame(&self) -> &CallFrame {
+        self.call_stack.last().expect("call stack empty")
+    }
+
+    pub fn frame_mut(&mut self) -> &mut CallFrame {
+        self.call_stack.last_mut().expect("call stack empty")
+    }
+
+    pub fn call_value(&mut self) {
+        let value = {
+            let frame = self.frame_mut();
+            let arity = unsafe { *frame.section().read_unchecked(frame.ip) };
+            frame.ip += 1;
+            arity
+        };
+
+        let top = self.peek(value as usize + 1);
+        match top {
+            Value::Function(funct) => {
+                if value != funct.arity() {
+                    panic!("{} is not given the correct number of parameters, expected {}", funct, funct.arity());
+                }
+
+                let funct = funct.as_ref() as *const _;
+                let call_frame = CallFrame::new(funct, self.stack.len() - value as usize);
+                self.call_stack.push(call_frame);
+            }
+            _ => { panic!("Unable to call non function object") }
+        }
+    }
+
+    pub fn run(&mut self, function: Box<OxFunction>) -> Result<(), RuntimeError> {
+        let funct = function.as_ref() as *const _;
+
+        let call_frame = CallFrame::new(funct, self.stack.len());
+        self.push_stack(Value::Function(function));
+        self.call_stack.push(call_frame);
+
 
         loop {
-            if self.ip >= section.len() {
-                // is this an unexepcted end of section?
-                break;
-            }
-
-
-            // for (idx, value) in self.stack.iter().enumerate() {
-            //     println!("{}| {}", idx, value);
-            // }
-
             // read the next op code and advance the instruction pointer.
-            let op_code_raw = unsafe { section.read_unchecked(self.ip) };
-            self.ip += 1;
-            let op_code = OpCode::from_u8(*op_code_raw).unwrap();
+
+            let op_code_raw = {
+                let frame = self.frame_mut();
+                let code = *unsafe { frame.section().read_unchecked(frame.ip) };
+                frame.ip += 1;
+                code
+            };
+
+            let op_code = OpCode::from_u8(op_code_raw).unwrap();
+            println!("OpCode {}", op_code);
             match op_code {
                 OpCode::LoadI8 => {
-                    load_constant!(is_i8, "i8", self, section);
+                    for (idx, value) in self.stack.iter().enumerate() {
+                        println!("{}| {}", idx, value);
+                    }
+                    load_constant!(is_i8, "i8", self);
                 }
                 OpCode::LoadI16 => {
-                    load_constant!(is_i16, "i16", self, section);
+                    load_constant!(is_i16, "i16", self);
                 }
                 OpCode::LoadI32 => {
-                    load_constant!(is_i32, "i32", self, section);
+                    load_constant!(is_i32, "i32", self);
                 }
                 OpCode::LoadI64 => {
-                    load_constant!(is_i64, "i64", self, section);
+                    load_constant!(is_i64, "i64", self);
                 }
                 OpCode::LoadU8 => {
-                    load_constant!(is_u8,  "u8", self, section);
+                    load_constant!(is_u8, "u8", self);
                 }
                 OpCode::LoadU16 => {
-                    load_constant!(is_u16, "u16", self, section);
+                    load_constant!(is_u16, "u16", self);
                 }
                 OpCode::LoadU32 => {
-                    load_constant!(is_u32, "u32", self, section);
+                    load_constant!(is_u32, "u32", self);
                 }
                 OpCode::LoadU64 => {
-                    load_constant!(is_u64, "u64", self, section);
+                    load_constant!(is_u64, "u64", self);
                 }
                 OpCode::LoadF32 => {
-                    load_constant!(is_f32, "f8", self, section);
+                    load_constant!(is_f32, "f8", self);
                 }
                 OpCode::LoadF64 => {
-                    load_constant!(is_f64, "f64", self, section);
+                    load_constant!(is_f64, "f64", self);
+                }
+                OpCode::LoadStr => {
+                    load_constant!(is_string, "string", self);
                 }
                 OpCode::LoadTrue => {
                     self.push_stack(Value::from(true));
@@ -229,40 +274,90 @@ impl Vm {
                     self.push_stack(Value::from(false));
                 }
                 OpCode::LoadGlobal => {
-                    let value = read_to::<u8>(section.data(), &mut self.ip);
-                    self.push_stack(section.get_global(value as usize));
+                    let global = {
+                        let frame = self.frame_mut();
+                        let mut ip = frame.ip;
+                        let value = read_to::<u8>(frame.section().data(), &mut ip);
+                        frame.ip = ip;
+                        frame.section().get_global(value as usize)
+                    };
+
+                    self.push_stack(global);
                 }
                 OpCode::Label => {
                     // skip the label I am not sure how else to reprsent this.
-                    let len = read_to::<u8>(section.data(), &mut self.ip);
-                    self.ip += 1 + len as usize;
+                    let frame = self.frame_mut();
+                    let mut ip = frame.ip;
+                    let len = read_to::<u8>(frame.section().data(), &mut ip);
+                    frame.ip = ip + 1 + len as usize;
                 }
                 OpCode::JmpTrue => {
-                    let value = read_to::<u16>(section.data(), &mut self.ip);
                     let cond = self.top().as_bool();
+                    let frame = self.frame_mut();
+                    let mut ip = frame.ip;
+                    let value = read_to::<u16>(frame.section().data(), &mut ip);
                     if cond {
-                        self.ip += value as usize;
+                        frame.ip = ip + value as usize;
                     }
                 }
                 OpCode::JmpFalse => {
-                    let value = read_to::<u16>(section.data(), &mut self.ip);
                     let cond = self.top().as_bool();
+                    let frame = self.frame_mut();
+                    let mut ip = frame.ip;
+                    let value = read_to::<u16>(frame.section().data(), &mut ip);
                     if cond == false {
-                        self.ip += value as usize;
+                        frame.ip = ip + value as usize;
                     }
                 }
                 OpCode::Jmp => {
-                    let value = read_to::<u16>(section.data(), &mut self.ip);
-                    self.ip += value as usize;
+                    let frame = self.frame_mut();
+                    let mut ip = frame.ip;
+                    let value = read_to::<u16>(frame.section().data(), &mut ip);
+                    frame.ip = ip + value as usize;
                 }
                 OpCode::Loop => {
-                    let value = read_to::<u16>(section.data(), &mut self.ip);
-                    self.ip -= value as usize;
+                    let frame = self.frame_mut();
+                    let mut ip = frame.ip;
+                    let value = read_to::<u16>(frame.section().data(), &mut ip);
+                    frame.ip = ip - value as usize;
                 }
                 OpCode::SetGlobal => {
-                    let idx= read_to::<u8>(section.data(), &mut self.ip);
+                    let top = self.top().clone();
+                    let frame = self.frame_mut();
+                    let mut ip = frame.ip;
+                    let idx = read_to::<u8>(frame.section().data(), &mut ip);
+                    frame
+                        .funct_mut()
+                        .section_mut()
+                        .set_global(idx as usize, top);
+                    frame.ip = ip;
+                }
+                OpCode::Return => {
                     let top = self.pop();
-                    section.set_global(idx as usize, top);
+                    let current_frame = self.call_stack.pop().expect("call stack is empty");
+                    self.stack.truncate(current_frame.local_start);
+                    self.push_stack(top);
+
+                    if self.call_stack.is_empty() {
+                        break;
+                    }
+                }
+                OpCode::LoadLocal => {
+                    let frame = self.frame_mut();
+                    let ip = frame.ip;
+                    let local = frame.local_start;
+                    let idx = unsafe { *frame.section().read_unchecked(ip) };
+                    frame.ip += 1;
+                    self.push_stack(self.stack[local + idx as usize].clone());
+                }
+                OpCode::SetLocal => {
+                    let frame = self.frame_mut();
+                    let ip = frame.ip;
+                    let local = frame.local_start;
+                    let idx = unsafe { *frame.section().read_unchecked(ip) };
+                    frame.ip += 1;
+                    let value = self.top().clone();
+                    self.stack[local + idx as usize] = value;
                 }
                 OpCode::AddI8
                 | OpCode::AddI16
@@ -371,12 +466,12 @@ impl Vm {
                 OpCode::Pop => {
                     self.pop();
                 }
-                OpCode::Call => {}
+                OpCode::Call => self.call_value(),
                 OpCode::Print => {
                     let value = self.top();
                     println!("{}", value)
                 }
-                OpCode::Exit => { break }
+                OpCode::Exit => break,
                 OpCode::NumOps => {}
             }
         }

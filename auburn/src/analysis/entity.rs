@@ -5,8 +5,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use itertools::Itertools;
 
 use crate::analysis::scope::ScopeRef;
-use crate::mir::{MirExprPtr, MirSpecPtr};
-use crate::syntax::ast::{Item, Visibility};
+use crate::ir::ast::{Item, Visibility};
+use crate::ir::hir::{HirExprPtr, HirSpecPtr};
 use crate::types::Type;
 use crate::utils::{new_ptr, Ptr};
 
@@ -22,7 +22,7 @@ pub struct StructureInfo {
 pub struct FunctionInfo {
     pub params: ScopeRef,
     pub body_scope: Option<ScopeRef>,
-    pub body: MirExprPtr,
+    pub body: HirExprPtr,
 }
 
 #[derive(Debug, Clone)]
@@ -30,22 +30,22 @@ pub struct AssociatedFunctionInfo {
     pub entity: EntityRef,
     pub params: ScopeRef,
     pub body_scope: Option<ScopeRef>,
-    pub body: MirExprPtr,
+    pub body: HirExprPtr,
     pub takes_self: bool,
 }
 
 #[derive(Debug, Clone)]
 pub struct VariableInfo {
-    pub spec: Option<MirSpecPtr>,
+    pub spec: Option<HirSpecPtr>,
     pub mutable: bool,
-    pub default: Option<MirExprPtr>,
+    pub default: Option<HirExprPtr>,
 }
 
 #[derive(Debug, Clone)]
 pub struct LocalInfo {
     pub index: usize,
-    pub spec: Option<MirSpecPtr>,
-    pub default: Option<MirExprPtr>,
+    pub spec: Option<HirSpecPtr>,
+    pub default: Option<HirExprPtr>,
 }
 
 #[derive(Debug, Clone)]

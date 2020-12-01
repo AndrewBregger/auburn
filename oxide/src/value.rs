@@ -1,3 +1,4 @@
+use crate::runtime::{OxFunction, OxString};
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone)]
@@ -13,6 +14,8 @@ pub enum Value {
     F32(f32),
     F64(f64),
     Bool(bool),
+    String(Box<OxString>),
+    Function(Box<OxFunction>),
 }
 
 impl Value {
@@ -29,6 +32,8 @@ impl Value {
             Self::F32(_) => "f32",
             Self::F64(_) => "f64",
             Self::Bool(_) => "bool",
+            Self::String(_) => "string",
+            Self::Function(_) => "function",
         }
     }
 
@@ -137,6 +142,39 @@ impl Value {
         }
     }
 
+    pub fn as_string(&self) -> &OxString {
+        if let Self::String(val) = self {
+            val
+        } else {
+            panic!(
+                "Attempting to get an string from a value of type {}",
+                self.ty()
+            );
+        }
+    }
+
+    pub fn as_function(&self) -> &OxFunction {
+        if let Self::Function(val) = self {
+            val
+        } else {
+            panic!(
+                "Attempting to get an string from a value of type {}",
+                self.ty()
+            );
+        }
+    }
+
+    pub fn as_function_mut(&mut self) -> &mut OxFunction {
+        if let Self::Function(val) = self {
+            val
+        } else {
+            panic!(
+                "Attempting to get an string from a value of type {}",
+                self.ty()
+            );
+        }
+    }
+
     pub fn is_i8(&self) -> bool {
         match self {
             Self::I8(_) => true,
@@ -164,7 +202,7 @@ impl Value {
             _ => false,
         }
     }
-    
+
     pub fn is_u8(&self) -> bool {
         match self {
             Self::U8(_) => true,
@@ -214,6 +252,19 @@ impl Value {
         }
     }
 
+    pub fn is_string(&self) -> bool {
+        match self {
+            Self::String(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_function(&self) -> bool {
+        match self {
+            Self::Function(_) => true,
+            _ => false,
+        }
+    }
 }
 
 macro_rules! value_from {
@@ -255,6 +306,8 @@ impl Display for Value {
             Self::F32(val) => write!(f, "{}", val),
             Self::F64(val) => write!(f, "{}", val),
             Self::Bool(val) => write!(f, "{}", val),
+            Self::String(val) => write!(f, "{}", val),
+            Self::Function(val) => write!(f, "{}", val),
         }
     }
 }

@@ -1,8 +1,8 @@
 use crate::analysis::typer::Typer;
 use crate::analysis::typer::EXPR_RESULT_USED;
 use crate::error::Error;
-use crate::mir::{Assignment, MirNode, MirStmt, MirStmtKind};
-use crate::syntax::ast::{AssignmentOp, Node, NodeType, Stmt, StmtKind};
+use crate::ir::ast::{AssignmentOp, Node, NodeType, Stmt, StmtKind};
+use crate::ir::hir::{Assignment, HirStmtKind, MirNode, MirStmt};
 use std::ops::Deref;
 use std::rc::Rc;
 
@@ -37,7 +37,7 @@ impl<'src> Typer<'src> {
                 self.state = old_state;
                 let position = expr.position();
                 let ty = expr.ty();
-                Ok(Rc::new(MirStmt::new(MirStmtKind::Expr(expr), position, ty)))
+                Ok(Rc::new(MirStmt::new(HirStmtKind::Expr(expr), position, ty)))
             }
             StmtKind::Item(item) => {
                 let entity = if top_level {
@@ -49,7 +49,7 @@ impl<'src> Typer<'src> {
                 let position = item.position();
                 // let ty = entity.deref().borrow().ty();
                 Ok(Rc::new(MirStmt::new(
-                    MirStmtKind::Item(entity),
+                    HirStmtKind::Item(entity),
                     position,
                     self.type_map.get_unit(),
                 )))
@@ -73,7 +73,7 @@ impl<'src> Typer<'src> {
                         };
 
                         Ok(Rc::new(MirStmt::new(
-                            MirStmtKind::Assignment(assignment),
+                            HirStmtKind::Assignment(assignment),
                             stmt.position(),
                             self.type_map.get_unit(),
                         )))

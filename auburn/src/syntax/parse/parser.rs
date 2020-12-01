@@ -1,6 +1,10 @@
 use std::convert::TryFrom;
 
 use crate::error::Error;
+use crate::ir::ast::{
+    Expr, ExprKind, FunctionBody, Ident, Identifier, Item, ItemKind, Node, Spec, SpecKind, Stmt,
+    StmtKind, StructExprField, UnaryOp, Visibility,
+};
 use crate::syntax::ast::*;
 use crate::syntax::tokenizer::TokenCursor;
 use crate::syntax::{Control, Keyword, Operator, PToken, Position, Token};

@@ -8,7 +8,7 @@ use std::{
 use itertools::Itertools;
 
 use crate::analysis::EntityRef;
-use crate::mir::AddressMode;
+use crate::ir::hir::AddressMode;
 
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct TypeId(pub usize);
