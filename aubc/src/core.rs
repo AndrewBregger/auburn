@@ -4,13 +4,16 @@ use std::ops::Deref;
 use std::path::Path;
 use std::rc::Rc;
 
-use auburn::analysis::Analysis;
-use auburn::error::Error;
 use auburn::ir::hir::HirFile;
 use auburn::syntax::{ParsedFile, Parser, Position};
 use auburn::system::{File, FileMap};
 use auburn::utils::{EntityPrinter, MirPrinter};
 use auburn::Executor;
+use auburn::{
+    analysis::Analysis,
+    generator::{CodeGen, Context},
+};
+use auburn::{error::Error, oxide::vm::Vm};
 use clap::Clap;
 
 #[derive(Clap, Debug)]
@@ -136,6 +139,15 @@ impl Core {
 
     fn execute_command(&mut self, cmd: Command) -> Result<(), CoreError> {
         match cmd {
+            Command::Parse { input } => {
+                let file = self
+                    .open_file(input.as_str())
+                    .map_err(|err| CoreError::IoError(err, input))?;
+                let parsed_file = self
+                    .parse_file(file.as_ref())
+                    .map_err(|err| CoreError::from(err))?;
+                println!("{:#?}", parsed_file);
+            }
             Command::Check { input } => {
                 let file = self
                     .open_file(input.as_str())
@@ -157,16 +169,63 @@ impl Core {
                     EntityPrinter::print(&entity.deref().borrow());
                 }
             }
-            Command::Parse { input } => {
+            Command::Run { input } => {
                 let file = self
                     .open_file(input.as_str())
                     .map_err(|err| CoreError::IoError(err, input))?;
                 let parsed_file = self
                     .parse_file(file.as_ref())
                     .map_err(|err| CoreError::from(err))?;
-                println!("{:#?}", parsed_file);
+                let mir_file = self
+                    .resolve_root(parsed_file)
+                    .map_err(|err| CoreError::from(err))?;
+                let context = Context::new(&self.file_map, &mir_file);
+                let ox_function = CodeGen::new(context).build().unwrap();
+
+                // println!("{:?}", ox_function);
+                // println!("{}", ox_function.section());
+                let section = ox_function.section();
+                println!("globals:");
+                for (idx, global) in section.globals().iter().enumerate() {
+                    println!("\t{}: {}", idx, global);
+
+                    if global.is_function() {
+                        let function = global.as_function();
+                        let section = function.section();
+
+                        println!("globals:");
+                        for (idx, global) in section.globals().iter().enumerate() {
+                            println!("\t{}: {}", idx, global);
+                        }
+
+                        println!("constants:");
+                        for (idx, constant) in section.constants().iter().enumerate() {
+                            println!("\t{}: {}", idx, constant);
+                        }
+
+                        println!("disassembly:");
+                        for instruction in section.disassemble() {
+                            println!("\t{}", instruction);
+                        }
+                    }
+                }
+
+                println!("constants:");
+                for (idx, constant) in section.constants().iter().enumerate() {
+                    println!("\t{}: {}", idx, constant);
+                }
+
+                println!("disassembly:");
+                for instruction in section.disassemble() {
+                    println!("\t{}", instruction);
+                }
+
+                let mut vm = Vm::new();
+                match vm.run(ox_function) {
+                    Ok(_) => println!("Top Stack: {}", vm.top()),
+                    Err(err) => println!("{}", err),
+                }
             }
-            Command::Run { .. } => {}
         }
         Ok(())
     }

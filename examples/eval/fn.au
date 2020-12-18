@@ -1,0 +1,8 @@
+fn addf(x f32, y f32) = x + y
+
+fn addi(x i32, y i32) i32 {
+    x + y
+}
+
+addf(1.3, 2.2)
+addi(3, 2)

@@ -169,7 +169,8 @@ impl Section {
                 | OpCode::LoadGlobal
                 | OpCode::SetGlobal
                 | OpCode::LoadLocal
-                | OpCode::SetLocal => {
+                | OpCode::SetLocal
+                | OpCode::Call => {
                     let value = *unsafe { self.read_unchecked(ip) };
                     res.push(Instruction::with_arg(ip, op_code, value as u16));
                     ip += 1;
@@ -182,7 +183,6 @@ impl Section {
                         value as u16,
                     ));
                 }
-                OpCode::Call => {}
                 OpCode::Label => {}
                 OpCode::Return
                 | OpCode::Exit
@@ -276,5 +276,13 @@ impl Section {
             }
         }
         res
+    }
+
+    pub fn globals(&self) -> &[Value] {
+        self.globals.as_slice()
+    }
+
+    pub fn constants(&self) -> &[Value] {
+        self.constants.as_slice()
     }
 }

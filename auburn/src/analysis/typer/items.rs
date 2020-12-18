@@ -33,7 +33,7 @@ impl<'src> Typer<'src> {
         if let Some(name) = item.get_name() {
             if let Some(entity) = self.shallow_lookup(name.kind().value.as_str()) {
                 entity.deref().borrow_mut().to_resolving();
-                self.resolve_item_impl(item, entity, true)
+                self.resolve_item_impl(item, entity, true, true)
             } else {
                 let err = Error::other(
                     "Compiler Error: attempting to resolve top level item but failed to find entity"
@@ -55,7 +55,7 @@ impl<'src> Typer<'src> {
                 name.kind().value.clone(),
                 self.type_map.get_invalid(),
             )));
-            self.resolve_item_impl(item, entity, false)
+            self.resolve_item_impl(item, entity, false, false)
         } else {
             panic!("Compiler Error: attempting to resolving a field, param, or self as an item. These should be resolved locally");
         }
@@ -66,6 +66,7 @@ impl<'src> Typer<'src> {
         item: &Item,
         entity: EntityRef,
         declared: bool,
+        is_file_scope: bool,
     ) -> Result<EntityRef, Error> {
         match item.kind() {
             ItemKind::Variable {
@@ -83,6 +84,7 @@ impl<'src> Typer<'src> {
                 spec.as_ref(),
                 item.position(),
                 declared,
+                is_file_scope,
             ),
             ItemKind::Struct { vis, name, fields } => self.resolve_struct(
                 entity,
@@ -110,7 +112,9 @@ impl<'src> Typer<'src> {
                     declared,
                 )
             }),
-            ItemKind::Param { .. } | ItemKind::SelfParam { .. } | ItemKind::Field { .. } => todo!(),
+            ItemKind::Param { .. } | ItemKind::SelfParam { .. } | ItemKind::Field { .. } => {
+                panic!()
+            }
         }
     }
 
@@ -134,12 +138,14 @@ impl<'src> Typer<'src> {
         spec: Option<&Box<Spec>>,
         position: Position,
         declared: bool,
+        is_file_scope: bool,
     ) -> Result<EntityRef, Error> {
         let (spec, init, result_type) = self.resolve_local(spec, init, position)?;
 
         let variable_info = VariableInfo {
             spec,
             mutable,
+            global: is_file_scope,
             default: init.clone(),
         };
 
@@ -148,11 +154,6 @@ impl<'src> Typer<'src> {
             EntityInfo::Variable(variable_info),
             Path::empty(),
         );
-
-        {
-            let borrow = entity.deref().borrow();
-            println!("Variable Entity Ptr: {:?}", (&borrow) as *const _);
-        }
 
         if !declared {
             self.insert_entity(name.kind().value.as_str(), entity.clone());

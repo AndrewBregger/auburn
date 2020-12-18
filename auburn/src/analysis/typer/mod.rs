@@ -199,7 +199,7 @@ impl<'src> Typer<'src> {
                 println!("\tEntity is unresolved, resolving");
                 if let EntityInfo::Unresolved(item) = entity_borrow.kind().clone() {
                     std::mem::drop(entity_borrow);
-                    let entity = self.resolve_item_impl(item.as_ref(), entity, true)?;
+                    let entity = self.resolve_item_impl(item.as_ref(), entity, true, false)?;
                     Ok(entity)
                 } else {
                     unreachable!("Compiler Error")

@@ -2,8 +2,8 @@ use std::ops::Deref;
 
 use crate::ir::ast::NodeType;
 use crate::ir::hir::{
-    HirExpr, HirExprKind, HirField, HirItem, HirItemKind, HirNodeBase, HirParam, HirSpec,
-    HirStmtKind, IfExprBranch, MirNode, MirStmt,
+    HirExpr, HirExprKind, HirField, HirItem, HirItemKind, HirNodeBase, HirParam, HirSpec, HirStmt,
+    HirStmtKind, IfExprBranch, MirNode,
 };
 use crate::utils::EntityPrinter;
 
@@ -14,7 +14,7 @@ impl MirPrinter {
         (0..indent).map(|_| '\t').collect()
     }
 
-    pub fn print_stmt(stmt: &MirStmt) {
+    pub fn print_stmt(stmt: &HirStmt) {
         Self::print_stmt_inner(stmt, 0);
     }
 
@@ -27,7 +27,7 @@ impl MirPrinter {
         );
     }
 
-    pub(crate) fn print_stmt_inner(stmt: &MirStmt, indent: usize) {
+    pub(crate) fn print_stmt_inner(stmt: &HirStmt, indent: usize) {
         Self::print_header(stmt, indent);
         match stmt.inner() {
             HirStmtKind::Expr(expr) => Self::print_expr_inner(expr.as_ref(), indent + 1),

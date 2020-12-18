@@ -22,6 +22,7 @@ impl FileId {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct File {
     content: String,
     path: PathBuf,

@@ -2,7 +2,7 @@ use crate::analysis::typer::Typer;
 use crate::analysis::typer::EXPR_RESULT_USED;
 use crate::error::Error;
 use crate::ir::ast::{AssignmentOp, Node, NodeType, Stmt, StmtKind};
-use crate::ir::hir::{Assignment, HirStmtKind, MirNode, MirStmt};
+use crate::ir::hir::{Assignment, HirStmt, HirStmtKind, MirNode};
 use std::ops::Deref;
 use std::rc::Rc;
 
@@ -18,7 +18,7 @@ macro_rules! with_state {
 }
 
 impl<'src> Typer<'src> {
-    pub(crate) fn resolve_stmt(&mut self, stmt: &Stmt) -> Result<Rc<MirStmt>, Error> {
+    pub(crate) fn resolve_stmt(&mut self, stmt: &Stmt) -> Result<Rc<HirStmt>, Error> {
         self.resolve_stmt_inner(stmt, false)
     }
 
@@ -26,7 +26,7 @@ impl<'src> Typer<'src> {
         &mut self,
         stmt: &Stmt,
         top_level: bool,
-    ) -> Result<Rc<MirStmt>, Error> {
+    ) -> Result<Rc<HirStmt>, Error> {
         println!("Resolving Stmt {}", stmt.kind().name());
 
         match stmt.kind() {
@@ -37,7 +37,7 @@ impl<'src> Typer<'src> {
                 self.state = old_state;
                 let position = expr.position();
                 let ty = expr.ty();
-                Ok(Rc::new(MirStmt::new(HirStmtKind::Expr(expr), position, ty)))
+                Ok(Rc::new(HirStmt::new(HirStmtKind::Expr(expr), position, ty)))
             }
             StmtKind::Item(item) => {
                 let entity = if top_level {
@@ -48,7 +48,7 @@ impl<'src> Typer<'src> {
 
                 let position = item.position();
                 // let ty = entity.deref().borrow().ty();
-                Ok(Rc::new(MirStmt::new(
+                Ok(Rc::new(HirStmt::new(
                     HirStmtKind::Item(entity),
                     position,
                     self.type_map.get_unit(),
@@ -72,7 +72,7 @@ impl<'src> Typer<'src> {
                             rhs,
                         };
 
-                        Ok(Rc::new(MirStmt::new(
+                        Ok(Rc::new(HirStmt::new(
                             HirStmtKind::Assignment(assignment),
                             stmt.position(),
                             self.type_map.get_unit(),

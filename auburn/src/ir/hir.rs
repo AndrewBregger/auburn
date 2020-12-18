@@ -62,7 +62,7 @@ pub struct AssociatedFunctionExpr {
 
 #[derive(Debug, Clone)]
 pub struct BlockExpr {
-    pub stmts: Vec<Rc<MirStmt>>,
+    pub stmts: Vec<Rc<HirStmt>>,
     pub return_used: bool,
 }
 
@@ -156,6 +156,8 @@ pub struct ResultMeta {
     pub mutable_type: bool,
     pub rvalue: bool,
     pub is_type: bool,
+    pub is_call: bool,
+    pub uses_result: bool,
 }
 
 impl ResultMeta {
@@ -172,6 +174,28 @@ impl ResultMeta {
             mutable_type,
             rvalue,
             is_type,
+            is_call: false,
+            uses_result: false,
+        }
+    }
+
+    pub fn funct(
+        mutable: bool,
+        inherited: bool,
+        mutable_type: bool,
+        rvalue: bool,
+        is_type: bool,
+        is_call: bool,
+        uses_result: bool,
+    ) -> Self {
+        Self {
+            mutable,
+            inherited,
+            mutable_type,
+            rvalue,
+            is_type,
+            is_call,
+            uses_result,
         }
     }
 
@@ -464,14 +488,14 @@ impl<Inner> MirNode for HirNodeBase<Inner> {
 }
 
 pub type HirExpr = HirNodeBase<HirExprInner>;
-pub type MirStmt = HirNodeBase<HirStmtKind>;
+pub type HirStmt = HirNodeBase<HirStmtKind>;
 pub type HirSpec = HirNodeBase<HirSpecKind>;
 pub type HirItem = HirNodeBase<HirItemKind>;
 pub type HirParam = HirNodeBase<Param>;
 pub type HirField = HirNodeBase<Field>;
 
 pub type HirExprPtr = Rc<HirExpr>;
-pub type HirStmtPtr = Rc<MirStmt>;
+pub type HirStmtPtr = Rc<HirStmt>;
 pub type HirSpecPtr = Rc<HirSpec>;
 pub type HirItemPtr = Rc<HirItem>;
 pub type HirParamPtr = Rc<HirParam>;
@@ -533,5 +557,9 @@ impl HirFile {
 
     pub fn entities(&self) -> &[EntityRef] {
         self.entities.as_slice()
+    }
+
+    pub fn id(&self) -> FileId {
+        self.id
     }
 }

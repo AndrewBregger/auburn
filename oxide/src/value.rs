@@ -16,6 +16,7 @@ pub enum Value {
     Bool(bool),
     String(Box<OxString>),
     Function(Box<OxFunction>),
+    Unit,
 }
 
 impl Value {
@@ -34,6 +35,7 @@ impl Value {
             Self::Bool(_) => "bool",
             Self::String(_) => "string",
             Self::Function(_) => "function",
+            Self::Unit => "unit",
         }
     }
 
@@ -308,6 +310,7 @@ impl Display for Value {
             Self::Bool(val) => write!(f, "{}", val),
             Self::String(val) => write!(f, "{}", val),
             Self::Function(val) => write!(f, "{}", val),
+            Self::Unit => write!(f, "<>"),
         }
     }
 }

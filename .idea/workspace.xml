@@ -25,34 +25,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4b17c99f-758c-48ea-b0b5-e3d26e51a8dc" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/auburn/src/generator/lir_builder.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/auburn/src/generator/mod.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/auburn/src/ir/lir.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/auburn/src/ir/mod.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/aubc/src/core.rs" beforeDir="false" afterPath="$PROJECT_DIR$/aubc/src/core.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/aubc/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/aubc/src/main.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/auburn/src/analysis/analysis.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/analysis/analysis.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/auburn/src/analysis/entity.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/analysis/entity.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/auburn/src/analysis/typer/expressions.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/analysis/typer/expressions.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/auburn/src/analysis/typer/items.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/analysis/typer/items.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/auburn/src/analysis/typer/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/analysis/typer/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/auburn/src/analysis/typer/statements.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/analysis/typer/statements.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/auburn/src/analysis/typer/type_specs.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/analysis/typer/type_specs.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/auburn/src/error.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/error.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/auburn/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/lib.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/auburn/src/mir/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/ir/hir.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/auburn/src/syntax/ast.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/ir/ast.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/auburn/src/syntax/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/syntax/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/auburn/src/syntax/parse/parser.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/syntax/parse/parser.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/auburn/src/types/ty.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/types/ty.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/auburn/src/utils/mir_printer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/auburn/src/utils/mir_printer.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/oxide/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/oxide/src/lib.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/oxide/src/runtime/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/oxide/src/runtime/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/oxide/src/runtime/section.rs" beforeDir="false" afterPath="$PROJECT_DIR$/oxide/src/runtime/section.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/oxide/src/value.rs" beforeDir="false" afterPath="$PROJECT_DIR$/oxide/src/value.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/oxide/src/vm/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/oxide/src/vm/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/oxide/src/vm/op_codes.rs" beforeDir="false" afterPath="$PROJECT_DIR$/oxide/src/vm/op_codes.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -111,7 +84,7 @@
       <recent name="D:\Projects\language\src" />
     </key>
   </component>
-  <component name="RunManager" selected="Cargo.Run">
+  <component name="RunManager" selected="Python tests.Unittests in E:/Projects/auburn/src/tests">
     <configuration name="Run" type="CargoCommandRunConfiguration" factoryName="Cargo Command" nameIsGenerated="true">
       <option name="channel" value="DEFAULT" />
       <option name="command" value="run -- check examples\test" />
@@ -121,6 +94,7 @@
       <option name="workingDirectory" value="file://$PROJECT_DIR$" />
       <envs />
       <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
@@ -134,6 +108,7 @@
       <envs />
       <method v="2">
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
     <configuration name="Test syntax::tokenizer::tests::multi_tokens_tokenizer" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
@@ -145,6 +120,7 @@
       <option name="workingDirectory" value="file://$PROJECT_DIR$" />
       <envs />
       <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
@@ -158,6 +134,7 @@
       <envs />
       <method v="2">
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
     <configuration name="Test tokenizer" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
@@ -170,6 +147,7 @@
       <envs />
       <method v="2">
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
     <configuration name="Test tokenizer::tests" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
@@ -181,6 +159,7 @@
       <option name="workingDirectory" value="file://$PROJECT_DIR$" />
       <envs />
       <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
@@ -199,20 +178,11 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Cargo.Run" />
-      <item itemvalue="Cargo.Test syntax::tokenizer::tests::hierarchy_tokenizer" />
-      <item itemvalue="Cargo.Test tokenizer" />
-      <item itemvalue="Cargo.Test syntax::tokenizer::tests::multi_tokens_tokenizer" />
-      <item itemvalue="Cargo.Test syntax::tokenizer::tests::test_simple_op_tokenizer" />
-      <item itemvalue="Cargo.Test tokenizer::tests" />
       <item itemvalue="Python tests.Unittests in E:/Projects/auburn/src/tests" />
     </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python tests.Unittests in E:/Projects/auburn/src/tests" />
-        <item itemvalue="Cargo.Test tokenizer::tests" />
-        <item itemvalue="Cargo.Test syntax::tokenizer::tests::test_simple_op_tokenizer" />
-        <item itemvalue="Cargo.Test syntax::tokenizer::tests::multi_tokens_tokenizer" />
       </list>
     </recent_temporary>
   </component>
@@ -280,6 +250,9 @@
       <workItem from="1606708310638" duration="3888000" />
       <workItem from="1606715342525" duration="3480000" />
       <workItem from="1606796050253" duration="7731000" />
+      <workItem from="1606965689431" duration="76000" />
+      <workItem from="1607146364569" duration="629000" />
+      <workItem from="1607220211800" duration="55000" />
     </task>
     <task id="LOCAL-00001" summary="Implemented block and tuple expressions.">
       <created>1601015341655</created>
@@ -495,6 +468,10 @@
     <option name="LAST_COMMIT_MESSAGE" value="implemented bytecode disassembly" />
   </component>
   <component name="WindowStateProjectService">
+    <state x="872" y="376" key="#Plugins" timestamp="1607220258172">
+      <screen x="0" y="30" width="2560" height="1410" />
+    </state>
+    <state x="872" y="376" key="#Plugins/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1607220258172" />
     <state x="1179" y="600" width="773" height="269" key="#Vim_Emulation" timestamp="1602315256138">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
@@ -511,6 +488,10 @@
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="1084" y="449" key="#com.intellij.ide.util.MemberChooser/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606801880994" />
+    <state x="960" y="471" key="#com.intellij.openapi.updateSettings.impl.PluginUpdateInfoDialog" timestamp="1606965702046">
+      <screen x="0" y="30" width="2560" height="1410" />
+    </state>
+    <state x="960" y="471" key="#com.intellij.openapi.updateSettings.impl.PluginUpdateInfoDialog/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606965702046" />
     <state x="1010" y="482" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog" timestamp="1605166810272">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
@@ -531,26 +512,26 @@
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state x="1059" y="500" key="FileChooserDialogImpl/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1600055373613" />
-    <state width="2517" height="345" key="GridCell.Tab.0.bottom" timestamp="1606805501239">
+    <state width="2517" height="350" key="GridCell.Tab.0.bottom" timestamp="1607219946647">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.bottom/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2517" height="345" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606805501239" />
-    <state width="2517" height="345" key="GridCell.Tab.0.center" timestamp="1606805501239">
+    <state width="2517" height="350" key="GridCell.Tab.0.bottom/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1607219946647" />
+    <state width="2517" height="350" key="GridCell.Tab.0.center" timestamp="1607219946647">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.center/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2517" height="345" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606805501239" />
-    <state width="2517" height="345" key="GridCell.Tab.0.left" timestamp="1606805501239">
+    <state width="2517" height="350" key="GridCell.Tab.0.center/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1607219946647" />
+    <state width="2517" height="350" key="GridCell.Tab.0.left" timestamp="1607219946647">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.left/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332313" />
-    <state width="2517" height="345" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606805501239" />
-    <state width="2517" height="345" key="GridCell.Tab.0.right" timestamp="1606805501239">
+    <state width="2517" height="350" key="GridCell.Tab.0.left/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1607219946646" />
+    <state width="2517" height="350" key="GridCell.Tab.0.right" timestamp="1607219946647">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>
     <state width="1875" height="322" key="GridCell.Tab.0.right/0.30.1920.1050@0.30.1920.1050" timestamp="1602002332314" />
-    <state width="2517" height="345" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1606805501239" />
+    <state width="2517" height="350" key="GridCell.Tab.0.right/0.30.2560.1410/2560.30.1920.1050@0.30.2560.1410" timestamp="1607219946647" />
     <state width="2517" height="488" key="GridCell.Tab.1.bottom" timestamp="1605380610035">
       <screen x="0" y="30" width="2560" height="1410" />
     </state>

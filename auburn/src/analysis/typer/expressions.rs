@@ -1,4 +1,3 @@
-use crate::analysis::entity::StructureInfo;
 use crate::analysis::scope::ScopeKind;
 use crate::analysis::typer::{
     Typer, ALLOW_CONTROL_FLOW_EXPRESSIONS, ASSOCIATIVE_FUNCTION, BLOCK, EXPR_RESULT_USED, FUNCTION,
@@ -16,6 +15,7 @@ use crate::ir::hir::{
 };
 use crate::syntax::Position;
 use crate::types::{Type, TypeKind};
+use crate::{analysis::entity::StructureInfo, utils::EntityPrinter};
 
 use itertools::Itertools;
 use std::ops::Deref;
@@ -40,7 +40,7 @@ impl<'src> Typer<'src> {
         println!("Resolving Expr: {}", expr.kind().name());
         let expr = match expr.kind() {
             ExprKind::Integer(val) => {
-                let ty = self.type_map.get_u32();
+                let ty = self.type_map.get_i32();
                 Rc::new(HirExpr::new(
                     HirExprInner::new(
                         AddressMode::Value,
@@ -102,6 +102,7 @@ impl<'src> Typer<'src> {
                     }
                     _ => ResultMeta::new(false, false, false, false, false),
                 };
+
                 Rc::new(HirExpr::new(
                     HirExprInner::new(AddressMode::Address, mutable, HirExprKind::Name(name)),
                     expr.position(),
@@ -657,8 +658,16 @@ impl<'src> Typer<'src> {
                     function_type: function_type.clone(),
                     actuals: mir_actuals,
                 };
-
-                let mutable = ResultMeta::new(false, false, return_type.is_mutable(), false, false);
+                let result_used = self.check_state(EXPR_RESULT_USED);
+                let mutable = ResultMeta::funct(
+                    false,
+                    false,
+                    return_type.is_mutable(),
+                    false,
+                    false,
+                    true,
+                    result_used,
+                );
                 let inner =
                     HirExprInner::new(AddressMode::Value, mutable, HirExprKind::Call(call_expr));
                 Ok(Rc::new(HirExpr::new(
@@ -771,12 +780,14 @@ impl<'src> Typer<'src> {
                                 actuals: mir_actuals,
                             };
 
-                            let mutable = ResultMeta::new(
+                            let mutable = ResultMeta::funct(
                                 false,
                                 false,
                                 return_type.is_mutable(),
                                 false,
                                 false,
+                                true,
+                                self.check_state(EXPR_RESULT_USED),
                             );
                             // the address_mode should be determined by the address mode of the returned expression
                             let inner = HirExprInner::new(

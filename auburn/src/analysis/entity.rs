@@ -38,6 +38,7 @@ pub struct AssociatedFunctionInfo {
 pub struct VariableInfo {
     pub spec: Option<HirSpecPtr>,
     pub mutable: bool,
+    pub global: bool,
     pub default: Option<HirExprPtr>,
 }
 

@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use crate::system::file::{File, FileId, Path, PathBuf};
 
+#[derive(Debug, Clone)]
 pub struct FileMap {
     paths: BTreeMap<PathBuf, FileId>,
     files: BTreeMap<FileId, Rc<File>>,
@@ -34,5 +35,9 @@ impl FileMap {
 
     pub fn file_by_id(&self, id: &FileId) -> Option<Rc<File>> {
         self.files.get(id).map(|f| f.clone())
+    }
+
+    pub fn get_path_by_id(&self, id: &FileId) -> Option<&str> {
+        self.files.get(id).map(|f| f.file_name())
     }
 }

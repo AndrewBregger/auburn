@@ -1,13 +1,12 @@
 mod call_frame;
 mod op_codes;
 
-use crate::mem::{read_to, FromBytes};
+use crate::mem::read_to;
 use crate::runtime;
 use crate::Value;
 use call_frame::CallFrame;
 pub use op_codes::{Instruction, OpCode};
 use ordered_float::OrderedFloat;
-use runtime::Section;
 use runtime::{Error as RuntimeError, OxFunction};
 
 macro_rules! binary_op {
@@ -145,7 +144,7 @@ macro_rules! load_constant {
         if value.$cond() {
             $self.push_stack(value);
         } else {
-            panic!("loading {} constant that is not an {}", $name, $name);
+            panic!("loading {} constant that is an {}", $name, value.ty());
         }
     };
 }
@@ -199,14 +198,20 @@ impl Vm {
         match top {
             Value::Function(funct) => {
                 if value != funct.arity() {
-                    panic!("{} is not given the correct number of parameters, expected {}", funct, funct.arity());
+                    panic!(
+                        "{} is not given the correct number of parameters, expected {}",
+                        funct,
+                        funct.arity()
+                    );
                 }
 
                 let funct = funct.as_ref() as *const _;
                 let call_frame = CallFrame::new(funct, self.stack.len() - value as usize);
                 self.call_stack.push(call_frame);
             }
-            _ => { panic!("Unable to call non function object") }
+            _ => {
+                panic!("Unable to call non function object")
+            }
         }
     }
 
@@ -216,7 +221,6 @@ impl Vm {
         let call_frame = CallFrame::new(funct, self.stack.len());
         self.push_stack(Value::Function(function));
         self.call_stack.push(call_frame);
-
 
         loop {
             // read the next op code and advance the instruction pointer.

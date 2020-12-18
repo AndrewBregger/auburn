@@ -173,7 +173,8 @@ impl<'ctx> ByteCodeBuilder<'ctx> {
             HirExprKind::Call(_) => {}
             HirExprKind::Method(_) => {}
             HirExprKind::AssociatedFunction(_) => {}
-            HirExprKind::Block(_) => {}
+            HirExprKind::Block(block_expr) => {
+            }
             HirExprKind::Tuple(_) => {}
             HirExprKind::Loop(_) => {}
             HirExprKind::While(_) => {}
