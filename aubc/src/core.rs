@@ -189,25 +189,25 @@ impl Core {
                 for (idx, global) in section.globals().iter().enumerate() {
                     println!("\t{}: {}", idx, global);
 
-                    if global.is_function() {
-                        let function = global.as_function();
-                        let section = function.section();
+                    // if global.is_function() {
+                    //     let function = global.as_function();
+                    //     let section = function.section();
 
-                        println!("globals:");
-                        for (idx, global) in section.globals().iter().enumerate() {
-                            println!("\t{}: {}", idx, global);
-                        }
+                    //     println!("globals:");
+                    //     for (idx, global) in section.globals().iter().enumerate() {
+                    //         println!("\t{}: {}", idx, global);
+                    //     }
 
-                        println!("constants:");
-                        for (idx, constant) in section.constants().iter().enumerate() {
-                            println!("\t{}: {}", idx, constant);
-                        }
+                    //     println!("constants:");
+                    //     for (idx, constant) in section.constants().iter().enumerate() {
+                    //         println!("\t{}: {}", idx, constant);
+                    //     }
 
-                        println!("disassembly:");
-                        for instruction in section.disassemble() {
-                            println!("\t{}", instruction);
-                        }
-                    }
+                    //     println!("disassembly:");
+                    //     for instruction in section.disassemble() {
+                    //         println!("\t{}", instruction);
+                    //     }
+                    // }
                 }
 
                 println!("constants:");

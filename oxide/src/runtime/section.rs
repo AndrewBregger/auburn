@@ -152,6 +152,7 @@ impl Section {
         let mut res = vec![];
         while ip < self.len() {
             let op_code_raw = unsafe { self.read_unchecked(ip) };
+            println!("{} -> {}", ip, op_code_raw);
             ip += 1;
             let op_code = OpCode::from_u8(*op_code_raw).unwrap();
             match op_code {
@@ -172,16 +173,15 @@ impl Section {
                 | OpCode::SetLocal
                 | OpCode::Call => {
                     let value = *unsafe { self.read_unchecked(ip) };
-                    res.push(Instruction::with_arg(ip, op_code, value as u16));
+                    println!("Value: {} -> {}", ip, value);
+                    res.push(Instruction::with_arg(ip - 1, op_code, value as u16));
                     ip += 1;
                 }
                 OpCode::Loop | OpCode::JmpTrue | OpCode::JmpFalse | OpCode::Jmp => {
+                    let offset = ip - 1;
                     let value = read_to::<u16>(self.data(), &mut ip);
-                    res.push(Instruction::with_arg(
-                        ip - std::mem::size_of::<u16>(),
-                        op_code,
-                        value as u16,
-                    ));
+                    println!("Value: {} -> {}", ip, value);
+                    res.push(Instruction::with_arg(offset, op_code, value as u16));
                 }
                 OpCode::Label => {}
                 OpCode::Return

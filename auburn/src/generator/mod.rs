@@ -75,9 +75,7 @@ impl<'ctx> CodeGen<'ctx> {
         }
         let globals = self.ctx.file.clone().globals().to_vec();
         for stmt in globals {
-            if let HirStmtKind::Expr(expr) = stmt.inner() {
-                Self::gen_expr(expr.as_ref(), &self.ctx, &mut self.global_section);
-            }
+            Self::gen_stmt(stmt.as_ref(), &self.ctx, &mut self.global_section);
         }
 
         self.global_section.write_op(OpCode::Exit);
@@ -102,15 +100,15 @@ impl<'ctx> CodeGen<'ctx> {
 
     fn gen_global(&mut self, entity: &Entity) -> Result<()> {
         let value = match entity.kind() {
-            crate::analysis::EntityInfo::Function(function) => {
+            EntityInfo::Function(function) => {
                 let function = self.gen_function(entity.name(), function)?;
                 Value::Function(function)
             }
-            // crate::analysis::EntityInfo::AssociatedFunction(_) => {}
-            // crate::analysis::EntityInfo::Variable(_) => {}
-            // crate::analysis::EntityInfo::Param(_) => {}
-            // crate::analysis::EntityInfo::SelfParam { mutable } => {}
-            // crate::analysis::EntityInfo::Field(_) => {}
+            // EntityInfo::AssociatedFunction(_) => {}
+            // EntityInfo::Variable(_) => {}
+            // EntityInfo::Param(_) => {}
+            // EntityInfo::SelfParam { mutable } => {}
+            // EntityInfo::Field(_) => {}
             _ => {
                 todo!()
             }
@@ -131,8 +129,9 @@ impl<'ctx> CodeGen<'ctx> {
             HirStmtKind::Expr(expr) => {
                 let meta = expr.inner().meta();
                 Self::gen_expr(expr, ctx, section);
+                // we need to pop off the result of the return of the result isn't being used.
                 if !meta.uses_result {
-                    section.write_op(OpCode::Call);
+                    section.write_op(OpCode::Pop);
                 }
             }
             HirStmtKind::Assignment(_) => {}
