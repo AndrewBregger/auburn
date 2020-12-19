@@ -265,7 +265,14 @@ impl<'ctx> CodeGen<'ctx> {
             }
             HirExprKind::Tuple(_) => {}
             HirExprKind::Loop(_) => {}
-            HirExprKind::While(_) => {}
+            HirExprKind::While(while_expr) => {
+                let ip = section.data().len();
+                Self::gen_expr(while_expr.cond.as_ref(), ctx, section);
+                let exit_jmp = section.write_jmp(OpCode::JmpFalse);
+                Self::gen_expr(while_expr.body.as_ref(), ctx, section);
+                section.write_loop(ip);
+                section.patch_jmp(exit_jmp);
+            }
             HirExprKind::For(_) => {}
             HirExprKind::If(if_expr) => {
                 let mut offsets = vec![];

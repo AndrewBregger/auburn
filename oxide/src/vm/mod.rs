@@ -236,9 +236,6 @@ impl Vm {
             println!("OpCode {:014x} {}", self.frame().ip - 1, op_code);
             match op_code {
                 OpCode::LoadI8 => {
-                    for (idx, value) in self.stack.iter().enumerate() {
-                        println!("{}| {}", idx, value);
-                    }
                     load_constant!(is_i8, "i8", self);
                 }
                 OpCode::LoadI16 => {
