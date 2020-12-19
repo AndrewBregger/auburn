@@ -102,6 +102,7 @@ impl Section {
     }
 
     pub fn patch_jmp(&mut self, offset: usize) {
+        println!("patch_jmp: {} {}", self.len(), offset);
         let jump: u16 = (self.len() - offset - 2)
             .try_into()
             .expect("attempting to jump too far");
@@ -152,7 +153,6 @@ impl Section {
         let mut res = vec![];
         while ip < self.len() {
             let op_code_raw = unsafe { self.read_unchecked(ip) };
-            println!("{} -> {}", ip, op_code_raw);
             ip += 1;
             let op_code = OpCode::from_u8(*op_code_raw).unwrap();
             match op_code {
@@ -173,14 +173,12 @@ impl Section {
                 | OpCode::SetLocal
                 | OpCode::Call => {
                     let value = *unsafe { self.read_unchecked(ip) };
-                    println!("Value: {} -> {}", ip, value);
                     res.push(Instruction::with_arg(ip - 1, op_code, value as u16));
                     ip += 1;
                 }
                 OpCode::Loop | OpCode::JmpTrue | OpCode::JmpFalse | OpCode::Jmp => {
                     let offset = ip - 1;
                     let value = read_to::<u16>(self.data(), &mut ip);
-                    println!("Value: {} -> {}", ip, value);
                     res.push(Instruction::with_arg(offset, op_code, value as u16));
                 }
                 OpCode::Label => {}

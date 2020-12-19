@@ -212,11 +212,6 @@ impl<'src> Parser<'src> {
         if self.check_for_res(TYPE_EXPR) {
             return Ok(expr);
         }
-        println!(
-            "parse_assoc_expr: {} -> {}",
-            self.current_token(),
-            self.current_token().precedence()
-        );
         // println!("Position: {}", position);
         while self.current_token().precedence() > min_prec {
             let token_tree = self.current_token().clone();
@@ -425,7 +420,6 @@ impl<'src> Parser<'src> {
 
     fn parse_bottom(&mut self) -> Result<Box<Expr>, Error> {
         let current = self.current_token().clone();
-        println!("parse_bottom {}", current);
         let position = current.position();
         if self.check_for_res(NAMED_FIELD_EXPR) {
             match current.token() {
@@ -742,7 +736,6 @@ impl<'src> Parser<'src> {
         if self.check_for(Token::ControlPair(Control::Bracket, PairKind::Open)) {
             let body = self.parse_expr()?;
             self.allow_newline()?;
-            println!("Current Token: {}", self.current_token());
             let else_if = if self.check_for(Token::Kw(Keyword::Elif)) {
                 let position = self.current_position();
                 self.consume()?;
@@ -799,7 +792,6 @@ impl<'src> Parser<'src> {
     fn parse_spec(&mut self) -> Result<Box<Spec>, Error> {
         let current = self.current_token();
         let position = current.position();
-        println!("parse_spec: {}", current);
         match current.token() {
             Token::Ident(_) => {
                 std::mem::forget(current);

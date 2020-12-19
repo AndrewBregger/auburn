@@ -37,7 +37,7 @@ impl<'src> Typer<'src> {
         expr: &Expr,
         expected_type: Option<Rc<Type>>,
     ) -> Result<Rc<HirExpr>, Error> {
-        println!("Resolving Expr: {}", expr.kind().name());
+        // println!("Resolving Expr: {}", expr.kind().name());
         let expr = match expr.kind() {
             ExprKind::Integer(val) => {
                 let ty = self.type_map.get_i32();
@@ -181,7 +181,7 @@ impl<'src> Typer<'src> {
                 let ty = self.resolve_type_expr(name.as_ref())?;
                 let entity_borrow = ty.deref().borrow();
                 let struct_type = entity_borrow.ty();
-                println!("StructExpr: {}", struct_type);
+                // println!("StructExpr: {}", struct_type);
                 match entity_borrow.kind() {
                     EntityInfo::Structure(structure) => {
                         self.resolve_struct_expr(struct_type, fields, structure, expr.position())?
@@ -333,11 +333,11 @@ impl<'src> Typer<'src> {
         };
 
         if let Some(expected_type) = &expected_type {
-            println!(
-                "Has Expected Type: {}, Found Type: {}",
-                expected_type,
-                expr.ty()
-            );
+            // println!(
+            //     "Has Expected Type: {}, Found Type: {}",
+            //     expected_type,
+            //     expr.ty()
+            // );
             if *expected_type != expr.ty() {
                 let position = expr
                     .returned_expression()
@@ -636,7 +636,7 @@ impl<'src> Typer<'src> {
         actuals: &[Box<Expr>],
     ) -> Result<Rc<HirExpr>, Error> {
         let mir_operand = self.resolve_expr(operand, None)?;
-        println!("Function Type: {}", mir_operand.ty());
+        // println!("Function Type: {}", mir_operand.ty());
         let function_type = mir_operand.ty();
         match function_type.kind() {
             TypeKind::Function {

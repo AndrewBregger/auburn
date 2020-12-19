@@ -61,6 +61,20 @@ define_op!(
     AssignmentOp
 );
 
+impl BinaryOp {
+    pub fn is_cmp(&self) -> bool {
+        match self {
+            Self::Less
+            | Self::Greater
+            | Self::LessEq
+            | Self::GreaterEq
+            | Self::EqualEqual
+            | Self::BangEqual => true,
+            _ => false,
+        }
+    }
+}
+
 impl TryFrom<Operator> for BinaryOp {
     type Error = Error;
 

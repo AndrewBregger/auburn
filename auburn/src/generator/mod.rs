@@ -5,10 +5,12 @@ use oxide::{vm::OpCode, OxFunction, OxString, Section, Value};
 use crate::{
     analysis::{Entity, EntityInfo, EntityRef, FunctionInfo},
     ir::ast::BinaryOp,
-    ir::hir::{Function, HirExpr, HirExprKind, HirFile, HirStmt, HirStmtKind, MirNode},
+    ir::hir::{
+        Function, HirExpr, HirExprKind, HirFile, HirStmt, HirStmtKind, IfExprBranch, MirNode,
+    },
     system::{FileId, FileMap},
     types::{Type, TypeKind},
-    utils::EntityPrinter,
+    utils::{EntityPrinter, MirPrinter},
 };
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -130,7 +132,7 @@ impl<'ctx> CodeGen<'ctx> {
                 let meta = expr.inner().meta();
                 Self::gen_expr(expr, ctx, section);
                 // we need to pop off the result of the return of the result isn't being used.
-                if !meta.uses_result {
+                if meta.is_call && !meta.uses_result {
                     section.write_op(OpCode::Pop);
                 }
             }
@@ -232,7 +234,12 @@ impl<'ctx> CodeGen<'ctx> {
             HirExprKind::Binary(binary_expr) => {
                 Self::gen_expr(binary_expr.left.as_ref(), ctx, section);
                 Self::gen_expr(binary_expr.right.as_ref(), ctx, section);
-                let op = Self::binary_op_for_type(binary_expr.op, ty.clone());
+                let op = if binary_expr.op.is_cmp() {
+                    Self::binary_op_for_type(binary_expr.op, binary_expr.left.ty())
+                } else {
+                    Self::binary_op_for_type(binary_expr.op, ty.clone())
+                };
+
                 section.write_op(op);
             }
             HirExprKind::Unary(_) => {}
@@ -251,12 +258,35 @@ impl<'ctx> CodeGen<'ctx> {
             }
             HirExprKind::Method(_) => {}
             HirExprKind::AssociatedFunction(_) => {}
-            HirExprKind::Block(_) => {}
+            HirExprKind::Block(block_expr) => {
+                for stmt in block_expr.stmts.as_slice() {
+                    Self::gen_stmt(stmt.as_ref(), ctx, section);
+                }
+            }
             HirExprKind::Tuple(_) => {}
             HirExprKind::Loop(_) => {}
             HirExprKind::While(_) => {}
             HirExprKind::For(_) => {}
-            HirExprKind::If(_) => {}
+            HirExprKind::If(if_expr) => {
+                let mut offsets = vec![];
+                for branch in if_expr.branches.as_slice() {
+                    match branch {
+                        IfExprBranch::Conditional { cond, body, first } => {
+                            Self::gen_expr(cond.as_ref(), ctx, section);
+                            let conditional_offset = section.write_jmp(OpCode::JmpFalse);
+                            Self::gen_expr(body.as_ref(), ctx, section);
+                            MirPrinter::print_expr(body.as_ref());
+                            section.patch_jmp(conditional_offset);
+                            offsets.push(section.write_jmp(OpCode::Jmp));
+                        }
+                        IfExprBranch::Unconditional { body } => {
+                            Self::gen_expr(body.as_ref(), ctx, section);
+                            MirPrinter::print_expr(body.as_ref());
+                        }
+                    }
+                }
+                offsets.iter().for_each(|offset| section.patch_jmp(*offset));
+            }
             HirExprKind::StructExpr(_) => {}
             HirExprKind::SelfLit => {}
             HirExprKind::Break => {}
@@ -291,7 +321,7 @@ impl<'ctx> CodeGen<'ctx> {
                 TypeKind::F64 => OpCode::AddF64,
                 // TypeKind::Char => {}
                 // TypeKind::String => {}
-                _ => todo!(),
+                _ => todo!("{}", ty),
             },
             BinaryOp::Minus => match ty.kind() {
                 TypeKind::U8 => OpCode::SubU8,
@@ -306,7 +336,7 @@ impl<'ctx> CodeGen<'ctx> {
                 TypeKind::F64 => OpCode::SubF64,
                 // TypeKind::Char => {}
                 // TypeKind::String => {}
-                _ => todo!(),
+                _ => todo!("{}", ty),
             },
             BinaryOp::Astrick => match ty.kind() {
                 TypeKind::U8 => OpCode::MultU8,
@@ -319,7 +349,7 @@ impl<'ctx> CodeGen<'ctx> {
                 TypeKind::I64 => OpCode::MultI64,
                 TypeKind::Float | TypeKind::F32 => OpCode::MultF32,
                 TypeKind::F64 => OpCode::MultF64,
-                _ => todo!(),
+                _ => todo!("{}", ty),
             },
             BinaryOp::Slash => match ty.kind() {
                 TypeKind::U8 => OpCode::DivU8,
@@ -332,7 +362,7 @@ impl<'ctx> CodeGen<'ctx> {
                 TypeKind::I64 => OpCode::DivI64,
                 TypeKind::Float | TypeKind::F32 => OpCode::DivF32,
                 TypeKind::F64 => OpCode::DivF64,
-                _ => todo!(),
+                _ => todo!("{}", ty),
             },
             BinaryOp::Less => match ty.kind() {
                 TypeKind::U8 => OpCode::LessU8,
@@ -345,7 +375,7 @@ impl<'ctx> CodeGen<'ctx> {
                 TypeKind::I64 => OpCode::LessI64,
                 TypeKind::Float | TypeKind::F32 => OpCode::LessF32,
                 TypeKind::F64 => OpCode::LessF64,
-                _ => todo!(),
+                _ => todo!("{}", ty),
             },
 
             BinaryOp::Greater => match ty.kind() {
@@ -359,7 +389,7 @@ impl<'ctx> CodeGen<'ctx> {
                 TypeKind::I64 => OpCode::GreaterI64,
                 TypeKind::Float | TypeKind::F32 => OpCode::GreaterF32,
                 TypeKind::F64 => OpCode::GreaterF64,
-                _ => todo!(),
+                _ => todo!("{}", ty),
             },
 
             BinaryOp::LessEq => match ty.kind() {
@@ -373,7 +403,7 @@ impl<'ctx> CodeGen<'ctx> {
                 TypeKind::I64 => OpCode::LessEqI64,
                 TypeKind::Float | TypeKind::F32 => OpCode::LessEqF32,
                 TypeKind::F64 => OpCode::LessEqF64,
-                _ => todo!(),
+                _ => todo!("{}", ty),
             },
 
             BinaryOp::GreaterEq => match ty.kind() {
@@ -387,7 +417,7 @@ impl<'ctx> CodeGen<'ctx> {
                 TypeKind::I64 => OpCode::GreaterEqI64,
                 TypeKind::Float | TypeKind::F32 => OpCode::GreaterEqF32,
                 TypeKind::F64 => OpCode::GreaterEqF64,
-                _ => todo!(),
+                _ => todo!("{}", ty),
             },
 
             BinaryOp::Ampersand => match ty.kind() {

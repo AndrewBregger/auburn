@@ -27,7 +27,7 @@ impl<'src> Typer<'src> {
         stmt: &Stmt,
         top_level: bool,
     ) -> Result<Rc<HirStmt>, Error> {
-        println!("Resolving Stmt {}", stmt.kind().name());
+        // println!("Resolving Stmt {}", stmt.kind().name());
 
         match stmt.kind() {
             StmtKind::Expr(expr) => {

@@ -233,7 +233,7 @@ impl Vm {
             };
 
             let op_code = OpCode::from_u8(op_code_raw).unwrap();
-            println!("OpCode {}", op_code);
+            println!("OpCode {:014x} {}", self.frame().ip - 1, op_code);
             match op_code {
                 OpCode::LoadI8 => {
                     for (idx, value) in self.stack.iter().enumerate() {
@@ -302,6 +302,8 @@ impl Vm {
                     let value = read_to::<u16>(frame.section().data(), &mut ip);
                     if cond {
                         frame.ip = ip + value as usize;
+                    } else {
+                        frame.ip = ip;
                     }
                 }
                 OpCode::JmpFalse => {
@@ -311,6 +313,8 @@ impl Vm {
                     let value = read_to::<u16>(frame.section().data(), &mut ip);
                     if cond == false {
                         frame.ip = ip + value as usize;
+                    } else {
+                        frame.ip = ip;
                     }
                 }
                 OpCode::Jmp => {
