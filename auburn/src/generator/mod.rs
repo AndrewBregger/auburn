@@ -20,8 +20,10 @@ struct LocalId(pub usize);
 pub struct Context<'ctx> {
     files: &'ctx FileMap,
     file: &'ctx HirFile,
-    global_map: HashMap<String, usize>,
+    global_map: HashMap<String, u8>,
     local_maps: Vec<HashMap<String, u8>>,
+    break_jmps: Vec<usize>,
+    continue_jmps: Vec<usize>,
 }
 
 impl<'ctx> Context<'ctx> {
@@ -31,6 +33,8 @@ impl<'ctx> Context<'ctx> {
             file,
             global_map: HashMap::new(),
             local_maps: vec![],
+            break_jmps: vec![],
+            continue_jmps: vec![],
         }
     }
 }
@@ -46,7 +50,7 @@ pub struct CodeGen<'ctx> {
     /// the top will be the current entity being processed.
     entity_stack: Vec<EntityRef>,
     ctx: Context<'ctx>,
-    global_section: Section,
+    sections: Vec<Section>,
 }
 
 impl<'ctx> CodeGen<'ctx> {
@@ -54,8 +58,12 @@ impl<'ctx> CodeGen<'ctx> {
         Self {
             entity_stack: vec![],
             ctx,
-            global_section: Section::new(),
+            sections: vec![],
         }
+    }
+
+    fn section(&mut self) -> &mut Section {
+        self.sections.last_mut().expect("section stack is empty")
     }
 
     //                                             Gc<OxFunction>
@@ -66,6 +74,8 @@ impl<'ctx> CodeGen<'ctx> {
                 .get_path_by_id(&self.ctx.file.id())
                 .map_or("<script>".to_string(), ToString::to_string),
         );
+        // section for the top level function
+        self.sections.push(Section::new());
 
         self.prepopulate_globals();
 
@@ -77,11 +87,15 @@ impl<'ctx> CodeGen<'ctx> {
         }
         let globals = self.ctx.file.clone().globals().to_vec();
         for stmt in globals {
-            Self::gen_stmt(stmt.as_ref(), &self.ctx, &mut self.global_section);
+            self.gen_stmt(stmt.as_ref());
         }
 
-        self.global_section.write_op(OpCode::Exit);
-        Ok(Box::new(OxFunction::new(value, 0, self.global_section)))
+        self.section().write_op(OpCode::Exit);
+        Ok(Box::new(OxFunction::new(
+            value,
+            0,
+            self.sections.pop().expect("section stack is empty"),
+        )))
     }
 
     fn build_string(&self, val: String) -> Box<OxString> {
@@ -92,56 +106,72 @@ impl<'ctx> CodeGen<'ctx> {
         for entity in self.ctx.file.entities() {
             let entity_borrow = entity.deref().borrow();
             let name = entity_borrow.name();
-            let idx = self.global_section.add_global(Value::Unit);
-            self.ctx
-                .global_map
-                .entry(name.to_owned())
-                .or_insert(idx as usize);
+            let idx = self.section().add_global(Value::Unit);
+            self.ctx.global_map.entry(name.to_owned()).or_insert(idx);
         }
     }
 
     fn gen_global(&mut self, entity: &Entity) -> Result<()> {
-        let value = match entity.kind() {
+        let idx = self.ctx.global_map[entity.name()];
+        match entity.kind() {
             EntityInfo::Function(function) => {
                 let function = self.gen_function(entity.name(), function)?;
-                Value::Function(function)
+                self.section()
+                    .set_global(idx as usize, Value::Function(function));
+            }
+            EntityInfo::Variable(variable) => {
+                match (variable.default.as_ref(), variable.spec.as_ref()) {
+                    (None, None) => unreachable!(), // caught by type checker
+                    (None, Some(_)) => { /*self.gen_default_from_type(entity.ty())*/ }
+                    (Some(init), _) => {
+                        self.gen_expr(init.as_ref());
+                        self.section().write_arg(OpCode::SetGlobal, idx);
+                    }
+                }
             }
             // EntityInfo::AssociatedFunction(_) => {}
-            // EntityInfo::Variable(_) => {}
-            // EntityInfo::Param(_) => {}
             // EntityInfo::SelfParam { mutable } => {}
-            // EntityInfo::Field(_) => {}
             _ => {
                 todo!()
             }
         };
 
-        let idx = self.ctx.global_map[entity.name()];
-        self.global_section.set_global(idx, value);
         Ok(())
     }
 
-    fn gen_function_body(&mut self, body_expr: &HirExpr, section: &mut Section) {
-        Self::gen_expr(body_expr, &mut self.ctx, section);
-        section.write_op(OpCode::Return);
+    fn gen_function_body(&mut self, body_expr: &HirExpr) {
+        self.gen_expr(body_expr);
+        self.section().write_op(OpCode::Return);
     }
 
-    fn gen_stmt(stmt: &HirStmt, ctx: &Context, section: &mut Section) {
+    fn gen_stmt(&mut self, stmt: &HirStmt) {
         match stmt.inner() {
             HirStmtKind::Expr(expr) => {
                 let meta = expr.inner().meta();
-                Self::gen_expr(expr, ctx, section);
+                self.gen_expr(expr);
                 // we need to pop off the result of the return of the result isn't being used.
                 if meta.is_call && !meta.uses_result {
-                    section.write_op(OpCode::Pop);
+                    self.section().write_op(OpCode::Pop);
                 }
             }
-            HirStmtKind::Assignment(_) => {}
+            HirStmtKind::Assignment(assignment) => {
+                self.gen_expr(assignment.rhs.as_ref());
+                let entity_borrow = assignment.lvalue.borrow();
+                match entity_borrow.kind() {
+                    EntityInfo::Variable(variable_info) => {
+                        if variable_info.global {
+                            let idx = self.ctx.global_map[entity_borrow.name()];
+                            self.section().write_arg(OpCode::SetGlobal, idx)
+                        }
+                    }
+                    _ => {}
+                }
+            }
             HirStmtKind::Item(_) => {}
         }
     }
 
-    fn gen_expr(expr: &HirExpr, ctx: &Context, section: &mut Section) {
+    fn gen_expr(&mut self, expr: &HirExpr) {
         let inner = expr.inner();
         let ty = expr.ty();
         match inner.kind() {
@@ -179,8 +209,9 @@ impl<'ctx> CodeGen<'ctx> {
                     _ => panic!("Type Missmatch"),
                 };
 
+                let section = self.section();
                 let idx = section.add_constant(value);
-                section.write_load(op, idx);
+                section.write_arg(op, idx);
             }
             HirExprKind::Float(val) => {
                 let (op, value) = match ty.kind() {
@@ -189,12 +220,14 @@ impl<'ctx> CodeGen<'ctx> {
                     _ => panic!("Type Missmatch"),
                 };
 
+                let section = self.section();
                 let idx = section.add_constant(value);
-                section.write_load(op, idx);
+                section.write_arg(op, idx);
             }
             HirExprKind::String(val) => {}
             HirExprKind::Char(val) => {}
             HirExprKind::Bool(val) => {
+                let section = self.section();
                 if *val {
                     section.write_op(OpCode::LoadTrue);
                 } else {
@@ -206,24 +239,34 @@ impl<'ctx> CodeGen<'ctx> {
                 EntityPrinter::print(&entity_borrow);
                 match entity_borrow.kind() {
                     EntityInfo::Function(_) => {
-                        if let Some(indx) = ctx.global_map.get(entity_borrow.name()) {
-                            section.write_load(OpCode::LoadGlobal, (*indx).try_into().unwrap());
+                        if let Some(indx) = self
+                            .ctx
+                            .global_map
+                            .get(entity_borrow.name())
+                            .clone()
+                            .map(|i| *i)
+                        {
+                            let section = self.section();
+                            section.write_arg(OpCode::LoadGlobal, indx.try_into().unwrap());
                         } else {
                             unimplemented!()
                         }
                     }
                     EntityInfo::Variable(variable_info) => {
                         if variable_info.global {
-                            if let Some(indx) = ctx.global_map.get(entity_borrow.name()) {
-                                section.write_load(OpCode::LoadGlobal, (*indx).try_into().unwrap());
+                            if let Some(indx) =
+                                self.ctx.global_map.get(entity_borrow.name()).map(|i| *i)
+                            {
+                                let section = self.section();
+                                section.write_arg(OpCode::LoadGlobal, indx.try_into().unwrap());
                             } else {
                                 unimplemented!()
                             }
                         }
                     }
-                    EntityInfo::Param(param) => {
-                        section.write_load(OpCode::LoadLocal, param.index.try_into().unwrap())
-                    }
+                    EntityInfo::Param(param) => self
+                        .section()
+                        .write_arg(OpCode::LoadLocal, param.index.try_into().unwrap()),
                     // EntityInfo::AssociatedFunction(_) => {}
                     // EntityInfo::SelfParam { mutable } => {}
                     // EntityInfo::Field(_) => {}
@@ -232,14 +275,15 @@ impl<'ctx> CodeGen<'ctx> {
                 }
             }
             HirExprKind::Binary(binary_expr) => {
-                Self::gen_expr(binary_expr.left.as_ref(), ctx, section);
-                Self::gen_expr(binary_expr.right.as_ref(), ctx, section);
+                self.gen_expr(binary_expr.left.as_ref());
+                self.gen_expr(binary_expr.right.as_ref());
                 let op = if binary_expr.op.is_cmp() {
                     Self::binary_op_for_type(binary_expr.op, binary_expr.left.ty())
                 } else {
                     Self::binary_op_for_type(binary_expr.op, ty.clone())
                 };
 
+                let section = self.section();
                 section.write_op(op);
             }
             HirExprKind::Unary(_) => {}
@@ -248,28 +292,32 @@ impl<'ctx> CodeGen<'ctx> {
             HirExprKind::FieldAccess(_) => {}
             HirExprKind::Call(call_info) => {
                 // call_info.
-                Self::gen_expr(call_info.operand.as_ref(), ctx, section);
+                self.gen_expr(call_info.operand.as_ref());
                 // let op = section.last_op();
                 for actual in &call_info.actuals {
-                    Self::gen_expr(actual.as_ref(), ctx, section);
+                    self.gen_expr(actual.as_ref());
                 }
-
-                section.write_load(OpCode::Call, call_info.actuals.len().try_into().unwrap());
+                let section = self.section();
+                section.write_arg(OpCode::Call, call_info.actuals.len().try_into().unwrap());
             }
             HirExprKind::Method(_) => {}
             HirExprKind::AssociatedFunction(_) => {}
             HirExprKind::Block(block_expr) => {
                 for stmt in block_expr.stmts.as_slice() {
-                    Self::gen_stmt(stmt.as_ref(), ctx, section);
+                    self.gen_stmt(stmt.as_ref());
                 }
             }
             HirExprKind::Tuple(_) => {}
             HirExprKind::Loop(_) => {}
             HirExprKind::While(while_expr) => {
-                let ip = section.data().len();
-                Self::gen_expr(while_expr.cond.as_ref(), ctx, section);
-                let exit_jmp = section.write_jmp(OpCode::JmpFalse);
-                Self::gen_expr(while_expr.body.as_ref(), ctx, section);
+                let ip = self.section().data().len();
+                self.gen_expr(while_expr.cond.as_ref());
+                let exit_jmp = {
+                    let section = self.section();
+                    section.write_jmp(OpCode::JmpFalse)
+                };
+                self.gen_expr(while_expr.body.as_ref());
+                let section = self.section();
                 section.write_loop(ip);
                 section.patch_jmp(exit_jmp);
             }
@@ -279,19 +327,25 @@ impl<'ctx> CodeGen<'ctx> {
                 for branch in if_expr.branches.as_slice() {
                     match branch {
                         IfExprBranch::Conditional { cond, body, first } => {
-                            Self::gen_expr(cond.as_ref(), ctx, section);
-                            let conditional_offset = section.write_jmp(OpCode::JmpFalse);
-                            Self::gen_expr(body.as_ref(), ctx, section);
-                            MirPrinter::print_expr(body.as_ref());
+                            self.gen_expr(cond.as_ref());
+                            let conditional_offset = {
+                                let section = self.section();
+                                section.write_jmp(OpCode::JmpFalse)
+                            };
+
+                            self.gen_expr(body.as_ref());
+
+                            let section = self.section();
                             section.patch_jmp(conditional_offset);
                             offsets.push(section.write_jmp(OpCode::Jmp));
                         }
                         IfExprBranch::Unconditional { body } => {
-                            Self::gen_expr(body.as_ref(), ctx, section);
+                            self.gen_expr(body.as_ref());
                             MirPrinter::print_expr(body.as_ref());
                         }
                     }
                 }
+                let section = self.section();
                 offsets.iter().for_each(|offset| section.patch_jmp(*offset));
             }
             HirExprKind::StructExpr(_) => {}
@@ -303,9 +357,10 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     fn gen_function(&mut self, name: &str, mir_function: &FunctionInfo) -> Result<Box<OxFunction>> {
-        let mut section = Section::new();
         let name = self.build_string(name.to_owned());
-        self.gen_function_body(mir_function.body.as_ref(), &mut section);
+        self.sections.push(Section::new());
+        self.gen_function_body(mir_function.body.as_ref());
+        let section = self.sections.pop().expect("section stack is empty");
         Ok(Box::new(OxFunction::new(
             name,
             mir_function.params.elements().len().try_into().unwrap(),

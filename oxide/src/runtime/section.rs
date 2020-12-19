@@ -81,7 +81,7 @@ impl Section {
         self.data.push(byte);
     }
 
-    pub fn write_load(&mut self, op: OpCode, index: u8) {
+    pub fn write_arg(&mut self, op: OpCode, index: u8) {
         self.write_op(op);
         self.write_byte(index);
     }
