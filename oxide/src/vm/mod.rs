@@ -285,6 +285,34 @@ impl Vm {
 
                     self.push_stack(global);
                 }
+                OpCode::SetGlobal => {
+                    let top = self.pop();
+                    let frame = self.frame_mut();
+                    let mut ip = frame.ip;
+                    let idx = read_to::<u8>(frame.section().data(), &mut ip);
+                    frame
+                        .funct_mut()
+                        .section_mut()
+                        .set_global(idx as usize, top);
+                    frame.ip = ip;
+                }
+                OpCode::LoadLocal => {
+                    let frame = self.frame_mut();
+                    let ip = frame.ip;
+                    let local = frame.local_start;
+                    let idx = unsafe { *frame.section().read_unchecked(ip) };
+                    frame.ip += 1;
+                    self.push_stack(self.stack[local + idx as usize].clone());
+                }
+                OpCode::SetLocal => {
+                    let frame = self.frame_mut();
+                    let ip = frame.ip;
+                    let local = frame.local_start;
+                    let idx = unsafe { *frame.section().read_unchecked(ip) };
+                    frame.ip += 1;
+                    let value = self.pop();
+                    self.stack[local + idx as usize] = value;
+                }
                 OpCode::Label => {
                     // skip the label I am not sure how else to reprsent this.
                     let frame = self.frame_mut();
@@ -293,7 +321,7 @@ impl Vm {
                     frame.ip = ip + 1 + len as usize;
                 }
                 OpCode::JmpTrue => {
-                    let cond = self.top().as_bool();
+                    let cond = self.pop().as_bool();
                     let frame = self.frame_mut();
                     let mut ip = frame.ip;
                     let value = read_to::<u16>(frame.section().data(), &mut ip);
@@ -304,7 +332,7 @@ impl Vm {
                     }
                 }
                 OpCode::JmpFalse => {
-                    let cond = self.top().as_bool();
+                    let cond = self.pop().as_bool();
                     let frame = self.frame_mut();
                     let mut ip = frame.ip;
                     let value = read_to::<u16>(frame.section().data(), &mut ip);
@@ -326,17 +354,6 @@ impl Vm {
                     let value = read_to::<u16>(frame.section().data(), &mut ip);
                     frame.ip = ip - value as usize;
                 }
-                OpCode::SetGlobal => {
-                    let top = self.top().clone();
-                    let frame = self.frame_mut();
-                    let mut ip = frame.ip;
-                    let idx = read_to::<u8>(frame.section().data(), &mut ip);
-                    frame
-                        .funct_mut()
-                        .section_mut()
-                        .set_global(idx as usize, top);
-                    frame.ip = ip;
-                }
                 OpCode::Return => {
                     let top = self.pop();
                     let current_frame = self.call_stack.pop().expect("call stack is empty");
@@ -346,23 +363,6 @@ impl Vm {
                     if self.call_stack.is_empty() {
                         break;
                     }
-                }
-                OpCode::LoadLocal => {
-                    let frame = self.frame_mut();
-                    let ip = frame.ip;
-                    let local = frame.local_start;
-                    let idx = unsafe { *frame.section().read_unchecked(ip) };
-                    frame.ip += 1;
-                    self.push_stack(self.stack[local + idx as usize].clone());
-                }
-                OpCode::SetLocal => {
-                    let frame = self.frame_mut();
-                    let ip = frame.ip;
-                    let local = frame.local_start;
-                    let idx = unsafe { *frame.section().read_unchecked(ip) };
-                    frame.ip += 1;
-                    let value = self.top().clone();
-                    self.stack[local + idx as usize] = value;
                 }
                 OpCode::AddI8
                 | OpCode::AddI16

@@ -3,10 +3,10 @@ use std::{collections::HashMap, convert::TryInto, ops::Deref, rc::Rc, unimplemen
 use oxide::{vm::OpCode, OxFunction, OxString, Section, Value};
 
 use crate::{
-    analysis::{Entity, EntityInfo, EntityRef, FunctionInfo},
+    analysis::{Entity, EntityInfo, EntityRef, FunctionInfo as EntityFunctionInfo, VariableInfo},
     ir::ast::BinaryOp,
     ir::hir::{
-        Function, HirExpr, HirExprKind, HirFile, HirStmt, HirStmtKind, IfExprBranch, MirNode,
+        HirExpr, HirExprKind, HirFile, HirStmt, HirStmtKind, IfExprBranch, MirNode, Variable,
     },
     system::{FileId, FileMap},
     types::{Type, TypeKind},
@@ -16,14 +16,89 @@ use crate::{
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 struct LocalId(pub usize);
 
+/// information for a scope.
+#[derive(Debug, Clone)]
+struct ScopeInfo {
+    /// stack indices for all elements in this scope.
+    elements: HashMap<String, u8>,
+}
+
+impl ScopeInfo {
+    fn new() -> Self {
+        Self {
+            elements: HashMap::new(),
+        }
+    }
+
+    fn lookup(&self, name: &str) -> Option<u8> {
+        self.elements.get(name).map(|x| *x)
+    }
+}
+
+#[derive(Debug, Clone)]
+struct FunctionInfo {
+    name: Box<OxString>,
+    arity: u8,
+    num_locals: u8,
+    scopes: Vec<ScopeInfo>,
+    section: Section,
+}
+
+impl FunctionInfo {
+    fn new(name: Box<OxString>, arity: u8) -> Self {
+        Self {
+            name,
+            arity,
+            num_locals: 0,
+            scopes: vec![ScopeInfo::new()],
+            section: Section::new(),
+        }
+    }
+
+    fn push_scope(&mut self) {
+        self.scopes.push(ScopeInfo::new());
+    }
+
+    fn scope(&mut self) -> &mut ScopeInfo {
+        self.scopes
+            .last_mut()
+            .expect("function doesn't have a scope")
+    }
+
+    fn declare(&mut self, name: &str) -> u8 {
+        let idx = self.num_locals;
+        self.num_locals += 1;
+        let scope = self.scope();
+        scope.elements.insert(name.to_owned(), idx);
+        idx
+    }
+
+    fn lookup_local(&self, name: &str) -> u8 {
+        for scope in self.scopes.iter().rev() {
+            if let Some(idx) = scope.lookup(name) {
+                return idx;
+            }
+        }
+        panic!("failed to find local variable in function: {}", name)
+    }
+
+    fn pop_scope(&mut self) -> ScopeInfo {
+        self.scopes.pop().expect("should have a valid scope")
+    }
+
+    fn into_function(self) -> OxFunction {
+        OxFunction::new(self.name, self.arity, self.section)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Context<'ctx> {
     files: &'ctx FileMap,
     file: &'ctx HirFile,
     global_map: HashMap<String, u8>,
-    local_maps: Vec<HashMap<String, u8>>,
-    break_jmps: Vec<usize>,
-    continue_jmps: Vec<usize>,
+    functions: Vec<FunctionInfo>,
+    // break_jmps: Vec<usize>,
+    // continue_jmps: Vec<usize>,
 }
 
 impl<'ctx> Context<'ctx> {
@@ -32,9 +107,9 @@ impl<'ctx> Context<'ctx> {
             files,
             file,
             global_map: HashMap::new(),
-            local_maps: vec![],
-            break_jmps: vec![],
-            continue_jmps: vec![],
+            functions: vec![],
+            // break_jmps: vec![],
+            // continue_jmps: vec![],
         }
     }
 }
@@ -50,7 +125,6 @@ pub struct CodeGen<'ctx> {
     /// the top will be the current entity being processed.
     entity_stack: Vec<EntityRef>,
     ctx: Context<'ctx>,
-    sections: Vec<Section>,
 }
 
 impl<'ctx> CodeGen<'ctx> {
@@ -58,12 +132,32 @@ impl<'ctx> CodeGen<'ctx> {
         Self {
             entity_stack: vec![],
             ctx,
-            sections: vec![],
         }
     }
 
     fn section(&mut self) -> &mut Section {
-        self.sections.last_mut().expect("section stack is empty")
+        &mut self.function().expect("no valid function").section
+    }
+
+    fn function(&mut self) -> Option<&mut FunctionInfo> {
+        self.ctx.functions.last_mut()
+    }
+
+    fn scope(&mut self) -> &mut ScopeInfo {
+        self.function().expect("expected valid function").scope()
+    }
+
+    fn new_function(&mut self, name: Box<OxString>, arity: u8) {
+        self.ctx.functions.push(FunctionInfo::new(name, arity))
+    }
+
+    fn pop_function(&mut self) -> Box<OxFunction> {
+        let function = self
+            .ctx
+            .functions
+            .pop()
+            .expect("should be a valid function");
+        Box::new(function.into_function())
     }
 
     //                                             Gc<OxFunction>
@@ -75,7 +169,7 @@ impl<'ctx> CodeGen<'ctx> {
                 .map_or("<script>".to_string(), ToString::to_string),
         );
         // section for the top level function
-        self.sections.push(Section::new());
+        self.new_function(value, 0);
 
         self.prepopulate_globals();
 
@@ -91,11 +185,7 @@ impl<'ctx> CodeGen<'ctx> {
         }
 
         self.section().write_op(OpCode::Exit);
-        Ok(Box::new(OxFunction::new(
-            value,
-            0,
-            self.sections.pop().expect("section stack is empty"),
-        )))
+        Ok(self.pop_function())
     }
 
     fn build_string(&self, val: String) -> Box<OxString> {
@@ -167,7 +257,40 @@ impl<'ctx> CodeGen<'ctx> {
                     _ => {}
                 }
             }
-            HirStmtKind::Item(_) => {}
+            HirStmtKind::Item(item) => {
+                let entity_borrow = item.borrow();
+                match entity_borrow.kind() {
+                    // EntityInfo::Structure(_) => {}
+                    // EntityInfo::Function(_) => {}
+                    // EntityInfo::AssociatedFunction(_) => {}
+                    EntityInfo::Variable(variable_info) => {
+                        if variable_info.global {
+                            return;
+                        } else {
+                            self.declare_local(entity_borrow.name(), variable_info);
+                        }
+                    }
+                    _ => {
+                        unimplemented!()
+                    }
+                }
+            }
+        }
+    }
+
+    fn declare_local(&mut self, name: &str, variable_info: &VariableInfo) {
+        match (variable_info.default.as_ref(), variable_info.spec.as_ref()) {
+            (None, None) => unreachable!(), // caught by type checker
+            (None, Some(_)) => { /*self.gen_default_from_type(entity.ty())*/ }
+            (Some(init), _) => {
+                self.gen_expr(init.as_ref());
+            }
+        }
+        if let Some(function) = self.function() {
+            let idx = function.declare(name);
+            self.section().write_arg(OpCode::SetLocal, idx);
+        } else {
+            println!("CodeGen Error: declaring local with out scope");
         }
     }
 
@@ -234,46 +357,7 @@ impl<'ctx> CodeGen<'ctx> {
                     section.write_op(OpCode::LoadFalse);
                 }
             }
-            HirExprKind::Name(val) => {
-                let entity_borrow = val.deref().borrow();
-                EntityPrinter::print(&entity_borrow);
-                match entity_borrow.kind() {
-                    EntityInfo::Function(_) => {
-                        if let Some(indx) = self
-                            .ctx
-                            .global_map
-                            .get(entity_borrow.name())
-                            .clone()
-                            .map(|i| *i)
-                        {
-                            let section = self.section();
-                            section.write_arg(OpCode::LoadGlobal, indx.try_into().unwrap());
-                        } else {
-                            unimplemented!()
-                        }
-                    }
-                    EntityInfo::Variable(variable_info) => {
-                        if variable_info.global {
-                            if let Some(indx) =
-                                self.ctx.global_map.get(entity_borrow.name()).map(|i| *i)
-                            {
-                                let section = self.section();
-                                section.write_arg(OpCode::LoadGlobal, indx.try_into().unwrap());
-                            } else {
-                                unimplemented!()
-                            }
-                        }
-                    }
-                    EntityInfo::Param(param) => self
-                        .section()
-                        .write_arg(OpCode::LoadLocal, param.index.try_into().unwrap()),
-                    // EntityInfo::AssociatedFunction(_) => {}
-                    // EntityInfo::SelfParam { mutable } => {}
-                    // EntityInfo::Field(_) => {}
-                    // EntityInfo::Structure(_) => {}
-                    _ => {}
-                }
-            }
+            HirExprKind::Name(val) => self.gen_name(&val.borrow()),
             HirExprKind::Binary(binary_expr) => {
                 self.gen_expr(binary_expr.left.as_ref());
                 self.gen_expr(binary_expr.right.as_ref());
@@ -356,16 +440,59 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
-    fn gen_function(&mut self, name: &str, mir_function: &FunctionInfo) -> Result<Box<OxFunction>> {
+    fn gen_function(
+        &mut self,
+        name: &str,
+        mir_function: &EntityFunctionInfo,
+    ) -> Result<Box<OxFunction>> {
         let name = self.build_string(name.to_owned());
-        self.sections.push(Section::new());
-        self.gen_function_body(mir_function.body.as_ref());
-        let section = self.sections.pop().expect("section stack is empty");
-        Ok(Box::new(OxFunction::new(
+        self.new_function(
             name,
-            mir_function.params.elements().len().try_into().unwrap(),
-            section,
-        )))
+            mir_function
+                .params
+                .len()
+                .try_into()
+                .expect("shouldn't have more than 255 params"),
+        );
+        self.gen_function_body(mir_function.body.as_ref());
+        Ok(self.pop_function())
+    }
+
+    fn gen_name(&mut self, entity: &Entity) {
+        EntityPrinter::print(entity);
+        match entity.kind() {
+            EntityInfo::Function(_) => {
+                if let Some(indx) = self.ctx.global_map.get(entity.name()).clone().map(|i| *i) {
+                    let section = self.section();
+                    section.write_arg(OpCode::LoadGlobal, indx.try_into().unwrap());
+                } else {
+                    unimplemented!()
+                }
+            }
+            EntityInfo::Variable(variable_info) => {
+                if variable_info.global {
+                    if let Some(indx) = self.ctx.global_map.get(entity.name()).map(|i| *i) {
+                        let section = self.section();
+                        section.write_arg(OpCode::LoadGlobal, indx.try_into().unwrap());
+                    } else {
+                        // should be caught by the type checker.
+                        unreachable!()
+                    }
+                } else {
+                    if let Some(function) = self.function() {
+                        let idx = function.lookup_local(entity.name());
+                    }
+                }
+            }
+            EntityInfo::Param(param) => self
+                .section()
+                .write_arg(OpCode::LoadLocal, param.index.try_into().unwrap()),
+            // EntityInfo::AssociatedFunction(_) => {}
+            // EntityInfo::SelfParam { mutable } => {}
+            // EntityInfo::Field(_) => {}
+            // EntityInfo::Structure(_) => {}
+            _ => {}
+        }
     }
 
     fn binary_op_for_type(op: BinaryOp, ty: Rc<Type>) -> OpCode {

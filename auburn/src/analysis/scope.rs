@@ -46,6 +46,10 @@ impl Scope {
         self.elements.borrow()
     }
 
+    pub fn len(&self) -> usize {
+        self.elements.len()
+    }
+
     pub fn get(&self, name: &str) -> Option<&EntityRef> {
         self.elements.get(name)
     }
