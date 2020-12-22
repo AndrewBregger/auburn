@@ -66,6 +66,7 @@ string_mapping!(
     "return" => Return,
     "true" => True,
     "false" => False,
+    "print" => Print,
     "stack_alloc" => StackAlloc,
     Keyword
 );

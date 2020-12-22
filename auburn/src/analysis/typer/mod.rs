@@ -139,7 +139,7 @@ impl<'src> Typer<'src> {
             file_id: parsed_file.file_id,
             file_name: parsed_file.file_name.clone(),
         });
-        println!("Stmts: {}", parsed_file.stmts.len());
+        // println!("Stmts: {}", parsed_file.stmts.len());
         let mut globals = vec![];
 
         for stmt in &parsed_file.stmts {
@@ -165,7 +165,9 @@ impl<'src> Typer<'src> {
         for stmt in &parsed_file.stmts {
             let stmt = self.resolve_stmt_inner(stmt.as_ref(), true)?;
             match stmt.inner() {
-                HirStmtKind::Expr(..) | HirStmtKind::Assignment(..) => globals.push(stmt.clone()),
+                HirStmtKind::Expr(..) | HirStmtKind::Assignment(..) | HirStmtKind::Print(..) => {
+                    globals.push(stmt.clone())
+                }
                 _ => {}
             }
         }
@@ -184,10 +186,10 @@ impl<'src> Typer<'src> {
 
     fn resolve_ident(&mut self, ident: &Identifier) -> Result<EntityRef, Error> {
         if let Some(entity) = self.deep_lookup(ident.kind().value.as_str()) {
-            println!("Resolving Name: {}", ident.kind().value);
+            // println!("Resolving Name: {}", ident.kind().value);
             let entity_borrow = entity.deref().borrow();
             if entity_borrow.is_resolved() {
-                println!("\tName Resolves is resolved");
+                // println!("\tName Resolves is resolved");
                 std::mem::drop(entity_borrow);
                 Ok(entity)
             } else if entity_borrow.is_resolving() {
@@ -196,7 +198,7 @@ impl<'src> Typer<'src> {
                         .with_position(ident.position());
                 Err(err)
             } else {
-                println!("\tEntity is unresolved, resolving");
+                // println!("\tEntity is unresolved, resolving");
                 if let EntityInfo::Unresolved(item) = entity_borrow.kind().clone() {
                     std::mem::drop(entity_borrow);
                     let entity = self.resolve_item_impl(item.as_ref(), entity, true, false)?;

@@ -237,6 +237,8 @@ pub enum StmtKind {
         lvalue: Box<Expr>,
         rhs: Box<Expr>,
     },
+    // temporary until built in print function is implemented
+    Print(Box<Expr>),
     Empty,
 }
 
@@ -429,6 +431,7 @@ impl NodeType for StmtKind {
             Self::Item(_) => "Item Stmt",
             Self::Empty => "Empty Stmt",
             Self::Assignment { .. } => "Assignment Stmt",
+            Self::Print(_) => "Print Stmt",
         }
     }
 

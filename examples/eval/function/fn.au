@@ -4,5 +4,5 @@ fn addi(x i32, y i32) i32 {
     x + y
 }
 
-addf(1.3, 2.2)
-addi(3, 2)
+print addf(1.3, 2.2)
+print addi(3, 2)

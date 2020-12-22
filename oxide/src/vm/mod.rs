@@ -152,38 +152,62 @@ macro_rules! load_constant {
 pub struct Vm {
     stack: Vec<Value>,
     call_stack: Vec<CallFrame>,
+    top_stack: usize,
+    top_frame: usize,
 }
 
 impl Vm {
     pub fn new() -> Self {
         Self {
-            stack: vec![],
-            call_stack: Vec::with_capacity(512),
+            stack: vec![Value::Unit; 2056],
+            call_stack: vec![CallFrame::default(); 512],
+            top_stack: 0,
+            top_frame: 0,
         }
     }
 
-    pub fn push_stack(&mut self, data: Value) {
-        self.stack.push(data);
+    pub fn push_stack(&mut self, value: Value) {
+        self.stack[self.top_stack] = value;
+        self.top_stack += 1;
     }
 
     pub fn pop(&mut self) -> Value {
-        self.stack.pop().expect("stack is empty")
+        let value = self.top().clone();
+        self.top_stack = self.top_stack.saturating_sub(1);
+        value
     }
 
     pub fn top(&self) -> &Value {
-        self.stack.last().expect("stack is empty")
+        &self.stack[self.top_stack - 1]
     }
 
     pub fn peek(&self, offset: usize) -> &Value {
-        &self.stack[self.stack.len() - offset]
+        &self.stack[self.top_stack - offset - 1]
     }
 
     pub fn frame(&self) -> &CallFrame {
-        self.call_stack.last().expect("call stack empty")
+        &self.call_stack[self.top_frame - 1]
+    }
+
+    pub fn push_frame(&mut self, frame: CallFrame) {
+        self.call_stack[self.top_frame] = frame;
+        self.top_frame += 1;
+    }
+
+    pub fn print_stack(&self) {
+        for i in 0..self.top_stack {
+            println!("{}| {}", i, self.stack[i]);
+        }
+    }
+
+    pub fn pop_frame(&mut self) -> CallFrame {
+        let value = self.frame().clone();
+        self.top_frame = self.top_frame.saturating_sub(1);
+        value
     }
 
     pub fn frame_mut(&mut self) -> &mut CallFrame {
-        self.call_stack.last_mut().expect("call stack empty")
+        &mut self.call_stack[self.top_frame.saturating_sub(1)]
     }
 
     pub fn call_value(&mut self) {
@@ -193,8 +217,7 @@ impl Vm {
             frame.ip += 1;
             arity
         };
-
-        let top = self.peek(value as usize + 1);
+        let top = self.peek(value as usize);
         match top {
             Value::Function(funct) => {
                 if value != funct.arity() {
@@ -206,11 +229,11 @@ impl Vm {
                 }
 
                 let funct = funct.as_ref() as *const _;
-                let call_frame = CallFrame::new(funct, self.stack.len() - value as usize);
-                self.call_stack.push(call_frame);
+                let call_frame = CallFrame::new(funct, self.top_stack - value as usize);
+                self.push_frame(call_frame);
             }
             _ => {
-                panic!("Unable to call non function object")
+                panic!("Unable to call non function object: {}", top);
             }
         }
     }
@@ -218,9 +241,9 @@ impl Vm {
     pub fn run(&mut self, function: Box<OxFunction>) -> Result<(), RuntimeError> {
         let funct = function.as_ref() as *const _;
 
-        let call_frame = CallFrame::new(funct, self.stack.len());
+        let call_frame = CallFrame::new(funct, self.top_stack);
         self.push_stack(Value::Function(function));
-        self.call_stack.push(call_frame);
+        self.push_frame(call_frame);
 
         loop {
             // read the next op code and advance the instruction pointer.
@@ -356,13 +379,11 @@ impl Vm {
                 }
                 OpCode::Return => {
                     let top = self.pop();
-                    let current_frame = self.call_stack.pop().expect("call stack is empty");
-                    self.stack.truncate(current_frame.local_start);
+                    let last_frame = self.pop_frame();
+                    self.top_stack = last_frame.local_start.saturating_sub(1);
                     self.push_stack(top);
-
-                    if self.call_stack.is_empty() {
-                        break;
-                    }
+                    println!("Top Stack: {}", self.top_stack);
+                    self.print_stack();
                 }
                 OpCode::AddI8
                 | OpCode::AddI16
@@ -476,7 +497,10 @@ impl Vm {
                     let value = self.top();
                     println!("{}", value)
                 }
-                OpCode::Exit => break,
+                OpCode::Exit => {
+                    self.print_stack();
+                    break;
+                }
                 OpCode::NumOps => {}
             }
         }

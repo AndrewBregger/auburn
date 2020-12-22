@@ -6,11 +6,11 @@ use crate::{
     analysis::{Entity, EntityInfo, EntityRef, FunctionInfo as EntityFunctionInfo, VariableInfo},
     ir::ast::BinaryOp,
     ir::hir::{
-        HirExpr, HirExprKind, HirFile, HirStmt, HirStmtKind, IfExprBranch, MirNode, Variable,
+        BlockExpr, HirExpr, HirExprKind, HirFile, HirStmt, HirStmtKind, IfExpr, IfExprBranch,
+        MirNode,
     },
-    system::{FileId, FileMap},
+    system::FileMap,
     types::{Type, TypeKind},
-    utils::{EntityPrinter, MirPrinter},
 };
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -83,7 +83,11 @@ impl FunctionInfo {
     }
 
     fn pop_scope(&mut self) -> ScopeInfo {
-        self.scopes.pop().expect("should have a valid scope")
+        let scope = self.scopes.pop().expect("should have a valid scope");
+        for _ in &scope.elements {
+            self.section.write_op(OpCode::Pop);
+        }
+        scope
     }
 
     fn into_function(self) -> OxFunction {
@@ -97,8 +101,6 @@ pub struct Context<'ctx> {
     file: &'ctx HirFile,
     global_map: HashMap<String, u8>,
     functions: Vec<FunctionInfo>,
-    // break_jmps: Vec<usize>,
-    // continue_jmps: Vec<usize>,
 }
 
 impl<'ctx> Context<'ctx> {
@@ -108,13 +110,11 @@ impl<'ctx> Context<'ctx> {
             file,
             global_map: HashMap::new(),
             functions: vec![],
-            // break_jmps: vec![],
-            // continue_jmps: vec![],
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(thiserror::Error, Debug, Clone)]
 pub enum GenError {}
 
 type Result<T> = ::std::result::Result<T, GenError>;
@@ -141,10 +141,6 @@ impl<'ctx> CodeGen<'ctx> {
 
     fn function(&mut self) -> Option<&mut FunctionInfo> {
         self.ctx.functions.last_mut()
-    }
-
-    fn scope(&mut self) -> &mut ScopeInfo {
-        self.function().expect("expected valid function").scope()
     }
 
     fn new_function(&mut self, name: Box<OxString>, arity: u8) {
@@ -214,7 +210,7 @@ impl<'ctx> CodeGen<'ctx> {
                     (None, None) => unreachable!(), // caught by type checker
                     (None, Some(_)) => { /*self.gen_default_from_type(entity.ty())*/ }
                     (Some(init), _) => {
-                        self.gen_expr(init.as_ref());
+                        self.gen_expr(init.as_ref(), true);
                         self.section().write_arg(OpCode::SetGlobal, idx);
                     }
                 }
@@ -229,23 +225,18 @@ impl<'ctx> CodeGen<'ctx> {
         Ok(())
     }
 
-    fn gen_function_body(&mut self, body_expr: &HirExpr) {
-        self.gen_expr(body_expr);
-        self.section().write_op(OpCode::Return);
-    }
-
     fn gen_stmt(&mut self, stmt: &HirStmt) {
         match stmt.inner() {
             HirStmtKind::Expr(expr) => {
                 let meta = expr.inner().meta();
-                self.gen_expr(expr);
+                self.gen_expr(expr, true);
                 // we need to pop off the result of the return of the result isn't being used.
                 if meta.is_call && !meta.uses_result {
                     self.section().write_op(OpCode::Pop);
                 }
             }
             HirStmtKind::Assignment(assignment) => {
-                self.gen_expr(assignment.rhs.as_ref());
+                self.gen_expr(assignment.rhs.as_ref(), true);
                 let entity_borrow = assignment.lvalue.borrow();
                 match entity_borrow.kind() {
                     EntityInfo::Variable(variable_info) => {
@@ -275,6 +266,10 @@ impl<'ctx> CodeGen<'ctx> {
                     }
                 }
             }
+            HirStmtKind::Print(expr) => {
+                self.gen_expr(expr.as_ref(), true);
+                self.section().write_op(OpCode::Print);
+            }
         }
     }
 
@@ -283,7 +278,7 @@ impl<'ctx> CodeGen<'ctx> {
             (None, None) => unreachable!(), // caught by type checker
             (None, Some(_)) => { /*self.gen_default_from_type(entity.ty())*/ }
             (Some(init), _) => {
-                self.gen_expr(init.as_ref());
+                self.gen_expr(init.as_ref(), true);
             }
         }
         if let Some(function) = self.function() {
@@ -294,7 +289,7 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
-    fn gen_expr(&mut self, expr: &HirExpr) {
+    fn gen_expr(&mut self, expr: &HirExpr, with_scoping: bool) {
         let inner = expr.inner();
         let ty = expr.ty();
         match inner.kind() {
@@ -347,8 +342,8 @@ impl<'ctx> CodeGen<'ctx> {
                 let idx = section.add_constant(value);
                 section.write_arg(op, idx);
             }
-            HirExprKind::String(val) => {}
-            HirExprKind::Char(val) => {}
+            HirExprKind::String(_val) => {}
+            HirExprKind::Char(_val) => {}
             HirExprKind::Bool(val) => {
                 let section = self.section();
                 if *val {
@@ -359,8 +354,8 @@ impl<'ctx> CodeGen<'ctx> {
             }
             HirExprKind::Name(val) => self.gen_name(&val.borrow()),
             HirExprKind::Binary(binary_expr) => {
-                self.gen_expr(binary_expr.left.as_ref());
-                self.gen_expr(binary_expr.right.as_ref());
+                self.gen_expr(binary_expr.left.as_ref(), true);
+                self.gen_expr(binary_expr.right.as_ref(), true);
                 let op = if binary_expr.op.is_cmp() {
                     Self::binary_op_for_type(binary_expr.op, binary_expr.left.ty())
                 } else {
@@ -376,67 +371,78 @@ impl<'ctx> CodeGen<'ctx> {
             HirExprKind::FieldAccess(_) => {}
             HirExprKind::Call(call_info) => {
                 // call_info.
-                self.gen_expr(call_info.operand.as_ref());
+                self.gen_expr(call_info.operand.as_ref(), true);
                 // let op = section.last_op();
                 for actual in &call_info.actuals {
-                    self.gen_expr(actual.as_ref());
+                    self.gen_expr(actual.as_ref(), true);
                 }
                 let section = self.section();
                 section.write_arg(OpCode::Call, call_info.actuals.len().try_into().unwrap());
             }
             HirExprKind::Method(_) => {}
             HirExprKind::AssociatedFunction(_) => {}
-            HirExprKind::Block(block_expr) => {
-                for stmt in block_expr.stmts.as_slice() {
-                    self.gen_stmt(stmt.as_ref());
-                }
-            }
+            HirExprKind::Block(block_expr) => self.gen_block(block_expr, with_scoping),
             HirExprKind::Tuple(_) => {}
             HirExprKind::Loop(_) => {}
             HirExprKind::While(while_expr) => {
                 let ip = self.section().data().len();
-                self.gen_expr(while_expr.cond.as_ref());
+                self.gen_expr(while_expr.cond.as_ref(), true);
                 let exit_jmp = {
                     let section = self.section();
                     section.write_jmp(OpCode::JmpFalse)
                 };
-                self.gen_expr(while_expr.body.as_ref());
+                self.gen_expr(while_expr.body.as_ref(), true);
                 let section = self.section();
                 section.write_loop(ip);
                 section.patch_jmp(exit_jmp);
             }
             HirExprKind::For(_) => {}
-            HirExprKind::If(if_expr) => {
-                let mut offsets = vec![];
-                for branch in if_expr.branches.as_slice() {
-                    match branch {
-                        IfExprBranch::Conditional { cond, body, first } => {
-                            self.gen_expr(cond.as_ref());
-                            let conditional_offset = {
-                                let section = self.section();
-                                section.write_jmp(OpCode::JmpFalse)
-                            };
-
-                            self.gen_expr(body.as_ref());
-
-                            let section = self.section();
-                            section.patch_jmp(conditional_offset);
-                            offsets.push(section.write_jmp(OpCode::Jmp));
-                        }
-                        IfExprBranch::Unconditional { body } => {
-                            self.gen_expr(body.as_ref());
-                            MirPrinter::print_expr(body.as_ref());
-                        }
-                    }
-                }
-                let section = self.section();
-                offsets.iter().for_each(|offset| section.patch_jmp(*offset));
-            }
+            HirExprKind::If(if_expr) => self.gen_if(if_expr),
             HirExprKind::StructExpr(_) => {}
             HirExprKind::SelfLit => {}
             HirExprKind::Break => {}
             HirExprKind::Continue => {}
             HirExprKind::Return(_) => {}
+        }
+    }
+
+    fn gen_if(&mut self, if_expr: &IfExpr) {
+        let mut offsets = vec![];
+        for branch in if_expr.branches.as_slice() {
+            match branch {
+                IfExprBranch::Conditional { cond, body, .. } => {
+                    self.gen_expr(cond.as_ref(), true);
+                    let conditional_offset = {
+                        let section = self.section();
+                        section.write_jmp(OpCode::JmpFalse)
+                    };
+
+                    self.gen_expr(body.as_ref(), true);
+
+                    let section = self.section();
+                    offsets.push(section.write_jmp(OpCode::Jmp));
+                    section.patch_jmp(conditional_offset);
+                }
+                IfExprBranch::Unconditional { body } => {
+                    self.gen_expr(body.as_ref(), true);
+                }
+            }
+        }
+        let section = self.section();
+        offsets.iter().for_each(|offset| section.patch_jmp(*offset));
+    }
+
+    fn gen_block(&mut self, block_expr: &BlockExpr, with_scoping: bool) {
+        if let Some(function) = self.function() {
+            function.push_scope();
+        }
+
+        for stmt in block_expr.stmts.as_slice() {
+            self.gen_stmt(stmt.as_ref());
+        }
+
+        if let Some(function) = self.function() {
+            function.pop_scope();
         }
     }
 
@@ -454,12 +460,24 @@ impl<'ctx> CodeGen<'ctx> {
                 .try_into()
                 .expect("shouldn't have more than 255 params"),
         );
-        self.gen_function_body(mir_function.body.as_ref());
+
+        let function = self.function().expect("no valid function");
+        function.push_scope();
+        for param in mir_function.params.elements() {
+            function.declare(param.0.as_str());
+        }
+        std::mem::drop(function);
+
+        self.gen_expr(mir_function.body.as_ref(), false);
+
+        let function = self.function().expect("no valid function");
+
+        function.section.write_op(OpCode::Return);
+
         Ok(self.pop_function())
     }
 
     fn gen_name(&mut self, entity: &Entity) {
-        EntityPrinter::print(entity);
         match entity.kind() {
             EntityInfo::Function(_) => {
                 if let Some(indx) = self.ctx.global_map.get(entity.name()).clone().map(|i| *i) {
@@ -481,12 +499,13 @@ impl<'ctx> CodeGen<'ctx> {
                 } else {
                     if let Some(function) = self.function() {
                         let idx = function.lookup_local(entity.name());
+                        function.section.write_arg(OpCode::LoadLocal, idx);
                     }
                 }
             }
             EntityInfo::Param(param) => self
                 .section()
-                .write_arg(OpCode::LoadLocal, param.index.try_into().unwrap()),
+                .write_arg(OpCode::LoadLocal, (param.index + 1).try_into().unwrap()),
             // EntityInfo::AssociatedFunction(_) => {}
             // EntityInfo::SelfParam { mutable } => {}
             // EntityInfo::Field(_) => {}

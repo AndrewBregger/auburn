@@ -1,7 +1,7 @@
 use crate::analysis::typer::Typer;
 use crate::analysis::typer::EXPR_RESULT_USED;
 use crate::error::Error;
-use crate::ir::ast::{AssignmentOp, Node, NodeType, Stmt, StmtKind};
+use crate::ir::ast::{AssignmentOp, Node, Stmt, StmtKind};
 use crate::ir::hir::{Assignment, HirStmt, HirStmtKind, MirNode};
 use std::ops::Deref;
 use std::rc::Rc;
@@ -80,6 +80,15 @@ impl<'src> Typer<'src> {
                     }
                     _ => todo!("Assignment operator {} is not implemented", op),
                 }
+            }
+            StmtKind::Print(param) => {
+                println!("Found print");
+                let expr = self.resolve_expr(param.as_ref(), None)?;
+                Ok(Rc::new(HirStmt::new(
+                    HirStmtKind::Print(expr),
+                    param.position(),
+                    self.type_map.get_unit(),
+                )))
             }
             StmtKind::Empty => unreachable!(),
         }

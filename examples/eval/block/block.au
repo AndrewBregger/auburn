@@ -1,0 +1,9 @@
+fn mult_add(x f32, y f32, z f32) f32 {
+    x * y + z
+}
+
+print {
+    let x = 1.0
+    let y = 2.0
+    mult_add(x, y, 2.0)
+}

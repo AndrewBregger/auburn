@@ -1,4 +1,3 @@
-use ordered_float::OrderedFloat;
 use std::fmt::{Display, Formatter};
 macro_rules! define_opcodes {
     ($($name:literal => $en:ident), *, $ty:ident) => {

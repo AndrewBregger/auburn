@@ -1,19 +1,23 @@
 extern crate clap;
 
-use std::ops::Deref;
 use std::path::Path;
 use std::rc::Rc;
 
-use auburn::ir::hir::HirFile;
-use auburn::syntax::{ParsedFile, Parser, Position};
-use auburn::system::{File, FileMap};
-use auburn::utils::{EntityPrinter, MirPrinter};
 use auburn::Executor;
 use auburn::{
     analysis::Analysis,
     generator::{CodeGen, Context},
 };
 use auburn::{error::Error, oxide::vm::Vm};
+use auburn::{
+    generator::GenError,
+    syntax::{ParsedFile, Parser, Position},
+};
+use auburn::{ir::hir::HirFile, oxide::OxFunction};
+use auburn::{
+    system::{File, FileMap},
+    utils::MirPrinter,
+};
 use clap::Clap;
 
 #[derive(Clap, Debug)]
@@ -26,6 +30,9 @@ enum Command {
 
     #[clap()]
     Run { input: String },
+
+    #[clap()]
+    Build { input: String },
 }
 
 #[derive(Clap, Debug)]
@@ -40,11 +47,18 @@ enum CoreError {
     IoError(std::io::Error, String),
     // CommandError(CommandError),
     CompilerError(Error),
+    BuildError(GenError),
 }
 
 impl From<Error> for CoreError {
     fn from(err: Error) -> Self {
         Self::CompilerError(err)
+    }
+}
+
+impl From<GenError> for CoreError {
+    fn from(err: GenError) -> Self {
+        Self::BuildError(err)
     }
 }
 
@@ -75,6 +89,7 @@ impl Core {
         match err {
             CoreError::IoError(err, file_name) => self.print_io_error(err, file_name),
             CoreError::CompilerError(err) => self.print_compiler_error(err),
+            CoreError::BuildError(err) => self.print_code_gen_error(err),
         }
     }
 
@@ -130,6 +145,10 @@ impl Core {
         }
     }
 
+    fn print_code_gen_error(&self, err: &GenError) {
+        println!("{}", err);
+    }
+
     fn execute(&mut self, arg: Arguments) -> Result<(), CoreError> {
         match arg.command {
             Some(cmd) => self.execute_command(cmd),
@@ -155,79 +174,52 @@ impl Core {
                 let parsed_file = self
                     .parse_file(file.as_ref())
                     .map_err(|err| CoreError::from(err))?;
-                let mir_file = self
+                let resolved_file = self
                     .resolve_root(parsed_file)
                     .map_err(|err| CoreError::from(err))?;
 
-                println!("Global Expressions");
-                for stmt in mir_file.globals() {
-                    MirPrinter::print_stmt(stmt.as_ref());
-                }
-
-                println!("Entities {}", mir_file.entities().len());
-                for entity in mir_file.entities() {
-                    EntityPrinter::print(&entity.deref().borrow());
-                }
+                MirPrinter::print_file(&resolved_file);
             }
             Command::Run { input } => {
                 let file = self
                     .open_file(input.as_str())
                     .map_err(|err| CoreError::IoError(err, input))?;
-                let parsed_file = self
-                    .parse_file(file.as_ref())
-                    .map_err(|err| CoreError::from(err))?;
-                let mir_file = self
-                    .resolve_root(parsed_file)
-                    .map_err(|err| CoreError::from(err))?;
-                let context = Context::new(&self.file_map, &mir_file);
-                let ox_function = CodeGen::new(context).build().unwrap();
 
-                // println!("{:?}", ox_function);
-                // println!("{}", ox_function.section());
-                let section = ox_function.section();
-                println!("globals:");
-                for (idx, global) in section.globals().iter().enumerate() {
-                    println!("\t{}: {}", idx, global);
-
-                    // if global.is_function() {
-                    //     let function = global.as_function();
-                    //     let section = function.section();
-
-                    //     println!("globals:");
-                    //     for (idx, global) in section.globals().iter().enumerate() {
-                    //         println!("\t{}: {}", idx, global);
-                    //     }
-
-                    //     println!("constants:");
-                    //     for (idx, constant) in section.constants().iter().enumerate() {
-                    //         println!("\t{}: {}", idx, constant);
-                    //     }
-
-                    //     println!("disassembly:");
-                    //     for instruction in section.disassemble() {
-                    //         println!("\t{}", instruction);
-                    //     }
-                    // }
-                }
-
-                println!("constants:");
-                for (idx, constant) in section.constants().iter().enumerate() {
-                    println!("\t{}: {}", idx, constant);
-                }
-
-                println!("disassembly:");
-                for instruction in section.disassemble() {
-                    println!("\t{}", instruction);
-                }
+                let ox_function = self.build(file)?;
+                ox_function.disassemble();
 
                 let mut vm = Vm::new();
                 match vm.run(ox_function) {
-                    Ok(_) => println!("Top Stack: {}", vm.top()),
+                    Ok(_) => {
+                        vm.print_stack();
+                    }
                     Err(err) => println!("{}", err),
                 }
             }
+
+            Command::Build { input } => {
+                let file = self
+                    .open_file(input.as_str())
+                    .map_err(|err| CoreError::IoError(err, input))?;
+                let function = self.build(file)?;
+                function.disassemble();
+            }
         }
         Ok(())
+    }
+
+    fn build(&mut self, file: Rc<File>) -> Result<Box<OxFunction>, CoreError> {
+        let parsed_file = self
+            .parse_file(file.as_ref())
+            .map_err(Into::<CoreError>::into)?;
+        let mir_file = self
+            .resolve_root(parsed_file)
+            .map_err(Into::<CoreError>::into)?;
+
+        let context = Context::new(&self.file_map, &mir_file);
+        CodeGen::new(context)
+            .build()
+            .map_err(|e| CoreError::from(e))
     }
 
     fn execute_repl(&mut self) -> Result<(), CoreError> {

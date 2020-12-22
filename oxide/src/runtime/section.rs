@@ -1,4 +1,4 @@
-use crate::mem::{read_to, FromBytes};
+use crate::mem::read_to;
 use crate::vm::{Instruction, OpCode};
 use crate::Value;
 
@@ -6,8 +6,6 @@ use std::convert::TryInto;
 use std::fmt::{Display, Formatter};
 use std::slice::SliceIndex;
 use std::sync::atomic::{AtomicUsize, Ordering};
-
-use ordered_float::OrderedFloat;
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct SectionId(usize);
@@ -53,7 +51,7 @@ impl Section {
     }
 
     pub fn get_constant(&self, index: usize) -> Value {
-        self.constants[index].clone()
+        self.constants.get(index).expect("invalid index").clone()
     }
 
     pub fn add_global(&mut self, value: Value) -> u8 {

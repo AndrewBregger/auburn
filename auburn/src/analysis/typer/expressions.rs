@@ -1,3 +1,4 @@
+use crate::analysis::entity::StructureInfo;
 use crate::analysis::scope::ScopeKind;
 use crate::analysis::typer::{
     Typer, ALLOW_CONTROL_FLOW_EXPRESSIONS, ASSOCIATIVE_FUNCTION, BLOCK, EXPR_RESULT_USED, FUNCTION,
@@ -6,7 +7,7 @@ use crate::analysis::typer::{
 use crate::analysis::{EntityInfo, EntityRef};
 use crate::error::Error;
 use crate::ir::ast::{
-    BinaryOp, Expr, ExprKind, Identifier, Node, NodeType, StructExprField, UnaryOp, Visibility,
+    BinaryOp, Expr, ExprKind, Identifier, Node, StructExprField, UnaryOp, Visibility,
 };
 use crate::ir::hir::{
     AddressMode, AssociatedFunctionExpr, BinaryExpr, BlockExpr, CallExpr, FieldExpr, HirExpr,
@@ -15,7 +16,6 @@ use crate::ir::hir::{
 };
 use crate::syntax::Position;
 use crate::types::{Type, TypeKind};
-use crate::{analysis::entity::StructureInfo, utils::EntityPrinter};
 
 use itertools::Itertools;
 use std::ops::Deref;

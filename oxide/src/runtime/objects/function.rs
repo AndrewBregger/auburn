@@ -37,6 +37,20 @@ impl OxFunction {
     pub fn name(&self) -> &OxString {
         self.name.as_ref()
     }
+
+    pub fn disassemble(&self) {
+        let section = self.section();
+        for value in section.globals().iter() {
+            if value.is_function() {
+                let fnct = value.as_function();
+                fnct.disassemble();
+            }
+        }
+        println!("disassembly for {}", self.name);
+        for instruction in section.disassemble() {
+            println!("\t{}", instruction);
+        }
+    }
 }
 
 impl Display for OxFunction {
