@@ -67,9 +67,6 @@ impl Analysis {
     }
 
     pub fn check(&mut self, file: ParsedFile) -> Result<HirFile, Error> {
-        let typed_file =
-            Typer::new(&mut self.type_map, &mut self.scope_stack).resolve_file(file)?;
-
-        Ok(typed_file)
+        Typer::new(&mut self.type_map, &mut self.scope_stack).resolve_file(file)
     }
 }

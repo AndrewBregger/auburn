@@ -1,6 +1,3 @@
-use crate::analysis::entity::{
-    AssociatedFunctionInfo, FunctionInfo, LocalInfo, Path, StructureInfo, VariableInfo,
-};
 use crate::analysis::scope::{Scope, ScopeKind};
 use crate::analysis::typer::Typer;
 use crate::analysis::typer::{
@@ -14,6 +11,12 @@ use crate::ir::hir::{HirExprPtr, HirSpec, HirSpecKind, HirSpecPtr, MirNode};
 use crate::syntax::Position;
 use crate::types::{Type, TypeKind};
 use crate::utils::{new_ptr, Ptr};
+use crate::{
+    analysis::entity::{
+        AssociatedFunctionInfo, FunctionInfo, LocalInfo, Path, StructureInfo, VariableInfo,
+    },
+    ir::ast::ExprKind,
+};
 use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -445,7 +448,12 @@ impl<'src> Typer<'src> {
                             self.resolve_spec(return_spec)?
                         };
 
-                        let mir_expr = self.resolve_expr(expr.as_ref(), Some(mir_spec.ty()))?;
+                        let mir_expr = if let ExprKind::Block(stmts) = expr.kind() {
+                            self.resolve_block_expression(stmts, true, expr.position())?
+                        } else {
+                            unreachable!()
+                        };
+
                         Ok((mir_spec.ty(), mir_spec, mir_expr))
                     }
                     FunctionBody::Expression(expr) => {

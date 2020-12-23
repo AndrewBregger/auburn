@@ -63,105 +63,82 @@ impl<'ctx> ByteCodeBuilder<'ctx> {
         match inner.kind() {
             &HirExprKind::Integer(val) => match expr.ty().kind() {
                 TypeKind::U8 => self
-                    .ctx
                     .push_instruction(LirInstruction::Constant(Value::U8(val.try_into().unwrap()))),
-                TypeKind::U16 => self
-                    .ctx
-                    .push_instruction(LirInstruction::Constant(Value::U16(
-                        val.try_into().unwrap(),
-                    ))),
-                TypeKind::U64 => self
-                    .ctx
-                    .push_instruction(LirInstruction::Constant(Value::U64(
-                        val.try_into().unwrap(),
-                    ))),
+                TypeKind::U16 => self.push_instruction(LirInstruction::Constant(Value::U16(
+                    val.try_into().unwrap(),
+                ))),
+                TypeKind::U64 => self.push_instruction(LirInstruction::Constant(Value::U64(
+                    val.try_into().unwrap(),
+                ))),
                 TypeKind::I8 => self
-                    .ctx
                     .push_instruction(LirInstruction::Constant(Value::I8(val.try_into().unwrap()))),
-                TypeKind::I16 => self
-                    .ctx
-                    .push_instruction(LirInstruction::Constant(Value::I16(
-                        val.try_into().unwrap(),
-                    ))),
-                TypeKind::I32 => self
-                    .ctx
-                    .push_instruction(LirInstruction::Constant(Value::I32(
-                        val.try_into().unwrap(),
-                    ))),
-                TypeKind::I64 => self
-                    .ctx
-                    .push_instruction(LirInstruction::Constant(Value::I64(val.into()))),
-                TypeKind::U32 | TypeKind::Integer => {
-                    self.ctx
-                        .push_instruction(LirInstruction::Constant(Value::U32(
-                            val.try_into().unwrap(),
-                        )))
+                TypeKind::I16 => self.push_instruction(LirInstruction::Constant(Value::I16(
+                    val.try_into().unwrap(),
+                ))),
+                TypeKind::I32 => self.push_instruction(LirInstruction::Constant(Value::I32(
+                    val.try_into().unwrap(),
+                ))),
+                TypeKind::I64 => {
+                    self.push_instruction(LirInstruction::Constant(Value::I64(val.into())))
                 }
+                TypeKind::U32 | TypeKind::Integer => self.push_instruction(
+                    LirInstruction::Constant(Value::U32(val.try_into().unwrap())),
+                ),
                 _ => unreachable!(),
             },
             HirExprKind::Float(val) => match expr.ty().kind() {
-                TypeKind::F32 => self
-                    .ctx
-                    .push_instruction(LirInstruction::Constant(Value::F32(val.0 as f32))),
-                TypeKind::F64 => self
-                    .ctx
-                    .push_instruction(LirInstruction::Constant(Value::F64(val.0))),
-                TypeKind::Float => self
-                    .ctx
-                    .push_instruction(LirInstruction::Constant(Value::F32(val.0 as f32))),
+                TypeKind::F32 => {
+                    self.push_instruction(LirInstruction::Constant(Value::F32(val.0 as f32)))
+                }
+                TypeKind::F64 => self.push_instruction(LirInstruction::Constant(Value::F64(val.0))),
+                TypeKind::Float => {
+                    self.push_instruction(LirInstruction::Constant(Value::F32(val.0 as f32)))
+                }
                 _ => {}
             },
-            HirExprKind::String(val) => self
-                .ctx
-                .push_instruction(LirInstruction::StringConstant(val.to_owned())),
+            HirExprKind::String(val) => {
+                self.push_instruction(LirInstruction::StringConstant(val.to_owned()))
+            }
             HirExprKind::Char(_) => {}
-            HirExprKind::Bool(val) => self
-                .ctx
-                .push_instruction(LirInstruction::BoolConstant(*val)),
+            HirExprKind::Bool(val) => self.push_instruction(LirInstruction::BoolConstant(*val)),
             HirExprKind::Name(_) => {}
             HirExprKind::Binary(binary_expr) => {
                 self.process_expr(binary_expr.left.clone());
                 self.process_expr(binary_expr.right.clone());
                 match binary_expr.op {
-                    BinaryOp::Plus => self
-                        .ctx
-                        .push_instruction(LirInstruction::Add { ty: expr.ty() }),
-                    BinaryOp::Minus => self
-                        .ctx
-                        .push_instruction(LirInstruction::Sub { ty: expr.ty() }),
-                    BinaryOp::Astrick => self
-                        .ctx
-                        .push_instruction(LirInstruction::Mult { ty: expr.ty() }),
-                    BinaryOp::Slash => self
-                        .ctx
-                        .push_instruction(LirInstruction::Divide { ty: expr.ty() }),
-                    BinaryOp::Less => self
-                        .ctx
-                        .push_instruction(LirInstruction::Less { ty: expr.ty() }),
-                    BinaryOp::Greater => self
-                        .ctx
-                        .push_instruction(LirInstruction::Greater { ty: expr.ty() }),
-                    BinaryOp::LessEq => self
-                        .ctx
-                        .push_instruction(LirInstruction::LessEq { ty: expr.ty() }),
-                    BinaryOp::GreaterEq => self
-                        .ctx
-                        .push_instruction(LirInstruction::GreaterEq { ty: expr.ty() }),
+                    BinaryOp::Plus => self.push_instruction(LirInstruction::Add { ty: expr.ty() }),
+                    BinaryOp::Minus => self.push_instruction(LirInstruction::Sub { ty: expr.ty() }),
+                    BinaryOp::Astrick => {
+                        self.push_instruction(LirInstruction::Mult { ty: expr.ty() })
+                    }
+                    BinaryOp::Slash => {
+                        self.push_instruction(LirInstruction::Divide { ty: expr.ty() })
+                    }
+                    BinaryOp::Less => self.push_instruction(LirInstruction::Less { ty: expr.ty() }),
+                    BinaryOp::Greater => {
+                        self.push_instruction(LirInstruction::Greater { ty: expr.ty() })
+                    }
+                    BinaryOp::LessEq => {
+                        self.push_instruction(LirInstruction::LessEq { ty: expr.ty() })
+                    }
+                    BinaryOp::GreaterEq => {
+                        self.push_instruction(LirInstruction::GreaterEq { ty: expr.ty() })
+                    }
                     // BinaryOp::Ampersand => self
-                    //     .ctx
+                    //
                     //     .push_instruction(LirInstruction::Add { ty: expr.ty() }),
                     // BinaryOp::Pipe => self
-                    //     .ctx
+                    //
                     //     .push_instruction(LirInstruction::Add { ty: expr.ty() }),
                     // BinaryOp::Percent => self
-                    //     .ctx
+                    //
                     //     .push_instruction(LirInstruction::Add { ty: expr.ty() }),
-                    BinaryOp::EqualEqual => self
-                        .ctx
-                        .push_instruction(LirInstruction::EqEq { ty: expr.ty() }),
-                    BinaryOp::BangEqual => self
-                        .ctx
-                        .push_instruction(LirInstruction::NotEq { ty: expr.ty() }),
+                    BinaryOp::EqualEqual => {
+                        self.push_instruction(LirInstruction::EqEq { ty: expr.ty() })
+                    }
+                    BinaryOp::BangEqual => {
+                        self.push_instruction(LirInstruction::NotEq { ty: expr.ty() })
+                    }
                     _ => {} // BinaryOp::LessLess =>
                             // BinaryOp::GreaterGreater =>
                 }
@@ -173,8 +150,7 @@ impl<'ctx> ByteCodeBuilder<'ctx> {
             HirExprKind::Call(_) => {}
             HirExprKind::Method(_) => {}
             HirExprKind::AssociatedFunction(_) => {}
-            HirExprKind::Block(block_expr) => {
-            }
+            HirExprKind::Block(block_expr) => {}
             HirExprKind::Tuple(_) => {}
             HirExprKind::Loop(_) => {}
             HirExprKind::While(_) => {}

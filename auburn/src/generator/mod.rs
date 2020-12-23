@@ -3,7 +3,7 @@ use std::{collections::HashMap, convert::TryInto, ops::Deref, rc::Rc, unimplemen
 use oxide::{vm::OpCode, OxFunction, OxString, Section, Value};
 
 use crate::{
-    analysis::{Entity, EntityInfo, EntityRef, FunctionInfo as EntityFunctionInfo, VariableInfo},
+    analysis::{Entity, EntityInfo, FunctionInfo as EntityFunctionInfo, VariableInfo},
     ir::ast::BinaryOp,
     ir::hir::{
         BlockExpr, HirExpr, HirExprKind, HirFile, HirStmt, HirStmtKind, IfExpr, IfExprBranch,
@@ -95,15 +95,20 @@ impl FunctionInfo {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Context<'ctx> {
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum GenError {}
+
+type Result<T> = ::std::result::Result<T, GenError>;
+
+/// facilitates the generation of byte code for a single file.
+pub struct CodeGen<'ctx> {
     files: &'ctx FileMap,
     file: &'ctx HirFile,
     global_map: HashMap<String, u8>,
     functions: Vec<FunctionInfo>,
 }
 
-impl<'ctx> Context<'ctx> {
+impl<'ctx> CodeGen<'ctx> {
     pub fn new(files: &'ctx FileMap, file: &'ctx HirFile) -> Self {
         Self {
             files,
@@ -112,56 +117,29 @@ impl<'ctx> Context<'ctx> {
             functions: vec![],
         }
     }
-}
-
-#[derive(thiserror::Error, Debug, Clone)]
-pub enum GenError {}
-
-type Result<T> = ::std::result::Result<T, GenError>;
-
-/// facilitates the generation of byte code for a single file.
-pub struct CodeGen<'ctx> {
-    /// the stack of entities currently being processed.
-    /// the top will be the current entity being processed.
-    entity_stack: Vec<EntityRef>,
-    ctx: Context<'ctx>,
-}
-
-impl<'ctx> CodeGen<'ctx> {
-    pub fn new(ctx: Context<'ctx>) -> Self {
-        Self {
-            entity_stack: vec![],
-            ctx,
-        }
-    }
 
     fn section(&mut self) -> &mut Section {
         &mut self.function().expect("no valid function").section
     }
 
     fn function(&mut self) -> Option<&mut FunctionInfo> {
-        self.ctx.functions.last_mut()
+        self.functions.last_mut()
     }
 
     fn new_function(&mut self, name: Box<OxString>, arity: u8) {
-        self.ctx.functions.push(FunctionInfo::new(name, arity))
+        self.functions.push(FunctionInfo::new(name, arity))
     }
 
     fn pop_function(&mut self) -> Box<OxFunction> {
-        let function = self
-            .ctx
-            .functions
-            .pop()
-            .expect("should be a valid function");
+        let function = self.functions.pop().expect("should be a valid function");
         Box::new(function.into_function())
     }
 
     //                                             Gc<OxFunction>
     pub fn build(mut self) -> Result<Box<OxFunction>> {
         let value = self.build_string(
-            self.ctx
-                .files
-                .get_path_by_id(&self.ctx.file.id())
+            self.files
+                .get_path_by_id(&self.file.id())
                 .map_or("<script>".to_string(), ToString::to_string),
         );
         // section for the top level function
@@ -169,14 +147,14 @@ impl<'ctx> CodeGen<'ctx> {
 
         self.prepopulate_globals();
 
-        for entity in self.ctx.file.entities() {
-            self.entity_stack.push(entity.clone());
-            let borrow_ref = entity.borrow();
-            self.gen_global(&borrow_ref)?;
-            self.entity_stack.pop();
+        for stmt in self.file.stmts() {
+            if let HirStmtKind::Item(item) = stmt.inner() {
+                let borrow_ref = item.borrow();
+                self.gen_global(&borrow_ref)?;
+            }
         }
-        let globals = self.ctx.file.clone().globals().to_vec();
-        for stmt in globals {
+
+        for stmt in self.file.stmts() {
             self.gen_stmt(stmt.as_ref());
         }
 
@@ -189,16 +167,18 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     fn prepopulate_globals(&mut self) {
-        for entity in self.ctx.file.entities() {
-            let entity_borrow = entity.deref().borrow();
-            let name = entity_borrow.name();
-            let idx = self.section().add_global(Value::Unit);
-            self.ctx.global_map.entry(name.to_owned()).or_insert(idx);
+        for stmt in self.file.stmts() {
+            if let HirStmtKind::Item(item) = stmt.inner() {
+                let entity_borrow = item.deref().borrow();
+                let name = entity_borrow.name();
+                let idx = self.section().add_global(Value::Unit);
+                self.global_map.entry(name.to_owned()).or_insert(idx);
+            }
         }
     }
 
     fn gen_global(&mut self, entity: &Entity) -> Result<()> {
-        let idx = self.ctx.global_map[entity.name()];
+        let idx = self.global_map[entity.name()];
         match entity.kind() {
             EntityInfo::Function(function) => {
                 let function = self.gen_function(entity.name(), function)?;
@@ -210,7 +190,7 @@ impl<'ctx> CodeGen<'ctx> {
                     (None, None) => unreachable!(), // caught by type checker
                     (None, Some(_)) => { /*self.gen_default_from_type(entity.ty())*/ }
                     (Some(init), _) => {
-                        self.gen_expr(init.as_ref(), true);
+                        self.gen_expr(init.as_ref());
                         self.section().write_arg(OpCode::SetGlobal, idx);
                     }
                 }
@@ -229,19 +209,19 @@ impl<'ctx> CodeGen<'ctx> {
         match stmt.inner() {
             HirStmtKind::Expr(expr) => {
                 let meta = expr.inner().meta();
-                self.gen_expr(expr, true);
+                self.gen_expr(expr);
                 // we need to pop off the result of the return of the result isn't being used.
                 if meta.is_call && !meta.uses_result {
                     self.section().write_op(OpCode::Pop);
                 }
             }
             HirStmtKind::Assignment(assignment) => {
-                self.gen_expr(assignment.rhs.as_ref(), true);
+                self.gen_expr(assignment.rhs.as_ref());
                 let entity_borrow = assignment.lvalue.borrow();
                 match entity_borrow.kind() {
                     EntityInfo::Variable(variable_info) => {
                         if variable_info.global {
-                            let idx = self.ctx.global_map[entity_borrow.name()];
+                            let idx = self.global_map[entity_borrow.name()];
                             self.section().write_arg(OpCode::SetGlobal, idx)
                         }
                     }
@@ -267,7 +247,7 @@ impl<'ctx> CodeGen<'ctx> {
                 }
             }
             HirStmtKind::Print(expr) => {
-                self.gen_expr(expr.as_ref(), true);
+                self.gen_expr(expr.as_ref());
                 self.section().write_op(OpCode::Print);
             }
         }
@@ -278,7 +258,7 @@ impl<'ctx> CodeGen<'ctx> {
             (None, None) => unreachable!(), // caught by type checker
             (None, Some(_)) => { /*self.gen_default_from_type(entity.ty())*/ }
             (Some(init), _) => {
-                self.gen_expr(init.as_ref(), true);
+                self.gen_expr(init.as_ref());
             }
         }
         if let Some(function) = self.function() {
@@ -289,7 +269,7 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
-    fn gen_expr(&mut self, expr: &HirExpr, with_scoping: bool) {
+    fn gen_expr(&mut self, expr: &HirExpr) {
         let inner = expr.inner();
         let ty = expr.ty();
         match inner.kind() {
@@ -354,8 +334,8 @@ impl<'ctx> CodeGen<'ctx> {
             }
             HirExprKind::Name(val) => self.gen_name(&val.borrow()),
             HirExprKind::Binary(binary_expr) => {
-                self.gen_expr(binary_expr.left.as_ref(), true);
-                self.gen_expr(binary_expr.right.as_ref(), true);
+                self.gen_expr(binary_expr.left.as_ref());
+                self.gen_expr(binary_expr.right.as_ref());
                 let op = if binary_expr.op.is_cmp() {
                     Self::binary_op_for_type(binary_expr.op, binary_expr.left.ty())
                 } else {
@@ -371,27 +351,27 @@ impl<'ctx> CodeGen<'ctx> {
             HirExprKind::FieldAccess(_) => {}
             HirExprKind::Call(call_info) => {
                 // call_info.
-                self.gen_expr(call_info.operand.as_ref(), true);
+                self.gen_expr(call_info.operand.as_ref());
                 // let op = section.last_op();
                 for actual in &call_info.actuals {
-                    self.gen_expr(actual.as_ref(), true);
+                    self.gen_expr(actual.as_ref());
                 }
                 let section = self.section();
                 section.write_arg(OpCode::Call, call_info.actuals.len().try_into().unwrap());
             }
             HirExprKind::Method(_) => {}
             HirExprKind::AssociatedFunction(_) => {}
-            HirExprKind::Block(block_expr) => self.gen_block(block_expr, with_scoping),
+            HirExprKind::Block(block_expr) => self.gen_block(block_expr),
             HirExprKind::Tuple(_) => {}
             HirExprKind::Loop(_) => {}
             HirExprKind::While(while_expr) => {
                 let ip = self.section().data().len();
-                self.gen_expr(while_expr.cond.as_ref(), true);
+                self.gen_expr(while_expr.cond.as_ref());
                 let exit_jmp = {
                     let section = self.section();
                     section.write_jmp(OpCode::JmpFalse)
                 };
-                self.gen_expr(while_expr.body.as_ref(), true);
+                self.gen_expr(while_expr.body.as_ref());
                 let section = self.section();
                 section.write_loop(ip);
                 section.patch_jmp(exit_jmp);
@@ -411,20 +391,20 @@ impl<'ctx> CodeGen<'ctx> {
         for branch in if_expr.branches.as_slice() {
             match branch {
                 IfExprBranch::Conditional { cond, body, .. } => {
-                    self.gen_expr(cond.as_ref(), true);
+                    self.gen_expr(cond.as_ref());
                     let conditional_offset = {
                         let section = self.section();
                         section.write_jmp(OpCode::JmpFalse)
                     };
 
-                    self.gen_expr(body.as_ref(), true);
+                    self.gen_expr(body.as_ref());
 
                     let section = self.section();
                     offsets.push(section.write_jmp(OpCode::Jmp));
                     section.patch_jmp(conditional_offset);
                 }
                 IfExprBranch::Unconditional { body } => {
-                    self.gen_expr(body.as_ref(), true);
+                    self.gen_expr(body.as_ref());
                 }
             }
         }
@@ -432,7 +412,7 @@ impl<'ctx> CodeGen<'ctx> {
         offsets.iter().for_each(|offset| section.patch_jmp(*offset));
     }
 
-    fn gen_block(&mut self, block_expr: &BlockExpr, with_scoping: bool) {
+    fn gen_block(&mut self, block_expr: &BlockExpr) {
         if let Some(function) = self.function() {
             function.push_scope();
         }
@@ -468,7 +448,7 @@ impl<'ctx> CodeGen<'ctx> {
         }
         std::mem::drop(function);
 
-        self.gen_expr(mir_function.body.as_ref(), false);
+        self.gen_expr(mir_function.body.as_ref());
 
         let function = self.function().expect("no valid function");
 
@@ -480,7 +460,7 @@ impl<'ctx> CodeGen<'ctx> {
     fn gen_name(&mut self, entity: &Entity) {
         match entity.kind() {
             EntityInfo::Function(_) => {
-                if let Some(indx) = self.ctx.global_map.get(entity.name()).clone().map(|i| *i) {
+                if let Some(indx) = self.global_map.get(entity.name()).clone().map(|i| *i) {
                     let section = self.section();
                     section.write_arg(OpCode::LoadGlobal, indx.try_into().unwrap());
                 } else {
@@ -489,7 +469,7 @@ impl<'ctx> CodeGen<'ctx> {
             }
             EntityInfo::Variable(variable_info) => {
                 if variable_info.global {
-                    if let Some(indx) = self.ctx.global_map.get(entity.name()).map(|i| *i) {
+                    if let Some(indx) = self.global_map.get(entity.name()).map(|i| *i) {
                         let section = self.section();
                         section.write_arg(OpCode::LoadGlobal, indx.try_into().unwrap());
                     } else {

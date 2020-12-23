@@ -3,7 +3,7 @@ use crate::analysis::scope::{Scope, ScopeKind, ScopeRef};
 use crate::analysis::{Entity, EntityInfo, EntityRef};
 use crate::error::Error;
 use crate::ir::ast::{Identifier, ItemKind, Node, StmtKind};
-use crate::ir::hir::{HirFile, HirStmtKind};
+use crate::ir::hir::HirFile;
 use crate::syntax::ParsedFile;
 use crate::types::{Type, TypeKind, TypeMap};
 use std::cell::RefCell;
@@ -164,24 +164,12 @@ impl<'src> Typer<'src> {
 
         for stmt in &parsed_file.stmts {
             let stmt = self.resolve_stmt_inner(stmt.as_ref(), true)?;
-            match stmt.inner() {
-                HirStmtKind::Expr(..) | HirStmtKind::Assignment(..) | HirStmtKind::Print(..) => {
-                    globals.push(stmt.clone())
-                }
-                _ => {}
-            }
+            globals.push(stmt.clone())
         }
-
-        let entities = self
-            .current_scope()
-            .elements()
-            .values()
-            .map(|entity| entity.clone())
-            .collect();
 
         self.pop_scope();
 
-        Ok(HirFile::new(parsed_file.file_id, globals, entities))
+        Ok(HirFile::new(parsed_file.file_id, globals))
     }
 
     fn resolve_ident(&mut self, ident: &Identifier) -> Result<EntityRef, Error> {

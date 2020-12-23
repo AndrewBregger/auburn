@@ -4,10 +4,7 @@ use std::path::Path;
 use std::rc::Rc;
 
 use auburn::Executor;
-use auburn::{
-    analysis::Analysis,
-    generator::{CodeGen, Context},
-};
+use auburn::{analysis::Analysis, generator::CodeGen};
 use auburn::{error::Error, oxide::vm::Vm};
 use auburn::{
     generator::GenError,
@@ -216,8 +213,7 @@ impl Core {
             .resolve_root(parsed_file)
             .map_err(Into::<CoreError>::into)?;
 
-        let context = Context::new(&self.file_map, &mir_file);
-        CodeGen::new(context)
+        CodeGen::new(&self.file_map, &mir_file)
             .build()
             .map_err(|e| CoreError::from(e))
     }

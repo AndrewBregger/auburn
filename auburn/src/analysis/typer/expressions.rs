@@ -1,5 +1,4 @@
 use crate::analysis::entity::StructureInfo;
-use crate::analysis::scope::ScopeKind;
 use crate::analysis::typer::{
     Typer, ALLOW_CONTROL_FLOW_EXPRESSIONS, ASSOCIATIVE_FUNCTION, BLOCK, EXPR_RESULT_USED, FUNCTION,
     FUNCTION_BODY, SELF_PARAM_IDENT,
@@ -16,6 +15,7 @@ use crate::ir::hir::{
 };
 use crate::syntax::Position;
 use crate::types::{Type, TypeKind};
+use crate::{analysis::scope::ScopeKind, ir::ast::Stmt};
 
 use itertools::Itertools;
 use std::ops::Deref;
@@ -133,49 +133,7 @@ impl<'src> Typer<'src> {
                 self.resolve_unary(*op, expr.as_ref(), expected_type.clone(), expr.position())?
             }
             ExprKind::Block(stmts) => {
-                self.push_scope(ScopeKind::Block);
-                let stmts = with_state!(self, BLOCK, {
-                    let mut mir_stmts = vec![];
-                    for stmt in stmts {
-                        let mir_stmt = self.resolve_stmt(stmt.as_ref())?;
-                        mir_stmts.push(mir_stmt);
-                    }
-
-                    Ok(mir_stmts)
-                })?;
-
-                self.pop_scope();
-
-                // the result of the block is the result of the last expression in the block, this includes the addressing, type, and mutability
-                let (address_mode, return_type, mutable) = stmts.last().map_or(
-                    (
-                        AddressMode::Value,
-                        self.type_map.get_unit(),
-                        ResultMeta::literal(),
-                    ),
-                    |stmt| match stmt.inner() {
-                        HirStmtKind::Expr(expr) => {
-                            let inner = expr.inner();
-                            (inner.address_mode(), expr.ty(), inner.meta())
-                        }
-                        _ => (
-                            AddressMode::Value,
-                            stmt.ty(),
-                            ResultMeta::new(false, false, false, false, false),
-                        ),
-                    },
-                );
-
-                let block_expr = BlockExpr {
-                    stmts,
-                    return_used: self.check_state(EXPR_RESULT_USED),
-                };
-
-                Rc::new(HirExpr::new(
-                    HirExprInner::new(address_mode, mutable, HirExprKind::Block(block_expr)),
-                    expr.position(),
-                    return_type,
-                ))
+                self.resolve_block_expression(stmts, false, expr.position())?
             }
             ExprKind::StructExpr { name, fields } => {
                 let ty = self.resolve_type_expr(name.as_ref())?;
@@ -352,6 +310,57 @@ impl<'src> Typer<'src> {
         }
 
         Ok(expr)
+    }
+
+    pub(crate) fn resolve_block_expression(
+        &mut self,
+        stmts: &[Box<Stmt>],
+        function_body: bool,
+        position: Position,
+    ) -> Result<HirExprPtr, Error> {
+        self.push_scope(ScopeKind::Block);
+        let stmts = with_state!(self, BLOCK, {
+            let mut mir_stmts = vec![];
+            for stmt in stmts {
+                let mir_stmt = self.resolve_stmt(stmt.as_ref())?;
+                mir_stmts.push(mir_stmt);
+            }
+
+            Ok(mir_stmts)
+        })?;
+
+        self.pop_scope();
+
+        // the result of the block is the result of the last expression in the block, this includes the addressing, type, and mutability
+        let (address_mode, return_type, mutable) = stmts.last().map_or(
+            (
+                AddressMode::Value,
+                self.type_map.get_unit(),
+                ResultMeta::literal(),
+            ),
+            |stmt| match stmt.inner() {
+                HirStmtKind::Expr(expr) => {
+                    let inner = expr.inner();
+                    (inner.address_mode(), expr.ty(), inner.meta())
+                }
+                _ => (
+                    AddressMode::Value,
+                    stmt.ty(),
+                    ResultMeta::new(false, false, false, false, false),
+                ),
+            },
+        );
+
+        let block_expr = BlockExpr {
+            stmts,
+            function_block: function_body,
+        };
+
+        Ok(Rc::new(HirExpr::new(
+            HirExprInner::new(address_mode, mutable, HirExprKind::Block(block_expr)),
+            position,
+            return_type,
+        )))
     }
 
     pub(crate) fn resolve_index(

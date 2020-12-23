@@ -63,7 +63,7 @@ pub struct AssociatedFunctionExpr {
 #[derive(Debug, Clone)]
 pub struct BlockExpr {
     pub stmts: Vec<Rc<HirStmt>>,
-    pub return_used: bool,
+    pub function_block: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -338,16 +338,6 @@ impl NodeType for HirSpecKind {
     }
 }
 
-// impl NodeType for Ident {
-//     fn name(&self) -> &'static str {
-//         "Identifier"
-//     }
-//
-//     fn ty(&self) -> AstNodeType {
-//         AstNodeType::Ident
-//     }
-// }
-
 #[derive(Debug, Clone)]
 pub struct Assignment {
     pub op: AssignmentOp,
@@ -540,25 +530,16 @@ impl HirExpr {
 #[derive(Debug, Clone)]
 pub struct HirFile {
     id: FileId,
-    global_expressions: Vec<HirStmtPtr>,
-    entities: Vec<EntityRef>,
+    stmts: Vec<HirStmtPtr>,
 }
 
 impl HirFile {
-    pub fn new(id: FileId, global_expressions: Vec<HirStmtPtr>, entities: Vec<EntityRef>) -> Self {
-        Self {
-            id,
-            global_expressions,
-            entities,
-        }
+    pub fn new(id: FileId, stmts: Vec<HirStmtPtr>) -> Self {
+        Self { id, stmts }
     }
 
-    pub fn globals(&self) -> &[HirStmtPtr] {
-        self.global_expressions.as_slice()
-    }
-
-    pub fn entities(&self) -> &[EntityRef] {
-        self.entities.as_slice()
+    pub fn stmts(&self) -> &[HirStmtPtr] {
+        self.stmts.as_slice()
     }
 
     pub fn id(&self) -> FileId {

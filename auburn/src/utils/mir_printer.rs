@@ -16,7 +16,7 @@ impl MirPrinter {
 
     pub fn print_file(file: &HirFile) {
         println!("Stmts:");
-        for stmt in file.globals() {
+        for stmt in file.stmts() {
             Self::print_stmt_inner(stmt.as_ref(), 1);
         }
     }
