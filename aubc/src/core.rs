@@ -3,17 +3,15 @@ extern crate clap;
 use std::path::Path;
 use std::rc::Rc;
 
-use auburn::Executor;
-use auburn::{analysis::Analysis, generator::CodeGen};
-use auburn::{error::Error, oxide::vm::Vm};
 use auburn::{
-    generator::GenError,
+    analysis::Analysis,
+    error::Error,
+    ir::hir::HirFile,
+    oxide::{OxFunction, Vm},
     syntax::{ParsedFile, Parser, Position},
-};
-use auburn::{ir::hir::HirFile, oxide::OxFunction};
-use auburn::{
     system::{File, FileMap},
     utils::MirPrinter,
+    Executor,
 };
 use clap::Clap;
 
@@ -44,7 +42,7 @@ enum CoreError {
     IoError(std::io::Error, String),
     // CommandError(CommandError),
     CompilerError(Error),
-    BuildError(GenError),
+    // BuildError(GenError),
 }
 
 impl From<Error> for CoreError {
@@ -53,11 +51,11 @@ impl From<Error> for CoreError {
     }
 }
 
-impl From<GenError> for CoreError {
-    fn from(err: GenError) -> Self {
-        Self::BuildError(err)
-    }
-}
+// impl From<GenError> for CoreError {
+//     fn from(err: GenError) -> Self {
+//         Self::BuildError(err)
+//     }
+// }
 
 pub struct Core {
     file_map: FileMap,
@@ -86,7 +84,7 @@ impl Core {
         match err {
             CoreError::IoError(err, file_name) => self.print_io_error(err, file_name),
             CoreError::CompilerError(err) => self.print_compiler_error(err),
-            CoreError::BuildError(err) => self.print_code_gen_error(err),
+            // CoreError::BuildError(err) => self.print_code_gen_error(err),
         }
     }
 
@@ -142,9 +140,9 @@ impl Core {
         }
     }
 
-    fn print_code_gen_error(&self, err: &GenError) {
-        println!("{}", err);
-    }
+    // fn print_code_gen_error(&self, err: &GenError) {
+    //     println!("{}", err);
+    // }
 
     fn execute(&mut self, arg: Arguments) -> Result<(), CoreError> {
         match arg.command {
@@ -195,9 +193,7 @@ impl Core {
             }
 
             Command::Build { input } => {
-                let file = self
-                    .open_file(input.as_str())
-                    .map_err(|err| CoreError::IoError(err, input))?;
+                let file = self.open(input.as_str())?;
                 let function = self.build(file)?;
                 function.disassemble();
             }
@@ -205,17 +201,24 @@ impl Core {
         Ok(())
     }
 
+    fn open(&mut self, path: &str) -> Result<Rc<File>, CoreError> {
+        self.open_file(path)
+            .map_err(|err| CoreError::IoError(err, path.to_owned()))
+    }
+
     fn build(&mut self, file: Rc<File>) -> Result<Box<OxFunction>, CoreError> {
         let parsed_file = self
             .parse_file(file.as_ref())
             .map_err(Into::<CoreError>::into)?;
-        let mir_file = self
+        let _mir_file = self
             .resolve_root(parsed_file)
             .map_err(Into::<CoreError>::into)?;
 
-        CodeGen::new(&self.file_map, &mir_file)
-            .build()
-            .map_err(|e| CoreError::from(e))
+        todo!()
+
+        // CodeGen::new(&self.file_map, &mir_file)
+        //     .build()
+        //     .map_err(|e| CoreError::from(e))
     }
 
     fn execute_repl(&mut self) -> Result<(), CoreError> {
