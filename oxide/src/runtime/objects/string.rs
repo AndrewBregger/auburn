@@ -3,7 +3,7 @@ use std::{
     fmt::{Display, Formatter},
 };
 
-use crate::gc::{Cell, Gc, GcObject};
+use crate::gc::{Address, Cell, Gc, GcObject};
 
 use super::ArrayBuffer;
 
@@ -16,6 +16,10 @@ pub struct OxString {
 impl OxString {
     pub fn new(buffer: Gc<ArrayBuffer<char>>, len: usize, cap: usize) -> Self {
         Self { len, buffer }
+    }
+
+    pub fn buffer_ptr(&self) -> Address {
+        self.buffer.ptr()
     }
 
     pub fn chars(&self) -> &[char] {
