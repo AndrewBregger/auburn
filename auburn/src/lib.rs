@@ -13,8 +13,8 @@ use crate::syntax::ParsedFile;
 use crate::system::File;
 
 pub mod analysis;
+pub mod code_gen;
 pub mod error;
-pub mod generator;
 pub mod ir;
 pub mod syntax;
 pub mod system;

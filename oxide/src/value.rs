@@ -1,7 +1,10 @@
-use crate::runtime::{OxFunction, OxString};
+use crate::{
+    gc::Gc,
+    runtime::{OxFunction, OxString},
+};
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum Value {
     I8(i8),
     I16(i16),
@@ -14,8 +17,9 @@ pub enum Value {
     F32(f32),
     F64(f64),
     Bool(bool),
-    String(Box<OxString>),
-    Function(Box<OxFunction>),
+    String(OxString),
+    Function(Gc<OxFunction>),
+    // Struct(Gc<OxStruct>),
     Unit,
 }
 
@@ -156,24 +160,26 @@ impl Value {
     }
 
     pub fn as_function(&self) -> &OxFunction {
-        if let Self::Function(val) = self {
-            val
-        } else {
-            panic!(
-                "Attempting to get an string from a value of type {}",
-                self.ty()
-            );
+        match self {
+            Self::Function(val) => val,
+            _ => {
+                panic!(
+                    "Attempting to get an string from a value of type {}",
+                    self.ty()
+                );
+            }
         }
     }
 
     pub fn as_function_mut(&mut self) -> &mut OxFunction {
-        if let Self::Function(val) = self {
-            val
-        } else {
-            panic!(
-                "Attempting to get an string from a value of type {}",
-                self.ty()
-            );
+        match self {
+            Self::Function(val) => val.as_ref_mut(),
+            _ => {
+                panic!(
+                    "Attempting to get an string from a value of type {}",
+                    self.ty()
+                );
+            }
         }
     }
 

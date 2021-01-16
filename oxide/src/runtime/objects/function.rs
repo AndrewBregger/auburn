@@ -1,17 +1,21 @@
-use crate::{OxString, Section};
+use crate::{
+    gc::{Cell, Gc, GcObject, ObjectKind},
+    OxString, Section,
+};
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct OxFunction {
-    // cell: Cell,
-    name: Box<OxString>,
+    cell: Cell,
+    name: Gc<OxString>,
     arity: u8,
     section: Section,
 }
 
 impl OxFunction {
-    pub fn new(name: Box<OxString>, arity: u8, section: Section) -> Self {
+    pub fn new(name: Gc<OxString>, arity: u8, section: Section) -> Self {
         Self {
+            cell: Cell::new(ObjectKind::Function),
             name,
             arity,
             section,
@@ -19,7 +23,7 @@ impl OxFunction {
     }
 
     pub fn is_script(&self) -> bool {
-        self.name.str().is_empty()
+        self.name.as_ref().is_empty()
     }
 
     pub fn section(&self) -> &Section {
@@ -58,7 +62,17 @@ impl Display for OxFunction {
         if self.is_script() {
             write!(f, "<script>")
         } else {
-            write!(f, "<fn {} {:p}>", self.name, self as *const _)
+            write!(f, "<fn {}>", self.name)
         }
+    }
+}
+
+impl GcObject for OxFunction {
+    fn as_cell(&self) -> &Cell {
+        &self.cell
+    }
+
+    fn as_cell_mut(&mut self) -> &mut Cell {
+        &mut self.cell
     }
 }

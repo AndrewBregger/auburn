@@ -5,9 +5,10 @@ use std::rc::Rc;
 
 use auburn::{
     analysis::Analysis,
+    code_gen::CodeGen,
     error::Error,
     ir::hir::HirFile,
-    oxide::{OxFunction, Vm},
+    oxide::{gc::Gc, OxFunction, Vm},
     syntax::{ParsedFile, Parser, Position},
     system::{File, FileMap},
     utils::MirPrinter,
@@ -59,6 +60,7 @@ impl From<Error> for CoreError {
 
 pub struct Core {
     file_map: FileMap,
+    vm: Vm,
     analysis: Analysis,
 }
 
@@ -66,6 +68,7 @@ impl Core {
     pub fn new() -> Self {
         Self {
             file_map: FileMap::new(),
+            vm: Vm::new(),
             analysis: Analysis::new(),
         }
     }
@@ -183,10 +186,9 @@ impl Core {
                 let ox_function = self.build(file)?;
                 ox_function.disassemble();
 
-                let mut vm = Vm::new();
-                match vm.run(ox_function) {
+                match self.vm.run(ox_function) {
                     Ok(_) => {
-                        vm.print_stack();
+                        self.vm.print_stack();
                     }
                     Err(err) => println!("{}", err),
                 }
@@ -206,7 +208,7 @@ impl Core {
             .map_err(|err| CoreError::IoError(err, path.to_owned()))
     }
 
-    fn build(&mut self, file: Rc<File>) -> Result<Box<OxFunction>, CoreError> {
+    fn build(&mut self, file: Rc<File>) -> Result<Gc<OxFunction>, CoreError> {
         let parsed_file = self
             .parse_file(file.as_ref())
             .map_err(Into::<CoreError>::into)?;
@@ -216,7 +218,7 @@ impl Core {
 
         todo!()
 
-        // CodeGen::new(&self.file_map, &mir_file)
+        // CodeGen::new(&self.file_map, &mir_file, &mut self.vm)
         //     .build()
         //     .map_err(|e| CoreError::from(e))
     }

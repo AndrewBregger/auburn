@@ -1,11 +1,13 @@
-use crate::mem::read_to;
 use crate::vm::{Instruction, OpCode};
 use crate::Value;
+use crate::{gc::Gc, mem::read_to};
 
 use std::convert::TryInto;
 use std::fmt::{Display, Formatter};
 use std::slice::SliceIndex;
 use std::sync::atomic::{AtomicUsize, Ordering};
+
+use super::ArrayBuffer;
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct SectionId(usize);
@@ -24,39 +26,33 @@ impl Display for SectionId {
 }
 
 /// section of executable byte code.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct Section {
     // I am wondering if it would denifit from storing a reference to a array of
     // bytes instead of owning it. This would mean that the section is not able
     // to write to its data since it is owned outside of it.
-    data: Vec<u8>,
+    data: Gc<ArrayBuffer<u8>>,
     id: SectionId,
-    constants: Vec<Value>,
-    globals: Vec<Value>,
+    constants: Gc<ArrayBuffer<Value>>,
+    globals: Gc<ArrayBuffer<Value>>,
 }
 
 impl Section {
-    pub fn new() -> Self {
+    pub fn new(
+        data: Gc<ArrayBuffer<u8>>,
+        constants: Gc<ArrayBuffer<Value>>,
+        globals: Gc<ArrayBuffer<Value>>,
+    ) -> Self {
         Self {
-            data: vec![],
+            data,
             id: SectionId::next(),
-            constants: vec![],
-            globals: vec![],
+            constants,
+            globals,
         }
     }
 
-    pub fn add_constant(&mut self, value: Value) -> u8 {
-        self.constants.push(value);
-        (self.constants.len() - 1).try_into().unwrap()
-    }
-
     pub fn get_constant(&self, index: usize) -> Value {
-        self.constants.get(index).expect("invalid index").clone()
-    }
-
-    pub fn add_global(&mut self, value: Value) -> u8 {
-        self.globals.push(value);
-        (self.globals.len() - 1).try_into().unwrap()
+        self.constants[index].clone()
     }
 
     pub fn get_global(&self, index: usize) -> Value {
@@ -75,67 +71,8 @@ impl Section {
         self.data.len()
     }
 
-    pub fn write_byte(&mut self, byte: u8) {
-        self.data.push(byte);
-    }
-
-    pub fn write_arg(&mut self, op: OpCode, index: u8) {
-        self.write_op(op);
-        self.write_byte(index);
-    }
-
-    pub fn write_op(&mut self, op: OpCode) {
-        self.data.push(op as u8);
-    }
-
-    pub fn write_bytes(&mut self, bytes: &[u8]) {
-        self.data.extend_from_slice(bytes)
-    }
-
-    // returns the first byte of the jmp operand.
-    pub fn write_jmp(&mut self, op: OpCode) -> usize {
-        self.write_op(op);
-        self.write_bytes(&[0xff, 0xff]);
-        self.len() - 2
-    }
-
-    pub fn patch_jmp(&mut self, offset: usize) {
-        println!("patch_jmp: {} {}", self.len(), offset);
-        let jump: u16 = (self.len() - offset - 2)
-            .try_into()
-            .expect("attempting to jump too far");
-        self.data[offset] = ((jump >> 8) & 0xff) as u8;
-        self.data[offset + 1] = (jump & 0xff) as u8;
-    }
-
-    pub fn write_loop(&mut self, start: usize) {
-        self.write_op(OpCode::Loop);
-        let offset = (self.len() - start + 2) as u16;
-        self.write_bytes(&offset.to_be_bytes());
-    }
-
-    /// writes a new label and returns the opcode index after the label.
-    pub fn write_label(&mut self, bytes: &str) -> usize {
-        // let len: u8 = u8::try_from(bytes.len()).expect("label is too long");
-        let len = bytes.len().try_into().expect("label is too long");
-        self.write_op(OpCode::Label);
-        self.write_byte(len);
-        self.write_bytes(bytes.as_bytes());
-        self.data.len()
-    }
-
-    pub fn read<I>(&self, index: I) -> Option<&<I as SliceIndex<[u8]>>::Output>
-    where
-        I: SliceIndex<[u8]>,
-    {
-        self.data.get(index)
-    }
-
-    pub unsafe fn read_unchecked<I>(&self, index: I) -> &<I as SliceIndex<[u8]>>::Output
-    where
-        I: SliceIndex<[u8]>,
-    {
-        self.data.get_unchecked(index)
+    pub fn read(&self, index: usize) -> u8 {
+        self.data[index]
     }
 
     pub fn data(&self) -> &[u8] {
@@ -150,9 +87,9 @@ impl Section {
         let mut ip = 0;
         let mut res = vec![];
         while ip < self.len() {
-            let op_code_raw = unsafe { self.read_unchecked(ip) };
+            let op_code_raw = self.read(ip);
             ip += 1;
-            let op_code = OpCode::from_u8(*op_code_raw).unwrap();
+            let op_code = OpCode::from_u8(op_code_raw).unwrap();
             match op_code {
                 OpCode::LoadI8
                 | OpCode::LoadI16
@@ -170,7 +107,7 @@ impl Section {
                 | OpCode::LoadLocal
                 | OpCode::SetLocal
                 | OpCode::Call => {
-                    let value = *unsafe { self.read_unchecked(ip) };
+                    let value = self.read(ip);
                     res.push(Instruction::with_arg(ip - 1, op_code, value as u16));
                     ip += 1;
                 }

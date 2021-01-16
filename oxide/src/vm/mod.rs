@@ -1,13 +1,22 @@
 mod call_frame;
 mod op_codes;
 
-use crate::mem::read_to;
-use crate::runtime;
-use crate::Value;
+use crate::{
+    gc::Gc,
+    runtime::{self, Buffer},
+};
+use crate::{
+    gc::{Address, GcAlloc},
+    mem::read_to,
+};
+use crate::{OxString, Value};
 use call_frame::CallFrame;
 pub use op_codes::{Instruction, OpCode};
 use ordered_float::OrderedFloat;
-use runtime::{Error as RuntimeError, OxFunction};
+use runtime::{ArrayBuffer, Error as RuntimeError, OxFunction};
+
+static DEFAULT_MEM_SIZE: usize = 2056;
+static DEFAULT_STACK_SIZE: usize = 2056;
 
 macro_rules! binary_op {
     ($name:ident, $start_op:ident, $op:tt) => {
@@ -135,10 +144,11 @@ macro_rules! conditional_binary_op {
 macro_rules! load_constant {
     ($cond:ident, $name:literal, $self:expr) => {
         let frame = $self.frame_mut();
-        let idx = *unsafe {
+        let idx = {
             let section = frame.section();
-            section.read_unchecked(frame.ip)
+            section.read(frame.ip)
         };
+
         frame.ip += 1;
         let value = frame.section().get_constant(idx as usize);
         if value.$cond() {
@@ -150,6 +160,8 @@ macro_rules! load_constant {
 }
 
 pub struct Vm {
+    allocator: GcAlloc,
+
     stack: Vec<Value>,
     call_stack: Vec<CallFrame>,
     top_stack: usize,
@@ -159,7 +171,8 @@ pub struct Vm {
 impl Vm {
     pub fn new() -> Self {
         Self {
-            stack: vec![Value::Unit; 2056],
+            allocator: GcAlloc::new(DEFAULT_MEM_SIZE),
+            stack: vec![Value::Unit; DEFAULT_STACK_SIZE],
             call_stack: vec![CallFrame::default(); 512],
             top_stack: 0,
             top_frame: 0,
@@ -213,7 +226,7 @@ impl Vm {
     pub fn call_value(&mut self) {
         let value = {
             let frame = self.frame_mut();
-            let arity = unsafe { *frame.section().read_unchecked(frame.ip) };
+            let arity = frame.section().read(frame.ip);
             frame.ip += 1;
             arity
         };
@@ -238,7 +251,7 @@ impl Vm {
         }
     }
 
-    pub fn run(&mut self, function: Box<OxFunction>) -> Result<(), RuntimeError> {
+    pub fn run(&mut self, function: Gc<OxFunction>) -> Result<(), RuntimeError> {
         let funct = function.as_ref() as *const _;
 
         let call_frame = CallFrame::new(funct, self.top_stack);
@@ -250,7 +263,7 @@ impl Vm {
 
             let op_code_raw = {
                 let frame = self.frame_mut();
-                let code = *unsafe { frame.section().read_unchecked(frame.ip) };
+                let code = frame.section().read(frame.ip);
                 frame.ip += 1;
                 code
             };
@@ -323,7 +336,7 @@ impl Vm {
                     let frame = self.frame_mut();
                     let ip = frame.ip;
                     let local = frame.local_start;
-                    let idx = unsafe { *frame.section().read_unchecked(ip) };
+                    let idx = frame.section().read(ip);
                     frame.ip += 1;
                     self.push_stack(self.stack[local + idx as usize].clone());
                 }
@@ -331,7 +344,7 @@ impl Vm {
                     let frame = self.frame_mut();
                     let ip = frame.ip;
                     let local = frame.local_start;
-                    let idx = unsafe { *frame.section().read_unchecked(ip) };
+                    let idx = frame.section().read(ip);
                     frame.ip += 1;
                     let value = self.pop();
                     self.stack[local + idx as usize] = value;
@@ -501,6 +514,12 @@ impl Vm {
                     self.print_stack();
                     break;
                 }
+                // OpCode::NewObject => {
+                //     let frame = self.frame();
+                //     let fields = read_to::<u16>(frame.section().data(), &mut ip);
+                //     let address = self.allocate_struct(fields);
+                //     let value = Value::S
+                // }
                 OpCode::NumOps => {}
             }
         }
@@ -517,4 +536,60 @@ impl Vm {
     conditional_binary_op!(perform_greater, GreaterI8, >);
     conditional_binary_op!(perform_lesseq, LessEqI8, <);
     conditional_binary_op!(perform_greatereq, GreaterEqI8, >);
+
+    // allocation interface
+    pub fn collect(&mut self) {
+        self.mark();
+        self.sweep();
+    }
+
+    fn mark(&mut self) {}
+
+    fn sweep(&mut self) {}
+
+    pub fn allocate_struct(&mut self, fields: u16) -> Address {
+        self.allocate(fields as usize * std::mem::size_of::<Value>())
+    }
+
+    fn allocate(&mut self, size: usize) -> Address {
+        match self.allocator.alloc(size) {
+            Some(address) => address,
+            None => {
+                self.collect();
+                self.allocator.alloc(size).unwrap()
+            }
+        }
+    }
+
+    pub fn deallocate(&mut self, address: Address) {
+        self.allocator.dealloc(address)
+    }
+
+    pub fn allocate_buffer(&mut self, size: usize) -> Gc<Buffer> {
+        // the size of the buffer header and the size of the actual buffer
+        let buffer_size = std::mem::size_of::<Buffer>() + size;
+        let buffer_address = self.allocate(buffer_size);
+
+        unsafe {
+            let buffer = &mut *(buffer_address.as_ptr_mut() as *mut Buffer);
+            buffer.size = size;
+        }
+
+        Gc::<Buffer>::new(buffer_address)
+    }
+
+    pub fn allocate_array_buffer<Ty: Sync + Send + Copy + Sized>(
+        &mut self,
+        count: usize,
+    ) -> Gc<ArrayBuffer<Ty>> {
+        let buffer = self.allocate_buffer(count * std::mem::size_of::<Ty>());
+        Gc::<ArrayBuffer<Ty>>::new(buffer.ptr())
+    }
+
+    pub fn allocate_string(&mut self, value: &str) -> OxString {
+        let array_buffer = self.allocate_array_buffer::<char>(value.len());
+        let mut ox_string = OxString::new(array_buffer, value.len(), value.len());
+        ox_string.set_from_str(value);
+        ox_string
+    }
 }

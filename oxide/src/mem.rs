@@ -32,6 +32,7 @@ from_bytes!(f32);
 from_bytes!(f64);
 
 pub fn read_to<T: FromBytes>(data: &[u8], offset: &mut usize) -> T {
+    // implementation should be change to not use &[u8] since that requires constructing it from raw
     let size = std::mem::size_of::<T>();
     let value = T::from_bytes(&data[*offset..], size);
     *offset += size;
