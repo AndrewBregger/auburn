@@ -1,6 +1,6 @@
 use crate::{
     gc::Gc,
-    runtime::{OxFunction, OxString},
+    runtime::{OxFunction, OxString, OxStruct},
 };
 use std::fmt::{Display, Formatter};
 
@@ -19,7 +19,7 @@ pub enum Value {
     Bool(bool),
     String(OxString),
     Function(Gc<OxFunction>),
-    // Struct(Gc<OxStruct>),
+    Struct(Gc<OxStruct>),
     Unit,
 }
 
@@ -39,6 +39,7 @@ impl Value {
             Self::Bool(_) => "bool",
             Self::String(_) => "string",
             Self::Function(_) => "function",
+            Self::Struct(_) => "struct",
             Self::Unit => "unit",
         }
     }
@@ -316,6 +317,7 @@ impl Display for Value {
             Self::Bool(val) => write!(f, "{}", val),
             Self::String(val) => write!(f, "{}", val),
             Self::Function(val) => write!(f, "{}", val),
+            Self::Struct(val) => write!(f, "{}", val),
             Self::Unit => write!(f, "<>"),
         }
     }

@@ -12,13 +12,15 @@ use crate::core::Core;
 mod core;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    // Core::new().run();
+    Core::new().run();
 
-    let mut vm = Vm::new();
-    let ox_string = vm.allocate_string("hello, world");
-    println!("{:?}", ox_string);
-    println!("chars: {:?}", ox_string.chars());
-    println!("{}", ox_string);
+    // let mut vm = Vm::new();
+
+    // let ox_string = vm.allocate_string("hello, world");
+    // println!("{:?}", ox_string);
+    // println!("chars: {:?}", ox_string.chars());
+    // println!("{}", ox_string);
+    // vm.deallocate(ox_string.buffer_ptr());
 
     Ok(())
 }

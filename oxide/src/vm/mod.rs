@@ -11,9 +11,10 @@ use crate::{
 };
 use crate::{OxString, Value};
 use call_frame::CallFrame;
+use itertools::{self, Itertools};
 pub use op_codes::{Instruction, OpCode};
 use ordered_float::OrderedFloat;
-use runtime::{ArrayBuffer, Error as RuntimeError, OxFunction};
+use runtime::{ArrayBuffer, Error as RuntimeError, OxFunction, OxStruct};
 
 static DEFAULT_MEM_SIZE: usize = 2056;
 static DEFAULT_STACK_SIZE: usize = 2056;
@@ -251,6 +252,24 @@ impl Vm {
         }
     }
 
+    pub fn build_structure(&mut self, fields: u16) -> Gc<OxStruct> {
+        let structure_address = self.allocate_struct(fields);
+        let structure = unsafe {
+            let ptr = structure_address.0 as *mut OxStruct;
+            *ptr = OxStruct::new();
+            &mut *ptr
+        };
+
+        let fields_slice =
+            unsafe { std::slice::from_raw_parts_mut(structure.fields_ptr_mut(), fields as usize) };
+        let field_values = (0..fields).map(|_| self.pop()).collect_vec();
+        for (idx, field) in field_values.into_iter().rev().enumerate() {
+            fields_slice[idx] = field;
+        }
+
+        Gc::<OxStruct>::new(structure_address)
+    }
+
     pub fn run(&mut self, function: Gc<OxFunction>) -> Result<(), RuntimeError> {
         let funct = function.as_ref() as *const _;
 
@@ -398,6 +417,15 @@ impl Vm {
                     println!("Top Stack: {}", self.top_stack);
                     self.print_stack();
                 }
+                OpCode::NewObject => {
+                    let frame = self.frame_mut();
+                    let mut ip = frame.ip;
+                    let fields = read_to::<u16>(frame.section().data(), &mut ip);
+                    frame.ip = ip;
+                    let structure = self.build_structure(fields);
+                    let value = Value::Struct(structure);
+                    self.push_stack(value);
+                }
                 OpCode::AddI8
                 | OpCode::AddI16
                 | OpCode::AddI32
@@ -507,19 +535,13 @@ impl Vm {
                 }
                 OpCode::Call => self.call_value(),
                 OpCode::Print => {
-                    let value = self.top();
+                    let value = self.pop();
                     println!("{}", value)
                 }
                 OpCode::Exit => {
                     self.print_stack();
                     break;
                 }
-                // OpCode::NewObject => {
-                //     let frame = self.frame();
-                //     let fields = read_to::<u16>(frame.section().data(), &mut ip);
-                //     let address = self.allocate_struct(fields);
-                //     let value = Value::S
-                // }
                 OpCode::NumOps => {}
             }
         }
@@ -548,7 +570,9 @@ impl Vm {
     fn sweep(&mut self) {}
 
     pub fn allocate_struct(&mut self, fields: u16) -> Address {
-        self.allocate(fields as usize * std::mem::size_of::<Value>())
+        self.allocate(
+            std::mem::size_of::<OxStruct>() + fields as usize * std::mem::size_of::<Value>(),
+        )
     }
 
     fn allocate(&mut self, size: usize) -> Address {
@@ -572,7 +596,7 @@ impl Vm {
 
         unsafe {
             let buffer = &mut *(buffer_address.as_ptr_mut() as *mut Buffer);
-            buffer.size = size;
+            *buffer = Buffer::new(size);
         }
 
         Gc::<Buffer>::new(buffer_address)

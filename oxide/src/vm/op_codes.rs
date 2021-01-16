@@ -133,6 +133,7 @@ define_opcodes!(
     "load_false" => LoadFalse,
     "jmp_if_true" => JmpTrue,
     "jmp_if_false" => JmpFalse,
+    "new_object" => NewObject,
     "jmp" => Jmp,
     "loop" => Loop,
     "exit" => Exit,

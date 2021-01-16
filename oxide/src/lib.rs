@@ -1,3 +1,5 @@
+extern crate itertools;
+
 mod mem;
 mod runtime;
 mod value;

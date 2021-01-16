@@ -111,7 +111,11 @@ impl Section {
                     res.push(Instruction::with_arg(ip - 1, op_code, value as u16));
                     ip += 1;
                 }
-                OpCode::Loop | OpCode::JmpTrue | OpCode::JmpFalse | OpCode::Jmp => {
+                OpCode::Loop
+                | OpCode::JmpTrue
+                | OpCode::JmpFalse
+                | OpCode::Jmp
+                | OpCode::NewObject => {
                     let offset = ip - 1;
                     let value = read_to::<u16>(self.data(), &mut ip);
                     res.push(Instruction::with_arg(offset, op_code, value as u16));
