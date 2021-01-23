@@ -3,17 +3,7 @@ extern crate clap;
 use std::path::Path;
 use std::rc::Rc;
 
-use auburn::{
-    analysis::Analysis,
-    code_gen::CodeGen,
-    error::Error,
-    ir::hir::HirFile,
-    oxide::{gc::Gc, OxFunction, Vm},
-    syntax::{ParsedFile, Parser, Position},
-    system::{File, FileMap},
-    utils::MirPrinter,
-    Executor,
-};
+use auburn::{Executor, analysis::Analysis, code_gen::{BuildError, CodeGen}, error::Error, ir::hir::HirFile, oxide::{OxFunction, OxModule, Vm, gc::Gc}, syntax::{ParsedFile, Parser, Position}, system::{File, FileMap}, utils::MirPrinter};
 use clap::Clap;
 
 #[derive(Clap, Debug)]
@@ -43,7 +33,7 @@ enum CoreError {
     IoError(std::io::Error, String),
     // CommandError(CommandError),
     CompilerError(Error),
-    // BuildError(GenError),
+    BuildError(BuildError),
 }
 
 impl From<Error> for CoreError {
@@ -52,11 +42,11 @@ impl From<Error> for CoreError {
     }
 }
 
-// impl From<GenError> for CoreError {
-//     fn from(err: GenError) -> Self {
-//         Self::BuildError(err)
-//     }
-// }
+impl From<BuildError> for CoreError {
+    fn from(err: BuildError) -> Self {
+        Self::BuildError(err)
+    }
+}
 
 pub struct Core {
     file_map: FileMap,
@@ -87,7 +77,7 @@ impl Core {
         match err {
             CoreError::IoError(err, file_name) => self.print_io_error(err, file_name),
             CoreError::CompilerError(err) => self.print_compiler_error(err),
-            // CoreError::BuildError(err) => self.print_code_gen_error(err),
+            CoreError::BuildError(err) => {} //self.print_code_gen_error(err),
         }
     }
 
@@ -136,11 +126,12 @@ impl Core {
             })
             .collect::<String>();
 
-        if start_column <= end_column {
-            let cursor = String::from_utf8(vec![b'^'; end_column - start_column])
-                .expect("cursor string is not valid utf8??");
-            println!(" \t{}{}", offset, cursor);
+        if !start_column <= end_column {
+            return;
         }
+        let cursor = String::from_utf8(vec![b'^'; end_column - start_column])
+            .expect("cursor string is not valid utf8??");
+        println!(" \t{}{}", offset, cursor);
     }
 
     // fn print_code_gen_error(&self, err: &GenError) {
@@ -186,7 +177,7 @@ impl Core {
                 let ox_function = self.build(file)?;
                 ox_function.disassemble();
 
-                match self.vm.run(ox_function) {
+                match self.vm.run_module(ox_function) {
                     Ok(_) => {
                         self.vm.print_stack();
                     }
@@ -196,8 +187,8 @@ impl Core {
 
             Command::Build { input } => {
                 let file = self.open(input.as_str())?;
-                let function = self.build(file)?;
-                function.disassemble();
+                let module = self.build(file)?;
+                module.disassemble();
             }
         }
         Ok(())
@@ -208,19 +199,19 @@ impl Core {
             .map_err(|err| CoreError::IoError(err, path.to_owned()))
     }
 
-    fn build(&mut self, file: Rc<File>) -> Result<Gc<OxFunction>, CoreError> {
+    fn build(&mut self, file: Rc<File>) -> Result<Gc<OxModule>, CoreError> {
         let parsed_file = self
             .parse_file(file.as_ref())
             .map_err(Into::<CoreError>::into)?;
-        let _mir_file = self
+        let hir_file = self
             .resolve_root(parsed_file)
             .map_err(Into::<CoreError>::into)?;
 
-        todo!()
+        let module = CodeGen::build(&self.file_map, &hir_file, &mut self.vm)
+            .map_err(|e| CoreError::from(e))?;
 
-        // CodeGen::new(&self.file_map, &mir_file, &mut self.vm)
-        //     .build()
-        //     .map_err(|e| CoreError::from(e))
+
+        Ok(module)
     }
 
     fn execute_repl(&mut self) -> Result<(), CoreError> {
