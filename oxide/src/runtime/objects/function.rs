@@ -4,16 +4,16 @@ use crate::{
 };
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct OxFunction {
     cell: Cell,
-    name: Gc<OxString>,
+    name: OxString,
     arity: u8,
     section: Section,
 }
 
 impl OxFunction {
-    pub fn new(name: Gc<OxString>, arity: u8, section: Section) -> Self {
+    pub fn new(name: OxString, arity: u8, section: Section) -> Self {
         Self {
             cell: Cell::new(ObjectKind::Function),
             name,
@@ -23,7 +23,7 @@ impl OxFunction {
     }
 
     pub fn is_script(&self) -> bool {
-        self.name.as_ref().is_empty()
+        self.name.is_empty()
     }
 
     pub fn section(&self) -> &Section {
@@ -39,7 +39,7 @@ impl OxFunction {
     }
 
     pub fn name(&self) -> &OxString {
-        self.name.as_ref()
+        &self.name
     }
 
     pub fn disassemble(&self) {

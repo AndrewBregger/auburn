@@ -3,9 +3,15 @@ use std::ops::{Add, Sub};
 use crate::runtime::gc::GcObject;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Address(pub usize);
+pub struct Address(usize);
 
 impl Address {
+    pub fn from_ptr(ptr: *const u8) -> Self {
+        Self(ptr as _)
+    }
+    pub fn null() -> Self {
+        Self(0)
+    }
     pub fn into_ref<T: GcObject>(&self) -> &T {
         unsafe { &*(self.0 as *const u8 as *const T) }
     }

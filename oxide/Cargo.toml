@@ -3,6 +3,7 @@ name = "oxide"
 version = "0.1.0"
 authors = ["Andrew Bregger <adb3649@tamu.edu>"]
 edition = "2018"
+rust = "nightly"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

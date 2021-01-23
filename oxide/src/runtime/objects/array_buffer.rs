@@ -1,9 +1,6 @@
-use std::{
-    marker::PhantomData,
-    ops::{Index, IndexMut},
-};
+use std::{marker::PhantomData, mem::ManuallyDrop, ops::{Deref, DerefMut, Index, IndexMut}};
 
-use crate::gc::{Cell, GcObject};
+use crate::gc::{Allocator, Cell, GcObject};
 
 use super::Buffer;
 
@@ -84,5 +81,49 @@ impl<Ty: Sync + Send + Copy> GcObject for ArrayBuffer<Ty> {
 
     fn as_cell_mut(&mut self) -> &mut Cell {
         self.buffer.as_cell_mut()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct VecBuffer<Ty> {
+    cell: Cell,
+    buffer: ManuallyDrop<Vec<Ty, Allocator>>,
+}
+
+// impl<Ty> Copy for VecBuffer<Ty> {}
+
+impl<Ty> VecBuffer<Ty> {
+    pub fn new(buffer: Vec<Ty, Allocator>) -> Self {
+        Self {
+            cell: Cell::new(crate::gc::ObjectKind::VecBuffer),
+            buffer: ManuallyDrop::new(buffer),
+        }
+    }
+
+    pub fn empty(allocator: Allocator) -> Self {
+        Self::new(Vec::<Ty, Allocator>::new_in(allocator))
+    }
+}
+
+impl<Ty: Send + Sync + Clone> GcObject for VecBuffer<Ty> {
+    fn as_cell(&self) -> &Cell {
+        &self.cell
+    }
+
+    fn as_cell_mut(&mut self) -> &mut Cell {
+        &mut self.cell
+    }
+}
+
+impl<Ty> Deref for VecBuffer<Ty> {
+    type Target = Vec<Ty, Allocator>;
+    fn deref(&self) -> &Self::Target {
+        &self.buffer
+    }
+}
+
+impl<Ty> DerefMut for VecBuffer<Ty> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut *self.buffer
     }
 }

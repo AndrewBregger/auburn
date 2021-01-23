@@ -2,35 +2,40 @@ use std::fmt::Display;
 
 use crate::{
     gc::{Cell, GcObject, ObjectKind},
-    OxString, Value,
+    value::Object,
+    OxString, Value, VecBuffer,
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct OxStruct {
     cell: Cell,
+    name: OxString,
+    elements: VecBuffer<Object>,
 }
 
 impl OxStruct {
-    pub fn new() -> Self {
+    pub fn new(name: OxString, elements: VecBuffer<Object>) -> Self {
         Self {
             cell: Cell::new(ObjectKind::Struct),
+            name,
+            elements,
         }
     }
 
-    pub fn fields_ptr(&self) -> *const Value {
-        unsafe {
-            (self as *const OxStruct as *const u8).add(std::mem::size_of::<Cell>()) as *const Value
+    pub fn disassemble(&self) {
+        println!("<disassembly for {}>", self.name);
+        
+        for object in self.elements.as_slice() {
+            object.disassemble();
+            println!();
         }
-    }
 
-    pub fn fields_ptr_mut(&mut self) -> *mut Value {
-        unsafe { (self as *mut OxStruct as *mut u8).add(std::mem::size_of::<Cell>()) as *mut Value }
     }
 }
 
 impl Display for OxStruct {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "<struct instance>")
+        write!(f, "<struct {}>", self.name)
     }
 }
 

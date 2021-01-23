@@ -1,6 +1,7 @@
 use crate::{
     gc::Gc,
     runtime::{OxFunction, OxString, OxStruct},
+    OxInstance, OxModule,
 };
 use std::fmt::{Display, Formatter};
 
@@ -20,6 +21,8 @@ pub enum Value {
     String(OxString),
     Function(Gc<OxFunction>),
     Struct(Gc<OxStruct>),
+    Instance(Gc<OxInstance>),
+    Module(Gc<OxModule>),
     Unit,
 }
 
@@ -40,6 +43,8 @@ impl Value {
             Self::String(_) => "string",
             Self::Function(_) => "function",
             Self::Struct(_) => "struct",
+            Self::Instance(..) => "instance",
+            Self::Module(..) => "module",
             Self::Unit => "unit",
         }
     }
@@ -274,6 +279,16 @@ impl Value {
             _ => false,
         }
     }
+
+    pub fn is_object(&self) -> bool {
+        match self {
+            Self::Function(..)
+            | Self::String(..)
+            | Self::Instance(..)
+            | Self::Module(..) => true,
+            _ => false,
+        }
+    }
 }
 
 macro_rules! value_from {
@@ -318,7 +333,39 @@ impl Display for Value {
             Self::String(val) => write!(f, "{}", val),
             Self::Function(val) => write!(f, "{}", val),
             Self::Struct(val) => write!(f, "{}", val),
+            Self::Module(val) => write!(f, "{}", val),
+            Self::Instance(val) => write!(f, "{}", val),
             Self::Unit => write!(f, "<>"),
+        }
+    }
+}
+
+// wapper around all object types.
+#[derive(Debug, Clone)]
+pub enum Object {
+    String(OxString),
+    Function(Gc<OxFunction>),
+    Struct(Gc<OxStruct>),
+    Instance(Gc<OxInstance>),
+    Module(Gc<OxModule>),
+}
+
+impl Object {
+    pub fn disassemble(&self) {
+        match self {
+            Object::String(s) => println!("<string {}>", s),
+            Object::Function(f) => {
+                f.disassemble();
+            }
+            Object::Struct(s) => {
+                s.disassemble();
+            }
+            Object::Instance(inst) => {
+                println!("<instance {}>", inst);
+            }
+            Object::Module(module) => {
+                module.disassemble()
+            }
         }
     }
 }

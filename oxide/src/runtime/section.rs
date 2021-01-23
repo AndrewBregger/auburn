@@ -1,11 +1,13 @@
-use crate::vm::{Instruction, OpCode};
-use crate::Value;
+use crate::{Value, Vm};
 use crate::{gc::Gc, mem::read_to};
+use crate::{
+    vm::{Instruction, OpCode},
+    VecBuffer,
+};
 
-use std::convert::TryInto;
 use std::fmt::{Display, Formatter};
-use std::slice::SliceIndex;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::convert::TryInto;
 
 use super::ArrayBuffer;
 
@@ -26,28 +28,25 @@ impl Display for SectionId {
 }
 
 /// section of executable byte code.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Section {
     // I am wondering if it would denifit from storing a reference to a array of
     // bytes instead of owning it. This would mean that the section is not able
     // to write to its data since it is owned outside of it.
-    data: Gc<ArrayBuffer<u8>>,
+    data: VecBuffer<u8>,
     id: SectionId,
-    constants: Gc<ArrayBuffer<Value>>,
-    globals: Gc<ArrayBuffer<Value>>,
+    constants: VecBuffer<Value>,
+    globals: VecBuffer<Value>,
 }
 
 impl Section {
-    pub fn new(
-        data: Gc<ArrayBuffer<u8>>,
-        constants: Gc<ArrayBuffer<Value>>,
-        globals: Gc<ArrayBuffer<Value>>,
-    ) -> Self {
+    pub fn new(vm: &Vm) -> Self {
+        let allocator = vm.allocator();
         Self {
-            data,
+            data: VecBuffer::empty(allocator.clone()),
             id: SectionId::next(),
-            constants,
-            globals,
+            constants: VecBuffer::empty(allocator.clone()),
+            globals: VecBuffer::empty(allocator.clone()),
         }
     }
 
@@ -76,7 +75,7 @@ impl Section {
     }
 
     pub fn data(&self) -> &[u8] {
-        self.data.as_slice()
+        &*self.data
     }
 
     pub fn debug_print(&self) {
@@ -106,6 +105,8 @@ impl Section {
                 | OpCode::SetGlobal
                 | OpCode::LoadLocal
                 | OpCode::SetLocal
+                | OpCode::SetRegister
+                | OpCode::LoadRegister
                 | OpCode::Call => {
                     let value = self.read(ip);
                     res.push(Instruction::with_arg(ip - 1, op_code, value as u16));
@@ -216,10 +217,65 @@ impl Section {
     }
 
     pub fn globals(&self) -> &[Value] {
-        self.globals.as_slice()
+        &*self.globals
     }
 
     pub fn constants(&self) -> &[Value] {
-        self.constants.as_slice()
+        &*self.constants
+    }
+}
+
+impl Section {
+    /// adds constant value to constants block
+    pub fn add_constant(&mut self, value: Value) -> u8 {
+        let index = self.constants.len();
+        self.constants.push(value);
+        index as _
+    }
+    
+    /// allocates a new global, sets it to unit
+    pub fn add_global(&mut self) -> u8 {
+        let index = self.globals.len();
+        self.globals.push(Value::Unit);
+        index as _
+    }
+
+    pub fn write_byte(&mut self, byte: u8) {
+        self.data.push(byte);
+    }
+    
+    pub fn write_arg(&mut self, op: OpCode, index: u8) {
+        self.write_op(op);
+        self.write_byte(index);
+    }
+    
+    pub fn write_op(&mut self, op: OpCode) {
+        self.data.push(op as u8);
+    }
+    
+    pub fn write_bytes(&mut self, bytes: &[u8]) {
+        self.data.extend_from_slice(bytes)
+    }
+    
+    // returns the first byte of the jmp operand.
+    pub fn write_jmp(&mut self, op: OpCode) -> usize {
+        self.write_op(op);
+        self.write_bytes(&[0xff, 0xff]);
+        self.len() - 2
+    }
+    
+    pub fn patch_jmp(&mut self, offset: usize) {
+        println!("patch_jmp: {} {}", self.len(), offset);
+        let jump: u16 = (self.len() - offset - 2)
+            .try_into()
+            .expect("attempting to jump too far");
+        self.data[offset] = ((jump >> 8) & 0xff) as u8;
+        self.data[offset + 1] = (jump & 0xff) as u8;
+    }
+    
+    pub fn write_loop(&mut self, start: usize) {
+        self.write_op(OpCode::Loop);
+        let offset = (self.len() - start + 2) as u16;
+        self.write_bytes(&offset.to_be_bytes());
     }
 }

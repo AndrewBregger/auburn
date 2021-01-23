@@ -1,8 +1,17 @@
 #[derive(Debug, Clone, Copy)]
 pub enum ObjectKind {
+    /// manually managed buffer,
     Buffer,
+    /// vec managed buffer (dynmaic buffer using vecs implementation)
+    VecBuffer,
+    /// function object
     Function,
+    /// structure instance object
+    Instance,
+    // structure object
     Struct,
+    /// module object
+    Module,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -23,7 +32,7 @@ impl Cell {
     }
 }
 
-pub trait GcObject: Send + Sync + Clone + Copy {
+pub trait GcObject: Send + Sync + Clone {
     fn as_cell(&self) -> &Cell;
     fn as_cell_mut(&mut self) -> &mut Cell;
 }

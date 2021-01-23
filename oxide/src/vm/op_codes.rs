@@ -125,12 +125,12 @@ define_opcodes!(
     "greatereq_f64" => GreaterEqF64,
 
     "return" => Return,
-
     "load_global" => LoadGlobal,
     "set_global" => SetGlobal,
-
     "load_true" => LoadTrue,
     "load_false" => LoadFalse,
+    "set_register" => SetRegister,
+    "load_register" => LoadRegister,
     "jmp_if_true" => JmpTrue,
     "jmp_if_false" => JmpFalse,
     "new_object" => NewObject,

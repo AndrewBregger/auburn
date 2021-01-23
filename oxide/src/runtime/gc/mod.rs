@@ -2,21 +2,35 @@ mod address;
 mod cell;
 mod mem;
 
-use crate::gc::mem::Memory;
+pub use crate::gc::mem::{Allocator, Header, Memory};
 use std::{
+    alloc::Layout,
     fmt::{write, Display},
     marker::PhantomData,
     ops::{Deref, DerefMut},
+    sync::{Arc, Mutex},
 };
 
 pub use address::Address;
 pub use cell::{Cell, GcObject, ObjectKind};
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(transparent)]
+#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Gc<Ty> {
     ptr: Address,
     marker: PhantomData<Ty>,
 }
+
+impl<Ty> Clone for Gc<Ty> {
+    fn clone(&self) -> Self {
+        Self {
+            ptr: self.ptr,
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<Ty> Copy for Gc<Ty> {}
 
 impl<Ty: GcObject> Gc<Ty> {
     pub fn new(ptr: Address) -> Self {
@@ -24,6 +38,10 @@ impl<Ty: GcObject> Gc<Ty> {
             ptr,
             marker: PhantomData,
         }
+    }
+
+    pub fn null() -> Self {
+        Self::new(Address::null())
     }
 
     pub fn ptr(&self) -> Address {
@@ -63,33 +81,58 @@ impl<Ty: GcObject> DerefMut for Gc<Ty> {
 pub enum GcError {}
 
 pub struct GcAlloc {
-    memory: Memory,
+    memory: Arc<Mutex<Memory>>,
 }
 
 impl GcAlloc {
     pub fn new(size: usize) -> Self {
         let memory = Memory::new(size);
-        Self { memory }
+        Self {
+            memory: Arc::new(Mutex::new(memory)),
+        }
+    }
+
+    pub fn allocator(&self) -> Allocator {
+        Allocator::new(self.memory.clone())
     }
 
     pub fn debug_print(&self) {
-        self.memory.debug_print_free_list();
+        self.memory
+            .lock()
+            .expect("faild to retrieve memory lock")
+            .debug_print_free_list();
     }
 
     pub fn contains(&self, address: Address) -> bool {
-        self.memory.contains(address.0 as *const _)
+        self.memory
+            .lock()
+            .expect("failed to retrieve memory lock")
+            .contains(address.as_ptr())
     }
 
     pub fn allocate<T: Sized>(&mut self) -> Option<Address> {
-        self.alloc(std::mem::size_of::<T>())
+        // safetly: This layout is being generated from the size and alignment of the type itself.
+        // This is coming from the compiler so it shouldn't have to be checked again.
+        let layout = unsafe {
+            Layout::from_size_align_unchecked(std::mem::size_of::<T>(), std::mem::align_of::<T>())
+        };
+        self.alloc(layout)
     }
 
-    pub fn alloc(&mut self, size: usize) -> Option<Address> {
-        self.memory.alloc(size).map(|ptr| Address(ptr as _))
+    pub fn alloc(&mut self, layout: Layout) -> Option<Address> {
+        self.memory
+            .lock()
+            .expect("failed to retrieve memory lock")
+            .alloc_inner(layout)
+            .map(|ptr| Address::from_ptr(ptr.as_ptr() as *mut u8))
+            .ok()
     }
 
     pub fn dealloc(&mut self, ptr: Address) {
-        self.memory.dealloc(ptr.0 as *const _)
+        self.memory
+            .lock()
+            .expect("failed to retrieve memory lock")
+            .dealloc(ptr.as_ptr())
     }
 }
 

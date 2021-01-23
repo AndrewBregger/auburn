@@ -14,7 +14,7 @@ pub struct OxString {
 }
 
 impl OxString {
-    pub fn new(buffer: Gc<ArrayBuffer<char>>, len: usize, cap: usize) -> Self {
+    pub fn new(buffer: Gc<ArrayBuffer<char>>, len: usize) -> Self {
         Self { len, buffer }
     }
 
