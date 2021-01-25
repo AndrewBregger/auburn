@@ -3,13 +3,7 @@ mod cell;
 mod mem;
 
 pub use crate::gc::mem::{Allocator, Header, Memory};
-use std::{
-    alloc::Layout,
-    fmt::{write, Display},
-    marker::PhantomData,
-    ops::{Deref, DerefMut},
-    sync::{Arc, Mutex},
-};
+use std::{alloc::Layout, collections::BTreeSet, fmt::{write, Display}, marker::PhantomData, ops::{Deref, DerefMut}, sync::{Arc, Mutex}};
 
 pub use address::Address;
 pub use cell::{Cell, GcObject, ObjectKind};
@@ -82,6 +76,7 @@ pub enum GcError {}
 
 pub struct GcAlloc {
     memory: Arc<Mutex<Memory>>,
+    allocations: BTreeSet<Address>,
 }
 
 impl GcAlloc {
@@ -89,6 +84,7 @@ impl GcAlloc {
         let memory = Memory::new(size);
         Self {
             memory: Arc::new(Mutex::new(memory)),
+            allocations: BTreeSet::new(),
         }
     }
 
@@ -120,19 +116,36 @@ impl GcAlloc {
     }
 
     pub fn alloc(&mut self, layout: Layout) -> Option<Address> {
-        self.memory
+        let address = self.memory
             .lock()
             .expect("failed to retrieve memory lock")
             .alloc_inner(layout)
             .map(|ptr| Address::from_ptr(ptr.as_ptr() as *mut u8))
-            .ok()
+            .ok();
+        
+        address.map(|a| self.allocations.insert(a));
+
+        address
     }
 
     pub fn dealloc(&mut self, ptr: Address) {
+        assert!(self.allocations.remove(&ptr), "allocation ptr was not found");
+
+        self.dealloc_inner(ptr)
+    }
+
+    pub fn dealloc_inner(&mut self, ptr: Address) {
         self.memory
             .lock()
             .expect("failed to retrieve memory lock")
             .dealloc(ptr.as_ptr())
+    }
+
+    pub fn free_all_allocations(&mut self) {
+        println!("Remaining allocations: {}", self.allocations.len());
+        for allocation in self.allocations.clone().into_iter() {
+            self.dealloc_inner(allocation);
+        }
     }
 }
 

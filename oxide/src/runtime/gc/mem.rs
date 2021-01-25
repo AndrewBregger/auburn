@@ -115,6 +115,12 @@ impl Memory {
 
     pub fn alloc_inner(&mut self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         println!("allocating: {:?}", layout);
+        if layout.size() == 0 {
+            return Ok(NonNull::slice_from_raw_parts(NonNull::<u8>::dangling(), 0));
+        }
+        
+        let layout = Layout::from_size_align(layout.size() + std::mem::size_of::<Header>(), layout.align()).expect("failed to layout header");
+
         let ptr = unsafe { std::alloc::alloc(layout) };
         if ptr.is_null() {
             Err(std::alloc::AllocError)
@@ -123,6 +129,7 @@ impl Memory {
                 let header = &mut *(ptr as *mut Header);
                 header.size = layout.size();
                 let ptr = ptr.add(std::mem::size_of::<Header>());
+                println!("IsValid Alignment {}", ptr as usize % layout.align() == 0);
                 let ptr = NonNull::new(ptr).ok_or(std::alloc::AllocError)?;
                 Ok(NonNull::slice_from_raw_parts(ptr, layout.size()))
             }

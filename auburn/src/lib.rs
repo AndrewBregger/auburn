@@ -1,3 +1,4 @@
+#![feature(allocator_api)]
 extern crate debug_cell;
 extern crate itertools;
 extern crate ordered_float;

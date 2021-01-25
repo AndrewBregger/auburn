@@ -3,12 +3,11 @@ mod op_codes;
 
 use std::alloc::Layout;
 
-use crate::{OxInstance, OxModule, Section, gc::{Allocator, Gc}, runtime::{self, Buffer}};
+use crate::{OxInstance, OxModule, Section,  OxString, Value, Object, gc::{Allocator, Gc}, runtime::{self, Buffer}};
 use crate::{
     gc::{Address, GcAlloc},
     mem::read_to,
 };
-use crate::{OxString, Value};
 use call_frame::CallFrame;
 use itertools::{self, Itertools};
 pub use op_codes::{Instruction, OpCode};
@@ -418,8 +417,11 @@ impl Vm {
                     let last_frame = self.pop_frame();
                     self.top_stack = last_frame.local_start.saturating_sub(1);
                     self.push_stack(top);
-                    // println!("Top Stack: {}", self.top_stack);
-                    // self.print_stack();
+
+                    // if we are returning from the top function then exit.
+                    if self.top_frame == 0 {
+                        break;
+                    }
                 }
                 OpCode::SetRegister => {
                     let frame = self.frame();
@@ -584,6 +586,10 @@ impl Vm {
 
     fn sweep(&mut self) {}
 
+    pub fn free(&mut self) {
+        self.allocator.free_all_allocations();
+    }
+
     pub fn allocate_instance(&mut self, fields: u16) -> Address {
         let size =
             std::mem::size_of::<OxInstance>() + fields as usize * std::mem::size_of::<Value>();
@@ -647,5 +653,17 @@ impl Vm {
         }
 
         Gc::<OxFunction>::new(function_address)
+    }
+
+    pub fn allocate_module(&mut self, name: OxString, code: Gc<OxFunction>, objects: Vec<Object, Allocator>) -> Gc<OxModule> {
+        let layout = Layout::from_size_align(std::mem::size_of::<OxModule>(), std::mem::align_of::<OxModule>()).expect("memory layout of OxModule is improper");
+        let module_address = self.allocate(layout);
+
+        unsafe {
+            let buffer = &mut *(module_address.as_ptr_mut() as *mut OxModule);
+            *buffer = OxModule::new(name, code, objects);
+        }
+    
+        Gc::<OxModule>::new(module_address)
     }
 }

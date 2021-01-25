@@ -1,0 +1,4 @@
+print 10
+print 1 + 10
+print 10 / 4
+print 3.4 * 2.4

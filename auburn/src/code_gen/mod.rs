@@ -1,16 +1,22 @@
 use hir::HirExprKind;
 use ir::hir;
-use oxide::{Object, OxModule, Section, Value, Vm, gc::{Allocator, Gc}, vm::OpCode};
-use crate::{analysis::Entity, ir::{self, ast::BinaryOp, hir::{HirExpr, HirExprPtr, HirFile, HirItem, HirItemPtr, HirStmt, HirStmtKind, HirStmtPtr, MirNode}}, system::{FileMap, FileId}, types::{Type, TypeKind}};
+use oxide::{Object, OxModule, OxFunction, Section, Value, Vm, gc::{Allocator, Gc}, vm::OpCode};
+use crate::{analysis::{self, Entity, EntityInfo, FunctionInfo}, ir::{self, ast::BinaryOp, hir::{HirExpr, HirExprPtr, HirFile, HirItem, HirItemPtr, HirStmt, HirStmtKind, HirStmtPtr, MirNode}}, system::{FileMap, FileId}, types::{Type, TypeKind}};
 use ordered_float::OrderedFloat;
 
 use std::{cell::RefCell, collections::HashMap, convert::TryInto, rc::Rc};
 
 struct FileContext<'ctx> {
+    /// the this context is for.
     file: &'ctx HirFile,
+    /// all of the global names for this file
     globals: HashMap<String, u16>,
     // constants: HashMap<Value, u16>,
+    /// section of code for the top level expressions.
     section: Section,
+    /// stack of function sections that are being generated
+    function_stack: Vec<Gc<OxFunction>>,
+    /// list of objects for this file.
     objects: Vec<Object>
 }
 
@@ -20,6 +26,7 @@ impl<'ctx> FileContext<'ctx> {
             file,
             globals: HashMap::new(),
             section: Section::new(vm),
+            function_stack: vec![],
             objects: vec![],
         }
     }
@@ -88,6 +95,10 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         (items, stmts)
     }
     
+    fn get_file_name(&self, id: &FileId) -> &str {
+        self.file_map.get_path_by_id(id).expect("unable to find file")
+    }
+    
     fn emit_op(&mut self, op: OpCode) {
         self.emit(&[op as u8]);
     }
@@ -111,10 +122,26 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
 impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
     fn build_module(&mut self, hir_file: &'ctx HirFile) -> Result<Gc<OxModule>, BuildError> {
         self.file_stack.push(hir_file.id());
+
         self.push_context(hir_file);
 
         self.build_file(hir_file)?;
 
+        let file_name = self.get_file_name(&hir_file.id()).to_owned();
+        
+        let name = self.vm.allocate_string(file_name.as_str());
+        let section = {
+            let context = self.current_context();
+            context.section.clone()
+        };
+
+        let objects = Vec::new_in(self.vm.allocator());
+
+        let code = self.vm.allocate_function(name.clone(), 0, section);
+
+        let module = self.vm.allocate_module(name, code, objects);
+        
+       Ok(module)
     }
 
     fn build_file(&mut self, hir_file: &HirFile) -> Result<(), BuildError> {
@@ -129,8 +156,14 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         for stmt in stmts.into_iter() {
             self.handle_stmt(stmt.as_ref())?;
         }
-
+        // eof, exit from the file here.
+        self.emit_op(OpCode::Return);
         Ok(())
+    }
+
+    fn build_function(&mut self, name: &str, mir_function: &FunctionInfo) -> Result<(), BuildError> {
+        let name_string = self.vm.allocate_string(name);
+        Ok(())    
     }
 }
 
@@ -138,6 +171,20 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
 //impl<'ctx> CodeGen<'ctx> {
 impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
     fn handle_entity(&mut self, entity: &Entity) -> Result<(), BuildError> {
+        let name = entity.name();
+        match entity.kind() {
+            EntityInfo::Structure(_) => { todo!() }
+            EntityInfo::Function(function_info) => self.build_function(name, function_info)?,
+            EntityInfo::Variable(_) => {}
+            EntityInfo::AssociatedFunction(_) => { todo!() }
+            EntityInfo::Param(_) => { todo!() }
+            EntityInfo::SelfParam { mutable } => { todo!() }
+            EntityInfo::Field(_) => { todo!() }
+            EntityInfo::Unresolved(_) => {}
+            EntityInfo::Resolving => {}
+            EntityInfo::Primitive => {}
+        }
+
         Ok(())
     }
 
