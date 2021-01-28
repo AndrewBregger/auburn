@@ -1,6 +1,5 @@
 use std::{
     alloc::{AllocError, Layout},
-    ops::Drop,
 };
 use std::{
     ptr::NonNull,
@@ -136,7 +135,19 @@ impl Memory {
         }
     }
 
-    pub fn dealloc(&mut self, ptr: *const u8) {
+    pub fn alloc_inner_vec(&mut self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+        let ptr = unsafe { std::alloc::alloc(layout) };
+        if ptr.is_null() {
+            Err(std::alloc::AllocError)
+        } else {
+            unsafe {
+                let ptr = NonNull::new(ptr).ok_or(std::alloc::AllocError)?;
+                Ok(NonNull::slice_from_raw_parts(ptr, layout.size()))
+            }
+        }
+    }
+
+    pub fn dealloc(&mut self, ptr: *mut u8) {
         let header_ptr = unsafe { ptr.sub(std::mem::size_of::<Header>()) } as *mut u8;
         let header = unsafe { &mut *(header_ptr as *mut Header) };
         let layout = match Layout::from_size_align(header.size, std::mem::align_of::<Header>()) {
@@ -148,6 +159,11 @@ impl Memory {
         };
         unsafe { std::alloc::dealloc(header_ptr, layout) }
     }
+
+    pub fn dealloc_vec(&mut self, ptr: *mut u8, layout: Layout) {
+        unsafe { std::alloc::dealloc(ptr, layout) }
+    }
+
     pub fn coalesce(&mut self) {
         // unsafe { self.free_list.coalesce() }
     }
@@ -201,3 +217,31 @@ unsafe impl std::alloc::Allocator for Allocator {
             .dealloc(ptr.as_ptr() as *mut _)
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct VecAllocator {
+    memory: Arc<Mutex<Memory>>,
+}
+
+impl VecAllocator {
+    pub fn new(memory: Arc<Mutex<Memory>>) -> Self {
+        Self { memory }
+    }
+}
+
+unsafe impl std::alloc::Allocator for VecAllocator {
+    fn allocate(&self, layout: Layout) -> Result<std::ptr::NonNull<[u8]>, std::alloc::AllocError> {
+        self.memory
+            .lock()
+            .expect("failed to retrieve memory lock")
+            .alloc_inner_vec(layout)
+    }
+
+    unsafe fn deallocate(&self, ptr: std::ptr::NonNull<u8>, l: Layout) {
+        self.memory
+            .lock()
+            .expect("failed to retrieve memory lock")
+            .dealloc_vec(ptr.as_ptr(), l)
+    }
+}
+

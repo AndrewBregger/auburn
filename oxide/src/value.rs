@@ -18,7 +18,7 @@ pub enum Value {
     F32(f32),
     F64(f64),
     Bool(bool),
-    String(OxString),
+    String(Gc<OxString>),
     Function(Gc<OxFunction>),
     Struct(Gc<OxStruct>),
     Instance(Gc<OxInstance>),
@@ -341,9 +341,9 @@ impl Display for Value {
 }
 
 // wapper around all object types.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum Object {
-    String(OxString),
+    String(Gc<OxString>),
     Function(Gc<OxFunction>),
     Struct(Gc<OxStruct>),
     Instance(Gc<OxInstance>),

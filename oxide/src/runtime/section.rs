@@ -5,11 +5,9 @@ use crate::{
     VecBuffer,
 };
 
-use std::fmt::{Display, Formatter};
+use std::{fmt::{Display, Formatter}, ops::{Deref, DerefMut}};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::convert::TryInto;
-
-use super::ArrayBuffer;
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct SectionId(usize);
@@ -41,7 +39,7 @@ pub struct Section {
 
 impl Section {
     pub fn new(vm: &Vm) -> Self {
-        let allocator = vm.allocator();
+        let allocator = vm.allocator_vec();
         Self {
             data: VecBuffer::empty(allocator.clone()),
             id: SectionId::next(),
@@ -67,7 +65,7 @@ impl Section {
     }
 
     pub fn len(&self) -> usize {
-        self.data.len()
+        self.data.deref().len()
     }
 
     pub fn read(&self, index: usize) -> u8 {
@@ -235,7 +233,7 @@ impl Section {
     
     /// allocates a new global, sets it to unit
     pub fn add_global(&mut self) -> u8 {
-        let index = self.globals.len();
+        let index = self.globals.deref().len();
         self.globals.push(Value::Unit);
         index as _
     }
@@ -250,7 +248,7 @@ impl Section {
     }
     
     pub fn write_op(&mut self, op: OpCode) {
-        self.data.push(op as u8);
+        self.data.deref_mut().push(op as u8);
     }
     
     pub fn write_bytes(&mut self, bytes: &[u8]) {

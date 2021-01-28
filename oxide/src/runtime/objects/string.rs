@@ -1,25 +1,16 @@
-use std::{
-    cmp::min,
-    fmt::{Display, Formatter},
-};
+use std::{cmp::min, fmt::{Display, Formatter}, ops::DerefMut};
 
-use crate::gc::{Address, Cell, Gc, GcObject};
+use crate::{VecBuffer, gc::{Address, Cell, Gc, GcObject}};
 
-use super::ArrayBuffer;
-
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct OxString {
     len: usize,
-    buffer: Gc<ArrayBuffer<char>>,
+    buffer: VecBuffer<char>,
 }
 
 impl OxString {
-    pub fn new(buffer: Gc<ArrayBuffer<char>>, len: usize) -> Self {
+    pub fn new(buffer: VecBuffer<char>, len: usize) -> Self {
         Self { len, buffer }
-    }
-
-    pub fn buffer_ptr(&self) -> Address {
-        self.buffer.ptr()
     }
 
     pub fn chars(&self) -> &[char] {
@@ -32,10 +23,8 @@ impl OxString {
 
     // naive, only store what it can in the buffer.
     pub fn set_from_str(&mut self, value: &str) {
-        let buffer = self.buffer.as_slice_mut();
-        let len = min(value.len(), buffer.len());
-        for (idx, value) in value.chars().take(len).enumerate() {
-            buffer[idx] = value;
+        for value in value.chars() {
+            self.buffer.push(value);
         }
     }
 }

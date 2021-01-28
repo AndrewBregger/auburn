@@ -2,7 +2,7 @@ mod address;
 mod cell;
 mod mem;
 
-pub use crate::gc::mem::{Allocator, Header, Memory};
+pub use mem::{Allocator, VecAllocator, Header, Memory};
 use std::{alloc::Layout, collections::BTreeSet, fmt::{write, Display}, marker::PhantomData, ops::{Deref, DerefMut}, sync::{Arc, Mutex}};
 
 pub use address::Address;
@@ -92,6 +92,10 @@ impl GcAlloc {
         Allocator::new(self.memory.clone())
     }
 
+    pub fn allocator_vec(&self) -> VecAllocator {
+        VecAllocator::new(self.memory.clone())
+    }
+
     pub fn debug_print(&self) {
         self.memory
             .lock()
@@ -138,7 +142,7 @@ impl GcAlloc {
         self.memory
             .lock()
             .expect("failed to retrieve memory lock")
-            .dealloc(ptr.as_ptr())
+            .dealloc(ptr.as_ptr_mut())
     }
 
     pub fn free_all_allocations(&mut self) {

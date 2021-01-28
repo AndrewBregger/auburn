@@ -1,4 +1,4 @@
-mod array_buffer;
+mod vec_buffer;
 mod buffer;
 mod function;
 mod instance;
@@ -6,7 +6,7 @@ mod module;
 mod string;
 mod structure;
 
-pub use array_buffer::{ArrayBuffer, VecBuffer};
+pub use vec_buffer::VecBuffer;
 pub use buffer::Buffer;
 pub use function::OxFunction;
 pub use instance::OxInstance;

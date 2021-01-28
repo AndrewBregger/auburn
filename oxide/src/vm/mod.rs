@@ -3,7 +3,7 @@ mod op_codes;
 
 use std::alloc::Layout;
 
-use crate::{OxInstance, OxModule, Section,  OxString, Value, Object, gc::{Allocator, Gc}, runtime::{self, Buffer}};
+use crate::{Object, OxInstance, OxModule, OxString, Section, Value, VecBuffer, gc::{Allocator, Gc, VecAllocator}, runtime::{self, Buffer}};
 use crate::{
     gc::{Address, GcAlloc},
     mem::read_to,
@@ -12,7 +12,8 @@ use call_frame::CallFrame;
 use itertools::{self, Itertools};
 pub use op_codes::{Instruction, OpCode};
 use ordered_float::OrderedFloat;
-use runtime::{ArrayBuffer, Error as RuntimeError, OxFunction, OxStruct};
+use runtime::{OxFunction, OxStruct};
+use runtime::Error as RuntimeError;
 
 static DEFAULT_MEM_SIZE: usize = 2056;
 static DEFAULT_STACK_SIZE: usize = 2056;
@@ -183,6 +184,11 @@ impl Vm {
     pub fn allocator(&self) -> Allocator {
         self.allocator.allocator()
     }
+
+    pub fn allocator_vec(&self) -> VecAllocator {
+        self.allocator.allocator_vec()
+    }
+
 
     pub fn push_stack(&mut self, value: Value) {
         self.stack[self.top_stack] = value;
@@ -628,23 +634,46 @@ impl Vm {
         Gc::<Buffer>::new(buffer_address)
     }
 
-    pub fn allocate_array_buffer<Ty: Sync + Send + Copy + Sized>(
+    pub fn allocate_vec_ptr<Ty: Sync + Send + Copy + Sized>(
         &mut self,
         count: usize,
-    ) -> Gc<ArrayBuffer<Ty>> {
-        let buffer = self.allocate_buffer(count * std::mem::size_of::<Ty>());
-        Gc::<ArrayBuffer<Ty>>::new(buffer.ptr())
+    ) -> Gc<VecBuffer<Ty>> {
+        let address = self.allocate(Layout::new::<VecBuffer<Ty>>());
+        unsafe {
+            let buffer = address.as_ptr_mut() as *mut VecBuffer<Ty>;
+            *buffer = self.allocate_vec::<Ty>(count);
+        }
+        Gc::<VecBuffer<Ty>>::new(address)
+    }
+
+    pub fn allocate_vec<Ty: Sync + Send + Copy + Sized>(
+        &mut self,
+        count: usize,
+    ) -> VecBuffer<Ty> {
+        VecBuffer::<Ty>::new(Vec::with_capacity_in(count, self.allocator_vec()))
     }
 
     pub fn allocate_string(&mut self, value: &str) -> OxString {
-        let array_buffer = self.allocate_array_buffer::<char>(value.len());
+        let array_buffer = self.allocate_vec::<char>(value.len());
         let mut ox_string = OxString::new(array_buffer, value.len());
         ox_string.set_from_str(value);
         ox_string
     }
 
+    pub fn allocate_string_ptr(&mut self, value: &str) -> Gc<OxString> {
+        let layout = Layout::new::<OxString>();
+        let address = self.allocate(layout);
+
+        unsafe {
+            let buffer = address.as_ptr_mut() as *mut OxString;
+            *buffer = self.allocate_string(value);
+        }
+        
+        Gc::<OxString>::new(address)
+    }
+
     pub fn allocate_function(&mut self, name: OxString, arity: u8, section: Section) -> Gc<OxFunction> {
-        let layout = Layout::from_size_align(std::mem::size_of::<OxFunction>(), std::mem::align_of::<OxFunction>()).expect("memory layout of OxFunction is improper");
+        let layout = Layout::new::<OxFunction>();
         let function_address = self.allocate(layout);
 
         unsafe {
@@ -656,7 +685,7 @@ impl Vm {
     }
 
     pub fn allocate_module(&mut self, name: OxString, code: Gc<OxFunction>, objects: Vec<Object, Allocator>) -> Gc<OxModule> {
-        let layout = Layout::from_size_align(std::mem::size_of::<OxModule>(), std::mem::align_of::<OxModule>()).expect("memory layout of OxModule is improper");
+        let layout = Layout::new::<OxModule>();
         let module_address = self.allocate(layout);
 
         unsafe {
