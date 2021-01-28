@@ -18,6 +18,7 @@ pub enum Value {
     F32(f32),
     F64(f64),
     Bool(bool),
+    Char(char),
     String(Gc<OxString>),
     Function(Gc<OxFunction>),
     Struct(Gc<OxStruct>),
@@ -45,6 +46,7 @@ impl Value {
             Self::Struct(_) => "struct",
             Self::Instance(..) => "instance",
             Self::Module(..) => "module",
+            Self::Char(..) => "char",
             Self::Unit => "unit",
         }
     }
@@ -189,6 +191,18 @@ impl Value {
         }
     }
 
+    pub fn as_char(&self) -> char {
+        if let Self::Char(val) = self {
+            *val
+        }
+        else {
+            panic!(
+                "Attempting to get an char from a value of type {}",
+                self.ty()
+            );
+        }
+    }
+
     pub fn is_i8(&self) -> bool {
         match self {
             Self::I8(_) => true,
@@ -289,6 +303,13 @@ impl Value {
             _ => false,
         }
     }
+
+    pub fn is_char(&self) -> bool {
+        match self {
+            Self::Char(..) => true,
+            _ => false,
+        }
+    }
 }
 
 macro_rules! value_from {
@@ -335,6 +356,7 @@ impl Display for Value {
             Self::Struct(val) => write!(f, "{}", val),
             Self::Module(val) => write!(f, "{}", val),
             Self::Instance(val) => write!(f, "{}", val),
+            Self::Char(val) => write!(f, "{}", val),
             Self::Unit => write!(f, "<>"),
         }
     }

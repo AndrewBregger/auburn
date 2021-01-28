@@ -241,7 +241,12 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
                 let idx = context.section.add_constant(value);
                 context.section.write_arg(OpCode::LoadStr, idx);
             }
-            HirExprKind::Char(_) => {}
+            HirExprKind::Char(ch) => {
+                let value = Value::Char(*ch);
+                let context = self.current_context_mut();
+                let idx = context.section.add_constant(value);
+                context.section.write_arg(OpCode::LoadChar, idx);
+            }
             HirExprKind::Bool(val) => {
                 let op = if *val {
                     OpCode::LoadTrue

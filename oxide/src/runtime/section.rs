@@ -100,6 +100,7 @@ impl Section {
                 | OpCode::LoadF64
                 | OpCode::LoadStr
                 | OpCode::LoadGlobal
+                | OpCode::LoadChar
                 | OpCode::SetGlobal
                 | OpCode::LoadLocal
                 | OpCode::SetLocal

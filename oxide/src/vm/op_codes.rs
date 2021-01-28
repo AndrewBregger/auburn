@@ -33,6 +33,7 @@ define_opcodes!(
     "load_f32" => LoadF32,
     "load_f64" => LoadF64,
     "load_str" => LoadStr,
+    "load_char" => LoadChar,
     "load_local" => LoadLocal,
     "set_local" => SetLocal,
 

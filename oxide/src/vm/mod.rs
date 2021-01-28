@@ -335,6 +335,9 @@ impl Vm {
                 OpCode::LoadStr => {
                     load_constant!(is_string, "string", self);
                 }
+                OpCode::LoadChar => {
+                    load_constant!(is_char, "char", self);
+                }
                 OpCode::LoadTrue => {
                     self.push_stack(Value::from(true));
                 }
