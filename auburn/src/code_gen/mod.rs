@@ -4,13 +4,13 @@ use oxide::{Object, OxModule, OxFunction, Section, Value, Vm, gc::{Allocator, Gc
 use crate::{analysis::{self, Entity, EntityInfo, FunctionInfo}, ir::{self, ast::BinaryOp, hir::{HirExpr, HirExprPtr, HirFile, HirItem, HirItemPtr, HirStmt, HirStmtKind, HirStmtPtr, MirNode}}, system::{FileMap, FileId}, types::{Type, TypeKind}};
 use ordered_float::OrderedFloat;
 
-use std::{cell::RefCell, collections::HashMap, convert::TryInto, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, convert::TryInto, ops::Deref, rc::Rc};
 
 struct FileContext<'ctx> {
     /// the this context is for.
     file: &'ctx HirFile,
     /// all of the global names for this file
-    globals: HashMap<String, u16>,
+    globals: HashMap<String, u8>,
     // constants: HashMap<Value, u16>,
     /// section of code for the top level expressions.
     section: Section,
@@ -95,8 +95,12 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         (items, stmts)
     }
     
-    fn get_file_name(&self, id: &FileId) -> &str {
-        self.file_map.get_path_by_id(id).expect("unable to find file")
+    fn get_file(&self, id: &FileId) -> &str {
+        self.file_map.find(id).map(|f| f.name()).expect("failed to find file")
+    }
+
+    fn get_stem(&self, id: &FileId) -> &str {
+        self.file_map.find(id).map(|f| f.stem()).expect("failed to find file")
     }
     
     fn emit_op(&mut self, op: OpCode) {
@@ -127,9 +131,10 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
 
         self.build_file(hir_file)?;
 
-        let file_name = self.get_file_name(&hir_file.id()).to_owned();
+        let stem = hir_file.stem();
         
-        let name = self.vm.allocate_string(file_name.as_str());
+        let name = self.vm.allocate_string(stem);
+
         let section = {
             let context = self.current_context();
             context.section.clone()
@@ -148,6 +153,18 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         assert!(!self.file_stack.is_empty(), "file stack is empty, currently not processing a file");
 
         let (items, stmts) = Self::split_stmts(hir_file.stmts());
+            
+        let context = self.current_context_mut();
+
+        for item in items.iter() {
+            let entity_borrow = item.borrow();
+            let name = entity_borrow.name();
+            let idx = context.section.add_global();
+            context.globals.entry(name.to_owned()).or_insert(idx);
+        }
+
+        std::mem::drop(context);
+
 
         for entity in items.into_iter() {
             self.handle_entity(&entity.borrow())?;
@@ -217,7 +234,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
                 self.load_float(ty, *val)?;
             }
             HirExprKind::String(val) => {
-                let ox_string = self.vm.allocate_string(val);
+                let ox_string = self.vm.allocate_string_ptr(val);
                 let value = Value::String(ox_string);
 
                 let context = self.current_context_mut();
@@ -263,7 +280,10 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             HirExprKind::SelfLit => {}
             HirExprKind::Break => {}
             HirExprKind::Continue => {}
-            HirExprKind::Return(return_expr) => {}
+            HirExprKind::Return(return_expr) => {
+                self.handle_expr(return_expr.as_ref())?;
+                self.emit_op(OpCode::Return);
+            }
         }
 
         Ok(())

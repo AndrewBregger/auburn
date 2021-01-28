@@ -530,12 +530,17 @@ impl HirExpr {
 #[derive(Debug, Clone)]
 pub struct HirFile {
     id: FileId,
+    stem: String,
     stmts: Vec<HirStmtPtr>,
 }
 
 impl HirFile {
-    pub fn new(id: FileId, stmts: Vec<HirStmtPtr>) -> Self {
-        Self { id, stmts }
+    pub fn new(id: FileId, stem: String, stmts: Vec<HirStmtPtr>) -> Self {
+        Self { id, stem, stmts }
+    }
+
+    pub fn stem(&self) -> &str {
+        self.stem.as_str()
     }
 
     pub fn stmts(&self) -> &[HirStmtPtr] {

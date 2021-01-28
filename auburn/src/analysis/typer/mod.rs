@@ -169,7 +169,7 @@ impl<'src> Typer<'src> {
 
         self.pop_scope();
 
-        Ok(HirFile::new(parsed_file.file_id, globals))
+        Ok(HirFile::new(parsed_file.file_id, parsed_file.stem().to_owned(), globals))
     }
 
     fn resolve_ident(&mut self, ident: &Identifier) -> Result<EntityRef, Error> {

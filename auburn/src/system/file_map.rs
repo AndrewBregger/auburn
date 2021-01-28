@@ -37,7 +37,11 @@ impl FileMap {
         self.files.get(id).map(|f| f.clone())
     }
 
-    pub fn get_path_by_id(&self, id: &FileId) -> Option<&str> {
-        self.files.get(id).map(|f| f.file_name())
+    pub fn find(&self, id: &FileId) -> Option<&Rc<File>> {
+        self.files.get(id)
     }
+
+    //pub fn get_path_by_id(&self, id: &FileId) -> Option<&str> {
+    //    self.files.get(id).map(|f| f.name())
+    //}
 }
