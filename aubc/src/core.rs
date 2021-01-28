@@ -189,6 +189,7 @@ impl Core {
                 let file = self.open(input.as_str())?;
                 let module = self.build(file)?;
                 module.disassemble();
+                self.vm.free();
             }
         }
         Ok(())
