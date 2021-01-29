@@ -1,7 +1,7 @@
 use hir::HirExprKind;
 use ir::hir;
 use oxide::{Object, OxModule, OxFunction, Section, Value, Vm, gc::{Allocator, Gc}, vm::OpCode};
-use crate::{analysis::{self, Entity, EntityInfo, FunctionInfo}, ir::{self, ast::BinaryOp, hir::{HirExpr, HirExprPtr, HirFile, HirItem, HirItemPtr, HirStmt, HirStmtKind, HirStmtPtr, MirNode}}, system::{FileMap, FileId}, types::{Type, TypeKind}};
+use crate::{analysis::{self, Entity, EntityInfo, FunctionInfo, VariableInfo}, ir::{self, ast::BinaryOp, hir::{HirExpr, HirExprPtr, HirFile, HirItem, HirItemPtr, HirStmt, HirStmtKind, HirStmtPtr, MirNode}}, system::{FileMap, FileId}, types::{Type, TypeKind}};
 use ordered_float::OrderedFloat;
 
 use std::{cell::RefCell, collections::HashMap, convert::TryInto, ops::Deref, rc::Rc};
@@ -182,6 +182,26 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         let name_string = self.vm.allocate_string(name);
         Ok(())    
     }
+
+    fn build_variable(&mut self, name: &str, variable_info: &VariableInfo) -> Result<(), BuildError> {
+        match (variable_info.spec.as_ref(), variable_info.default.as_ref()) {
+            (Some(spec), None) => { todo!() }
+            (_, Some(init)) => self.handle_expr(init.as_ref())?,
+            (None, None) => { unreachable!() }
+        }
+
+
+        let context = self.current_context_mut();
+        if variable_info.global {
+            let global_idx = context.globals[name];
+            context.section.write_arg(OpCode::SetGlobal, global_idx);
+        }
+        else {
+            unimplemented!();
+        }
+
+        Ok(())
+    }
 }
 
 
@@ -192,7 +212,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         match entity.kind() {
             EntityInfo::Structure(_) => { todo!() }
             EntityInfo::Function(function_info) => self.build_function(name, function_info)?,
-            EntityInfo::Variable(_) => {}
+            EntityInfo::Variable(variable_info) => self.build_variable(name, variable_info)?,
             EntityInfo::AssociatedFunction(_) => { todo!() }
             EntityInfo::Param(_) => { todo!() }
             EntityInfo::SelfParam { mutable } => { todo!() }
@@ -255,7 +275,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
                 };
                 self.emit_op(op);
             }
-            HirExprKind::Name(val) => { todo!() }
+            HirExprKind::Name(val) => self.handle_name(&val.borrow())?,
             HirExprKind::Binary(bin_expr) => {
                self.handle_expr(bin_expr.left.as_ref())?;
                self.handle_expr(bin_expr.right.as_ref())?;
@@ -289,6 +309,26 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
                 self.handle_expr(return_expr.as_ref())?;
                 self.emit_op(OpCode::Return);
             }
+        }
+
+        Ok(())
+    }
+
+    fn handle_name(&mut self, name: &Entity) -> Result<(), BuildError> {
+        let global = match name.kind() {
+            EntityInfo::Variable(variable_info) => {
+                variable_info.global
+            }
+            _ => true,
+        };
+
+        if global {
+            let context = self.current_context();
+            let global_idx = context.globals[name.name()];
+            self.emit_op_u8(OpCode::LoadGlobal, global_idx);
+        }
+        else {
+            unimplemented!()
         }
 
         Ok(())
