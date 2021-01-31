@@ -1,36 +1,16 @@
+mod file_context;
+
 use hir::HirExprKind;
 use ir::hir;
 use oxide::{Object, OxModule, OxFunction, Section, Value, Vm, gc::{Allocator, Gc}, vm::OpCode};
+use file_context::FileContext;
 use crate::{analysis::{self, Entity, EntityInfo, FunctionInfo, VariableInfo}, ir::{self, ast::BinaryOp, hir::{Assignment, BlockExpr, HirExpr, HirExprPtr, HirFile, HirItem, HirItemPtr, HirStmt, HirStmtKind, HirStmtPtr, IfExpr, IfExprBranch, MirNode, WhileExpr}}, system::{FileMap, FileId}, types::{Type, TypeKind}};
-use ordered_float::OrderedFloat;
 
 use std::{cell::RefCell, collections::HashMap, convert::TryInto, ops::Deref, rc::Rc};
+use ordered_float::OrderedFloat;
 
-struct FileContext<'ctx> {
-    /// the this context is for.
-    file: &'ctx HirFile,
-    /// all of the global names for this file
-    globals: HashMap<String, u8>,
-    // constants: HashMap<Value, u16>,
-    /// section of code for the top level expressions.
-    section: Section,
-    /// stack of function sections that are being generated
-    function_stack: Vec<Gc<OxFunction>>,
-    /// list of objects for this file.
-    objects: Vec<Object>
-}
+use self::file_context::GlobalInfo;
 
-impl<'ctx> FileContext<'ctx> {
-    fn new(file: &'ctx HirFile, vm: &Vm) -> Self {
-        Self {
-            file,
-            globals: HashMap::new(),
-            section: Section::new(vm),
-            function_stack: vec![],
-            objects: vec![],
-        }
-    }
-}
 
 
 #[derive(Debug)]
@@ -83,22 +63,12 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
 
     fn current_section(&self) -> &Section {
         let context = self.current_context();
-        if let Some(function) = context.function_stack.last() {
-            function.section()
-        }
-        else {
-            &context.section
-        }
+        context.current_section()
     }
 
     fn current_section_mut(&mut self) -> &mut Section {
         let context = self.current_context_mut();
-        if let Some(function) = context.function_stack.last_mut() {
-            function.section_mut()
-        }
-        else {
-            &mut context.section
-        }
+        context.current_section_mut()
     }
 
     fn split_stmts(top_level_stmts: &[HirStmtPtr]) -> (Vec<Rc<RefCell<Entity>>>, Vec<HirStmtPtr>) {
@@ -165,17 +135,17 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         self.build_file(hir_file)?;
 
         let stem = hir_file.stem();
-        
         let name = self.vm.allocate_string(stem);
 
-        let context = self.file_context.remove(&hir_file.id()).expect("unable to remove file context");
+        let mut context = self.file_context.remove(&hir_file.id()).expect("unable to remove file context");
 
-        let objects = Vec::new_in(self.vm.allocator());
+        let mut objects = Vec::with_capacity_in(context.objects.len(), self.vm.allocator());
+        objects.extend(context.objects.drain(..).into_iter());
 
         let code = self.vm.allocate_function(name.clone(), 0, context.section);
 
         let module = self.vm.allocate_module(name, code, objects);
-        
+ 
         Ok(module)
     }
 
@@ -183,14 +153,14 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         assert!(!self.file_stack.is_empty(), "file stack is empty, currently not processing a file");
 
         let (items, stmts) = Self::split_stmts(hir_file.stmts());
-            
+
         let context = self.current_context_mut();
 
         for item in items.iter() {
             let entity_borrow = item.borrow();
             let name = entity_borrow.name();
             let idx = context.section.add_global();
-            context.globals.entry(name.to_owned()).or_insert(idx);
+            context.globals.entry(name.to_owned()).or_insert(GlobalInfo::new(name.to_owned(), idx));
         }
 
         std::mem::drop(context);
@@ -210,7 +180,12 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
 
     fn build_function(&mut self, name: &str, mir_function: &FunctionInfo) -> Result<(), BuildError> {
         let name_string = self.vm.allocate_string(name);
-
+        let function = self.vm.allocate_function(name_string, mir_function.params.len() as u8, Section::new(&self.vm));
+        self.current_context_mut().push_function(function);
+        self.handle_expr(mir_function.body.as_ref())?;
+        self.emit_op(OpCode::Return);
+        let function = self.current_context_mut().pop_function();
+        self.current_context_mut().push_object(Object::from(function));
         Ok(())
     }
 
@@ -279,16 +254,13 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             HirExprKind::String(val) => {
                 let ox_string = self.vm.allocate_string_ptr(val);
                 let value = Value::String(ox_string);
-
                 let context = self.current_context_mut();
-                let idx = context.section.add_constant(value);
-                context.section.write_arg(OpCode::LoadStr, idx);
+                context.load_constant(OpCode::LoadStr, value);
             }
             HirExprKind::Char(ch) => {
                 let value = Value::Char(*ch);
                 let context = self.current_context_mut();
-                let idx = context.section.add_constant(value);
-                context.section.write_arg(OpCode::LoadChar, idx);
+                context.load_constant(OpCode::LoadChar, value);
             }
             HirExprKind::Bool(val) => {
                 let op = if *val {
@@ -315,7 +287,13 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             HirExprKind::Field(_) => {}
             HirExprKind::Index(_) => {}
             HirExprKind::FieldAccess(_) => {}
-            HirExprKind::Call(call_expr) => {}
+            HirExprKind::Call(call_expr) => {
+                self.handle_expr(call_expr.operand.as_ref())?;
+                for actual in call_expr.actuals.iter() {
+                    self.handle_expr(actual.as_ref())?;
+                }
+                self.emit_op_u8(OpCode::Call, call_expr.actuals.len() as u8);
+            }
             HirExprKind::Method(_) => {}
             HirExprKind::AssociatedFunction(_) => {}
             HirExprKind::Block(block_expr) => self.handle_block(block_expr)?,
@@ -347,8 +325,8 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
 
         if global {
             let context = self.current_context();
-            let global_idx = context.globals[name.name()];
-            self.emit_op_u8(OpCode::LoadGlobal, global_idx);
+            let global_idx = &context.globals[name.name()];
+            self.emit_op_u8(OpCode::LoadGlobal, global_idx.section_idx);
         }
         else {
             unimplemented!()
@@ -443,8 +421,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         };
     
         let context = self.current_context_mut();
-        let idx = context.section.add_constant(value);
-        context.section.write_arg(op, idx);
+        context.load_constant(op, value);
         Ok(())
     }
 
@@ -456,17 +433,16 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         };
 
         let context = self.current_context_mut();
-        let idx = context.section.add_constant(value);
-        context.section.write_arg(op, idx);
+        context.load_constant(op, value);
         Ok(())
     }
 
     fn handle_variable(&mut self, name: &str, variable_info: &VariableInfo, set_op: bool) -> Result<(), BuildError> {
         let context = self.current_context_mut();
         if variable_info.global {
-            let global_idx = context.globals[name];
+            let global_idx = &context.globals[name];
             let op = if set_op { OpCode::SetGlobal } else { OpCode::LoadGlobal };
-            context.section.write_arg(op, global_idx);
+            context.section.write_arg(op, global_idx.section_idx);
         }
         else {
             unimplemented!();

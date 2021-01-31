@@ -99,9 +99,14 @@ impl Section {
                 | OpCode::LoadF32
                 | OpCode::LoadF64
                 | OpCode::LoadStr
+                | OpCode::LoadChar => {
+                    let value = self.read(ip);
+                    let con = self.get_constant(value as usize);
+                    res.push(Instruction::with_arg_and_const(ip - 1, op_code, value as u16, con));
+                    ip += 1;
+                }
+                OpCode::SetGlobal
                 | OpCode::LoadGlobal
-                | OpCode::LoadChar
-                | OpCode::SetGlobal
                 | OpCode::LoadLocal
                 | OpCode::SetLocal
                 | OpCode::SetRegister

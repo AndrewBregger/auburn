@@ -33,8 +33,7 @@ impl OxModule {
     }
 
     pub fn disassemble(&self) {
-        println!("{:?}", self.name);
-        println!("Module: {}", self.name);
+        println!("Module: {}, objects: {}", self.name, self.objects.len());
         for object in self.objects.as_slice() {
             object.disassemble();
             println!();

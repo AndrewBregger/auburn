@@ -391,3 +391,20 @@ impl Object {
         }
     }
 }
+
+macro_rules! object_from {
+    ($from:ty, $to:ident) => {
+        impl From<$from> for Object {
+            fn from(other: $from) -> Self {
+                Self::$to(other)
+            }
+        }
+    }
+}
+
+object_from!(Gc<OxString>, String);
+object_from!(Gc<OxFunction>, Function);
+object_from!(Gc<OxStruct>, Struct);
+object_from!(Gc<OxInstance>, Instance);
+object_from!(Gc<OxModule>, Module);
+
