@@ -1,4 +1,4 @@
-use crate::analysis::entity::EntityInfo;
+use crate::{LanguageMode, analysis::entity::EntityInfo};
 use crate::analysis::entity::Path;
 use crate::analysis::scope::{Scope, ScopeKind};
 use crate::analysis::typer::Typer;
@@ -66,7 +66,7 @@ impl Analysis {
         // load prelude
     }
 
-    pub fn check(&mut self, file: ParsedFile) -> Result<HirFile, Error> {
-        Typer::new(&mut self.type_map, &mut self.scope_stack).resolve_file(file)
+    pub fn check(&mut self, file: ParsedFile, mode: LanguageMode) -> Result<HirFile, Error> {
+        Typer::new(&mut self.type_map, &mut self.scope_stack, mode).resolve_file(file)
     }
 }

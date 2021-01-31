@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter};
 
-use crate::ir::ast::{BinaryOp, UnaryOp};
+use crate::{LanguageMode, ir::ast::{BinaryOp, UnaryOp}};
 use crate::syntax::{Operator, Position, Token};
 use crate::types::Type;
 
@@ -164,45 +164,14 @@ pub enum ErrorKind {
 
     #[error("unable to index type '{}'", ty)]
     InvalidIndexType { ty: Type },
-    // #[error("expecting keyword '{}' found '{}'", expected.to_string(), found.text())]
-    // ExpectedKeyword {
-    //     expected: Keyword,
-    //     found: OwnedToken,
-    // },
-    //
-    // #[error("expecting operator '{}' found '{}'", expected.to_string(), found.text())]
-    // ExpectedSpecificOperator {
-    //     expected: Operator,
-    //     found: OwnedToken,
-    // },
-    //
-    // #[error("expecting identifier found '{}'", found.text())]
-    // ExpectedIdentifier { found: OwnedToken },
+    
+    #[error("invalid {} found in langauge mode '{}'", element, mode)]
+    InvalidElementInMode {
+        element: String,
+        mode: LanguageMode,
+    },
 
-    // #[error("expected newline found '{}'", found.text())]
-    // ExpectedNewline { found: OwnedToken },
 
-    // #[error("expected expression following '{}', found '{}'", following.text(), found.text())]
-    // ExpectedExpression {
-    //     following: OwnedToken,
-    //     found: OwnedToken,
-    // },
-
-    // #[error("expected types specification following '{}', found '{}'", following.text(), found.text())]
-    // ExpectedTypeSpec {
-    //     following: OwnedToken,
-    //     found: OwnedToken,
-    // },
-    //
-    // #[error("unable to determine types of {}, missing types or initializing expression", if *is_param { "parameter" } else { "local"})]
-    // InvalidLocalItem { is_param: bool },
-    //
-    // #[error("'self' must be the first parameter")]
-    // InvalidSelfParam,
-    //
-    // #[error("invalid context for types parameters")]
-    // InvalidTypeParameter,
-    //
     #[error("Other: {0}")]
     Other(String),
 }
@@ -439,57 +408,17 @@ impl<'src> Error {
         Self::new_default(ErrorKind::InvalidIndexType { ty: ty.clone() })
     }
 
-    // fn execpted_keyword(expected: token::Kw, token: &Token) -> Self {
-    //     Self::ExpectedKeyword {
-    //         expected,
-    //         found: token.to_owned(),
-    //     }
-    // }
-    //
-    // fn execpted_specific_operator(expected: token::Op, token: &Token) -> Self {
-    //     Self::ExpectedSpecificOperator {
-    //         expected,
-    //         found: token.to_owned(),
-    //     }
-    // }
-    //
-    // fn expected_identifier(token: &Token) -> Self {
-    //     Self::ExpectedIdentifer {
-    //         found: token.to_owned(),
-    //     }
-    // }
-    //
-    // fn expected_newline(token: &Token) -> Self {
-    //     Self::ExpectedNewline {
-    //         found: token.to_owned(),
-    //     }
-    // }
-    //
-    // fn expected_expression(following: &Token, found: &Token) -> Self {
-    //     Self::ExpectedExpression {
-    //         following: following.to_owned(),
-    //         found: found.to_owned(),
-    //     }
-    // }
-    //
-    // fn expected_typespec(following: &Token, found: &Token) -> Self {
-    //     Self::ExpectedTypeSpec {
-    //         following: following.to_owned(),
-    //         found: found.to_owned(),
-    //     }
-    // }
-    //
-    // fn invalid_local_item(is_param: bool) -> Self {
-    //     Self::InvalidLocalItem { is_param }
-    // }
-    //
-    // fn invalid_self_param() -> Self {
-    //     Self::InvalidSelfParam
-    // }
-    //
-    // fn invalid_type_parameter() -> Self {
-    //     Self::InvalidTypeParameter
-    // }
+    pub fn invalid_assignment_in_mode(mode: LanguageMode) -> Self {
+        Self::new_default(ErrorKind::InvalidElementInMode { element: "assignment".to_string(), mode } )
+    }
+
+    pub fn invalid_expression_in_mode(mode: LanguageMode) -> Self {
+        Self::new_default(ErrorKind::InvalidElementInMode { element: "expression".to_string(), mode } )
+    }
+
+    pub fn invalid_print_in_mode(mode: LanguageMode) -> Self {
+        Self::new_default(ErrorKind::InvalidElementInMode { element: "print".to_string(), mode } )
+    }
 
     pub fn other(err: String) -> Self {
         Self::new_default(ErrorKind::Other(err))

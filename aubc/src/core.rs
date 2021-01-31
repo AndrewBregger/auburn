@@ -1,10 +1,25 @@
 extern crate clap;
 
-use std::path::Path;
 use std::rc::Rc;
+use std::{
+    fmt::{self, Display},
+    path::Path,
+    str::FromStr,
+};
 
-use auburn::{Executor, analysis::Analysis, code_gen::{BuildError, CodeGen}, error::Error, ir::hir::HirFile, oxide::{OxFunction, OxModule, Vm, gc::Gc}, syntax::{ParsedFile, Parser, Position}, system::{File, FileMap}, utils::MirPrinter};
+use auburn::{
+    analysis::Analysis,
+    code_gen::{BuildError, CodeGen},
+    error::Error,
+    ir::hir::HirFile,
+    oxide::{gc::Gc, OxFunction, OxModule, Vm},
+    syntax::{ParsedFile, Parser, Position},
+    system::{File, FileMap},
+    utils::MirPrinter,
+    Executor, LanguageMode,
+};
 use clap::Clap;
+use fmt::Formatter;
 
 #[derive(Clap, Debug)]
 enum Command {
@@ -26,6 +41,20 @@ enum Command {
 struct Arguments {
     #[clap(subcommand)]
     command: Option<Command>,
+    #[clap(short, long)]
+    mode: Option<LanguageMode>,
+}
+
+pub struct Options {
+    mode: LanguageMode,
+}
+
+impl Arguments {
+    pub fn build_options(&self) -> Options {
+        Options {
+            mode: self.mode.unwrap_or_default(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -139,13 +168,14 @@ impl Core {
     // }
 
     fn execute(&mut self, arg: Arguments) -> Result<(), CoreError> {
+        let options = arg.build_options();
         match arg.command {
-            Some(cmd) => self.execute_command(cmd),
-            None => self.execute_repl(),
+            Some(cmd) => self.execute_command(cmd, options),
+            None => self.execute_repl(options),
         }
     }
 
-    fn execute_command(&mut self, cmd: Command) -> Result<(), CoreError> {
+    fn execute_command(&mut self, cmd: Command, options: Options) -> Result<(), CoreError> {
         match cmd {
             Command::Parse { input } => {
                 let file = self
@@ -164,7 +194,7 @@ impl Core {
                     .parse_file(file.as_ref())
                     .map_err(|err| CoreError::from(err))?;
                 let resolved_file = self
-                    .resolve_root(parsed_file)
+                    .resolve_root(parsed_file, options.mode)
                     .map_err(|err| CoreError::from(err))?;
 
                 MirPrinter::print_file(&resolved_file);
@@ -174,7 +204,7 @@ impl Core {
                     .open_file(input.as_str())
                     .map_err(|err| CoreError::IoError(err, input))?;
 
-                let ox_function = self.build(file)?;
+                let ox_function = self.build(file, options)?;
                 ox_function.disassemble();
 
                 match self.vm.run_module(ox_function) {
@@ -187,7 +217,7 @@ impl Core {
 
             Command::Build { input } => {
                 let file = self.open(input.as_str())?;
-                let module = self.build(file)?;
+                let module = self.build(file, options)?;
                 module.disassemble();
                 self.vm.free();
             }
@@ -200,22 +230,21 @@ impl Core {
             .map_err(|err| CoreError::IoError(err, path.to_owned()))
     }
 
-    fn build(&mut self, file: Rc<File>) -> Result<Gc<OxModule>, CoreError> {
+    fn build(&mut self, file: Rc<File>, options: Options) -> Result<Gc<OxModule>, CoreError> {
         let parsed_file = self
             .parse_file(file.as_ref())
             .map_err(Into::<CoreError>::into)?;
         let hir_file = self
-            .resolve_root(parsed_file)
+            .resolve_root(parsed_file, options.mode)
             .map_err(Into::<CoreError>::into)?;
 
         let module = CodeGen::build(&self.file_map, &hir_file, &mut self.vm)
             .map_err(|e| CoreError::from(e))?;
 
-
         Ok(module)
     }
 
-    fn execute_repl(&mut self) -> Result<(), CoreError> {
+    fn execute_repl(&mut self, _options: Options) -> Result<(), CoreError> {
         println!("REPL not implemented");
         Ok(())
     }
@@ -232,8 +261,8 @@ impl Executor for Core {
         parser.parse_file()
     }
 
-    fn resolve_root(&mut self, file: ParsedFile) -> Result<HirFile, Error> {
+    fn resolve_root(&mut self, file: ParsedFile, mode: LanguageMode) -> Result<HirFile, Error> {
         // got though imports and resolve them
-        self.analysis.check(file)
+        self.analysis.check(file, mode)
     }
 }

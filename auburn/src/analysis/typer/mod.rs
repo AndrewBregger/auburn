@@ -1,4 +1,4 @@
-use crate::analysis::entity::Path;
+use crate::{LanguageMode, analysis::entity::Path};
 use crate::analysis::scope::{Scope, ScopeKind, ScopeRef};
 use crate::analysis::{Entity, EntityInfo, EntityRef};
 use crate::error::Error;
@@ -32,15 +32,17 @@ pub(super) struct Typer<'a> {
     type_map: &'a mut TypeMap,
     scope_stack: &'a mut Vec<Scope>,
     state: State,
+    mode: LanguageMode,
     self_entity: Option<EntityRef>,
 }
 
 impl<'a> Typer<'a> {
-    pub fn new(type_map: &'a mut TypeMap, scope_stack: &'a mut Vec<Scope>) -> Self {
+    pub fn new(type_map: &'a mut TypeMap, scope_stack: &'a mut Vec<Scope>, mode: LanguageMode) -> Self {
         Self {
             type_map,
             scope_stack,
             state: DEFAULT,
+            mode,
             self_entity: None,
         }
     }
@@ -64,6 +66,14 @@ impl<'a> Typer<'a> {
 
     fn unset_self(&mut self) {
         self.self_entity = None;
+    }
+
+    fn is_default_mode(&self) -> bool {
+        self.mode == LanguageMode::Default
+    }
+
+    fn is_script_mode(&self) -> bool {
+        self.mode == LanguageMode::Script
     }
 
     fn pop_scope(&mut self) -> ScopeRef {

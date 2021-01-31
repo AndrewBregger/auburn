@@ -22,6 +22,7 @@ impl FileMap {
         let id = file.id();
         self.paths.insert(path.as_ref().to_path_buf(), id);
         self.files.insert(id, Rc::new(file));
+        println!("??{:?}", self.files);
         Ok(self.files.get(&id).unwrap().clone())
     }
 

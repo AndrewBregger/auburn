@@ -31,6 +31,11 @@ impl<'src> Typer<'src> {
 
         match stmt.kind() {
             StmtKind::Expr(expr) => {
+                if self.is_default_mode() {
+                    let err = Error::invalid_expression_in_mode(self.mode);
+                    return Err(err.with_position(stmt.position()));
+                }
+
                 let old_state = self.state;
                 self.state &= !EXPR_RESULT_USED;
                 let expr = self.resolve_expr(expr.as_ref(), None)?;
@@ -55,6 +60,11 @@ impl<'src> Typer<'src> {
                 )))
             }
             StmtKind::Assignment { op, lvalue, rhs } => {
+                if self.is_default_mode() {
+                    let err = Error::invalid_assignment_in_mode(self.mode);
+                    return Err(err.with_position(stmt.position()));
+                }
+
                 let (entity, mir_lvalue) = self.resolve_expr_to_entity(lvalue.as_ref())?;
                 // let lvalue_type = mir_lvalue.ty();
                 let mutability = mir_lvalue.inner().meta();
@@ -82,7 +92,11 @@ impl<'src> Typer<'src> {
                 }
             }
             StmtKind::Print(param) => {
-                println!("Found print");
+                if self.is_default_mode() {
+                    let err = Error::invalid_print_in_mode(self.mode);
+                    return Err(err.with_position(stmt.position()));
+                }
+
                 let expr = self.resolve_expr(param.as_ref(), None)?;
                 Ok(Rc::new(HirStmt::new(
                     HirStmtKind::Print(expr),
