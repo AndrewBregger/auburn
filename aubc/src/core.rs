@@ -119,10 +119,7 @@ impl Core {
         println!("Error Pos: {}", pos);
         if let Some(file) = self.file_map.file_by_id(&pos.file_id()) {
             let start_coord = pos.start();
-            let _end_coord = pos.end();
 
-            // if start_coord.line() == end_coord.line() {
-            let line = file.get_line(start_coord.line());
             println!(
                 "{}:{}:{}| {}",
                 file.path().display(),
@@ -130,6 +127,12 @@ impl Core {
                 start_coord.column(),
                 err
             );
+
+            if start_coord.line() == 0 && start_coord.column() == 0 {
+                return;
+            }
+
+            let line = file.get_line(start_coord.line());
             self.print_file_lines(line, pos);
         // } else {
         //     // let line = *file.get_lines(start_coord.0, end_coord.0).first().unwrap();

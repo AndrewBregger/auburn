@@ -24,12 +24,11 @@ impl OxStruct {
 
     pub fn disassemble(&self) {
         println!("<disassembly for {}>", self.name);
-        
+
         for object in self.elements.deref().as_slice() {
             object.disassemble();
             println!();
         }
-
     }
 }
 

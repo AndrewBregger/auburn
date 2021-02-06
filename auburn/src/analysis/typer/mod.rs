@@ -1,11 +1,11 @@
-use crate::{LanguageMode, analysis::entity::Path};
-use crate::analysis::scope::{Scope, ScopeKind, ScopeRef};
+use crate::{analysis::scope::{Scope, ScopeKind, ScopeRef}, syntax::{FilePos, Position, Span}};
 use crate::analysis::{Entity, EntityInfo, EntityRef};
 use crate::error::Error;
 use crate::ir::ast::{Identifier, ItemKind, Node, StmtKind};
 use crate::ir::hir::HirFile;
 use crate::syntax::ParsedFile;
 use crate::types::{Type, TypeKind, TypeMap};
+use crate::{analysis::entity::Path, LanguageMode};
 use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -37,7 +37,11 @@ pub(super) struct Typer<'a> {
 }
 
 impl<'a> Typer<'a> {
-    pub fn new(type_map: &'a mut TypeMap, scope_stack: &'a mut Vec<Scope>, mode: LanguageMode) -> Self {
+    pub fn new(
+        type_map: &'a mut TypeMap,
+        scope_stack: &'a mut Vec<Scope>,
+        mode: LanguageMode,
+    ) -> Self {
         Self {
             type_map,
             scope_stack,
@@ -144,6 +148,27 @@ impl<'a> Typer<'a> {
 }
 
 impl<'src> Typer<'src> {
+    pub fn resolve_root(mut self, parsed_file: ParsedFile) -> Result<HirFile, Error> {
+        let mut file = self.resolve_file(parsed_file)?;
+        if let Some(entity) = file.find_entity_by_name("main") {
+            let entity_borrow = entity.borrow();
+            if let EntityInfo::Function(_) = entity_borrow.kind() {
+                std::mem::drop(entity_borrow);
+                file.set_root(true);
+                file.set_entry(entity.clone());
+                Ok(file)
+            }
+            else {
+                let err = Error::entry_not_function("main".to_string(), entity_borrow.type_name().to_string());
+                Err(err.with_position(Position::new(Span::default(), FilePos::default(), file.id())))
+            }
+        }
+        else {
+            let err = Error::entry_not_found("main".to_string());
+            Err(err.with_position(Position::new(Span::default(), FilePos::default(), file.id())))
+        }
+    }
+
     pub fn resolve_file(mut self, parsed_file: ParsedFile) -> Result<HirFile, Error> {
         self.push_scope(ScopeKind::File {
             file_id: parsed_file.file_id,
@@ -179,7 +204,11 @@ impl<'src> Typer<'src> {
 
         self.pop_scope();
 
-        Ok(HirFile::new(parsed_file.file_id, parsed_file.stem().to_owned(), globals))
+        Ok(HirFile::new(
+            parsed_file.file_id,
+            parsed_file.stem().to_owned(),
+            globals,
+        ))
     }
 
     fn resolve_ident(&mut self, ident: &Identifier) -> Result<EntityRef, Error> {

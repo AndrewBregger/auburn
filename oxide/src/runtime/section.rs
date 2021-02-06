@@ -1,13 +1,16 @@
-use crate::{Value, Vm};
 use crate::{gc::Gc, mem::read_to};
 use crate::{
     vm::{Instruction, OpCode},
     VecBuffer,
 };
+use crate::{Value, Vm};
 
-use std::{fmt::{Display, Formatter}, ops::{Deref, DerefMut}};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::convert::TryInto;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::{
+    fmt::{Display, Formatter},
+    ops::{Deref, DerefMut},
+};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct SectionId(usize);
@@ -102,7 +105,12 @@ impl Section {
                 | OpCode::LoadChar => {
                     let value = self.read(ip);
                     let con = self.get_constant(value as usize);
-                    res.push(Instruction::with_arg_and_const(ip - 1, op_code, value as u16, con));
+                    res.push(Instruction::with_arg_and_const(
+                        ip - 1,
+                        op_code,
+                        value as u16,
+                        con,
+                    ));
                     ip += 1;
                 }
                 OpCode::SetGlobal
@@ -236,7 +244,7 @@ impl Section {
         self.constants.push(value);
         index as _
     }
-    
+
     /// allocates a new global, sets it to unit
     pub fn add_global(&mut self) -> u8 {
         let index = self.globals.deref().len();
@@ -247,27 +255,27 @@ impl Section {
     pub fn write_byte(&mut self, byte: u8) {
         self.data.push(byte);
     }
-    
+
     pub fn write_arg(&mut self, op: OpCode, index: u8) {
         self.write_op(op);
         self.write_byte(index);
     }
-    
+
     pub fn write_op(&mut self, op: OpCode) {
         self.data.deref_mut().push(op as u8);
     }
-    
+
     pub fn write_bytes(&mut self, bytes: &[u8]) {
         self.data.extend_from_slice(bytes)
     }
-    
+
     // returns the first byte of the jmp operand.
     pub fn write_jmp(&mut self, op: OpCode) -> usize {
         self.write_op(op);
         self.write_bytes(&[0xff, 0xff]);
         self.len() - 2
     }
-    
+
     pub fn patch_jmp(&mut self, offset: usize) {
         println!("patch_jmp: {} {}", self.len(), offset);
         let jump: u16 = (self.len() - offset - 2)
@@ -276,7 +284,7 @@ impl Section {
         self.data[offset] = ((jump >> 8) & 0xff) as u8;
         self.data[offset + 1] = (jump & 0xff) as u8;
     }
-    
+
     pub fn write_loop(&mut self, start: usize) {
         self.write_op(OpCode::Loop);
         let offset = (self.len() - start + 2) as u16;

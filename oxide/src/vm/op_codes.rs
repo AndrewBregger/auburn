@@ -166,13 +166,13 @@ pub struct Instruction {
     offset: usize,
     op_code: OpCode,
     args: Option<u16>,
-    con: Option<Value>
+    con: Option<Value>,
 }
 
 impl PartialEq for Instruction {
     // only compare a subset of the fields.
     fn eq(&self, other: &Self) -> bool {
-        self.offset.eq(&other.offset) 
+        self.offset.eq(&other.offset)
             && self.op_code.eq(&other.op_code)
             && self.args.eq(&other.args)
     }
@@ -192,8 +192,6 @@ impl Instruction {
     pub fn with_arg_and_const(offset: usize, op_code: OpCode, args: u16, con: Value) -> Self {
         Self::new(offset, op_code, Some(args), Some(con))
     }
-
-
 
     pub fn new(offset: usize, op_code: OpCode, args: Option<u16>, con: Option<Value>) -> Self {
         Self {

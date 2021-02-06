@@ -3,17 +3,21 @@ mod op_codes;
 
 use std::alloc::Layout;
 
-use crate::{Object, OxInstance, OxModule, OxString, Section, Value, VecBuffer, gc::{Allocator, Gc, VecAllocator}, runtime::{self, Buffer}};
 use crate::{
     gc::{Address, GcAlloc},
     mem::read_to,
+};
+use crate::{
+    gc::{Allocator, Gc, VecAllocator},
+    runtime::{self, Buffer},
+    Object, OxInstance, OxModule, OxString, Section, Value, VecBuffer,
 };
 use call_frame::CallFrame;
 use itertools::{self, Itertools};
 pub use op_codes::{Instruction, OpCode};
 use ordered_float::OrderedFloat;
-use runtime::{OxFunction, OxStruct};
 use runtime::Error as RuntimeError;
+use runtime::{OxFunction, OxStruct};
 
 static DEFAULT_MEM_SIZE: usize = 2056;
 static DEFAULT_STACK_SIZE: usize = 2056;
@@ -188,7 +192,6 @@ impl Vm {
     pub fn allocator_vec(&self) -> VecAllocator {
         self.allocator.allocator_vec()
     }
-
 
     pub fn push_stack(&mut self, value: Value) {
         self.stack[self.top_stack] = value;
@@ -649,10 +652,7 @@ impl Vm {
         Gc::<VecBuffer<Ty>>::new(address)
     }
 
-    pub fn allocate_vec<Ty: Sync + Send + Copy + Sized>(
-        &mut self,
-        count: usize,
-    ) -> VecBuffer<Ty> {
+    pub fn allocate_vec<Ty: Sync + Send + Copy + Sized>(&mut self, count: usize) -> VecBuffer<Ty> {
         VecBuffer::<Ty>::new(Vec::with_capacity_in(count, self.allocator_vec()))
     }
 
@@ -671,11 +671,16 @@ impl Vm {
             let buffer = address.as_ptr_mut() as *mut OxString;
             *buffer = self.allocate_string(value);
         }
-        
+
         Gc::<OxString>::new(address)
     }
 
-    pub fn allocate_function(&mut self, name: OxString, arity: u8, section: Section) -> Gc<OxFunction> {
+    pub fn allocate_function(
+        &mut self,
+        name: OxString,
+        arity: u8,
+        section: Section,
+    ) -> Gc<OxFunction> {
         let layout = Layout::new::<OxFunction>();
         let function_address = self.allocate(layout);
 
@@ -687,7 +692,12 @@ impl Vm {
         Gc::<OxFunction>::new(function_address)
     }
 
-    pub fn allocate_module(&mut self, name: OxString, code: Gc<OxFunction>, objects: Vec<Object, Allocator>) -> Gc<OxModule> {
+    pub fn allocate_module(
+        &mut self,
+        name: OxString,
+        code: Gc<OxFunction>,
+        objects: Vec<Object, Allocator>,
+    ) -> Gc<OxModule> {
         let layout = Layout::new::<OxModule>();
         let module_address = self.allocate(layout);
 
@@ -695,7 +705,7 @@ impl Vm {
             let buffer = &mut *(module_address.as_ptr_mut() as *mut OxModule);
             *buffer = OxModule::new(name, code, objects);
         }
-    
+
         Gc::<OxModule>::new(module_address)
     }
 }

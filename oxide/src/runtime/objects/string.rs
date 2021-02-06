@@ -1,6 +1,13 @@
-use std::{cmp::min, fmt::{Display, Formatter}, ops::DerefMut};
+use std::{
+    cmp::min,
+    fmt::{Display, Formatter},
+    ops::DerefMut,
+};
 
-use crate::{VecBuffer, gc::{Address, Cell, Gc, GcObject}};
+use crate::{
+    gc::{Address, Cell, Gc, GcObject},
+    VecBuffer,
+};
 
 #[derive(Debug, Clone)]
 pub struct OxString {

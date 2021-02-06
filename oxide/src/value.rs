@@ -194,8 +194,7 @@ impl Value {
     pub fn as_char(&self) -> char {
         if let Self::Char(val) = self {
             *val
-        }
-        else {
+        } else {
             panic!(
                 "Attempting to get an char from a value of type {}",
                 self.ty()
@@ -296,10 +295,7 @@ impl Value {
 
     pub fn is_object(&self) -> bool {
         match self {
-            Self::Function(..)
-            | Self::String(..)
-            | Self::Instance(..)
-            | Self::Module(..) => true,
+            Self::Function(..) | Self::String(..) | Self::Instance(..) | Self::Module(..) => true,
             _ => false,
         }
     }
@@ -385,9 +381,7 @@ impl Object {
             Object::Instance(inst) => {
                 println!("<instance {}>", inst);
             }
-            Object::Module(module) => {
-                module.disassemble()
-            }
+            Object::Module(module) => module.disassemble(),
         }
     }
 }
@@ -399,7 +393,7 @@ macro_rules! object_from {
                 Self::$to(other)
             }
         }
-    }
+    };
 }
 
 object_from!(Gc<OxString>, String);
@@ -407,4 +401,3 @@ object_from!(Gc<OxFunction>, Function);
 object_from!(Gc<OxStruct>, Struct);
 object_from!(Gc<OxInstance>, Instance);
 object_from!(Gc<OxModule>, Module);
-

@@ -1,17 +1,31 @@
 mod file_context;
 
+use crate::{
+    analysis::{self, Entity, EntityInfo, FunctionInfo, VariableInfo},
+    ir::{
+        self,
+        ast::BinaryOp,
+        hir::{
+            Assignment, BlockExpr, HirExpr, HirExprPtr, HirFile, HirItem, HirItemPtr, HirStmt,
+            HirStmtKind, HirStmtPtr, IfExpr, IfExprBranch, MirNode, WhileExpr,
+        },
+    },
+    system::{FileId, FileMap},
+    types::{Type, TypeKind},
+};
+use file_context::FileContext;
 use hir::HirExprKind;
 use ir::hir;
-use oxide::{Object, OxModule, OxFunction, Section, Value, Vm, gc::{Allocator, Gc}, vm::OpCode};
-use file_context::FileContext;
-use crate::{analysis::{self, Entity, EntityInfo, FunctionInfo, VariableInfo}, ir::{self, ast::BinaryOp, hir::{Assignment, BlockExpr, HirExpr, HirExprPtr, HirFile, HirItem, HirItemPtr, HirStmt, HirStmtKind, HirStmtPtr, IfExpr, IfExprBranch, MirNode, WhileExpr}}, system::{FileMap, FileId}, types::{Type, TypeKind}};
+use oxide::{
+    gc::{Allocator, Gc},
+    vm::OpCode,
+    Object, OxFunction, OxModule, Section, Value, Vm,
+};
 
-use std::{cell::RefCell, collections::HashMap, convert::TryInto, ops::Deref, rc::Rc};
 use ordered_float::OrderedFloat;
+use std::{cell::RefCell, collections::HashMap, convert::TryInto, ops::Deref, rc::Rc};
 
 use self::file_context::GlobalInfo;
-
-
 
 #[derive(Debug)]
 pub enum BuildError {}
@@ -35,10 +49,9 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             file_stack: vec![],
             file_context: HashMap::new(),
         };
-        
-       code_gen.build_module(hir_file)
-    }
 
+        code_gen.build_module(hir_file)
+    }
 }
 
 // impl<'ctx> CodeGen<'ctx> {
@@ -53,7 +66,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         assert!(!self.file_stack.is_empty());
         let last = self.file_stack.last().unwrap();
         self.file_context.get(last).unwrap()
-    }    
+    }
 
     fn current_context_mut(&mut self) -> &mut FileContext<'ctx> {
         assert!(!self.file_stack.is_empty());
@@ -85,15 +98,20 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         (items, stmts)
     }
 
-    
     fn get_file(&self, id: &FileId) -> &str {
-        self.file_map.find(id).map(|f| f.name()).expect("failed to find file")
+        self.file_map
+            .find(id)
+            .map(|f| f.name())
+            .expect("failed to find file")
     }
 
     fn get_stem(&self, id: &FileId) -> &str {
-        self.file_map.find(id).map(|f| f.stem()).expect("failed to find file")
+        self.file_map
+            .find(id)
+            .map(|f| f.stem())
+            .expect("failed to find file")
     }
-    
+
     fn emit_op(&mut self, op: OpCode) {
         self.emit(&[op as u8]);
     }
@@ -106,7 +124,6 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         let bytes = args.to_be_bytes();
         self.emit(&[op as u8, bytes[0], bytes[1]]);
     }
-
 
     fn emit(&mut self, data: &[u8]) {
         let section = self.current_section_mut();
@@ -137,7 +154,10 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         let stem = hir_file.stem();
         let name = self.vm.allocate_string(stem);
 
-        let mut context = self.file_context.remove(&hir_file.id()).expect("unable to remove file context");
+        let mut context = self
+            .file_context
+            .remove(&hir_file.id())
+            .expect("unable to remove file context");
 
         let mut objects = Vec::with_capacity_in(context.objects.len(), self.vm.allocator());
         objects.extend(context.objects.drain(..).into_iter());
@@ -145,12 +165,15 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         let code = self.vm.allocate_function(name.clone(), 0, context.section);
 
         let module = self.vm.allocate_module(name, code, objects);
- 
+
         Ok(module)
     }
 
     fn build_file(&mut self, hir_file: &HirFile) -> Result<(), BuildError> {
-        assert!(!self.file_stack.is_empty(), "file stack is empty, currently not processing a file");
+        assert!(
+            !self.file_stack.is_empty(),
+            "file stack is empty, currently not processing a file"
+        );
 
         let (items, stmts) = Self::split_stmts(hir_file.stmts());
 
@@ -160,11 +183,13 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             let entity_borrow = item.borrow();
             let name = entity_borrow.name();
             let idx = context.section.add_global();
-            context.globals.entry(name.to_owned()).or_insert(GlobalInfo::new(name.to_owned(), idx));
+            context
+                .globals
+                .entry(name.to_owned())
+                .or_insert(GlobalInfo::new(name.to_owned(), idx));
         }
 
         std::mem::drop(context);
-
 
         for entity in items.into_iter() {
             self.handle_entity(&entity.borrow())?;
@@ -178,43 +203,69 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         Ok(())
     }
 
-    fn build_function(&mut self, name: &str, mir_function: &FunctionInfo) -> Result<(), BuildError> {
+    fn build_function(
+        &mut self,
+        name: &str,
+        mir_function: &FunctionInfo,
+    ) -> Result<(), BuildError> {
         let name_string = self.vm.allocate_string(name);
-        let function = self.vm.allocate_function(name_string, mir_function.params.len() as u8, Section::new(&self.vm));
+        let function = self.vm.allocate_function(
+            name_string,
+            mir_function.params.len() as u8,
+            Section::new(&self.vm),
+        );
         self.current_context_mut().push_function(function);
         self.handle_expr(mir_function.body.as_ref())?;
         self.emit_op(OpCode::Return);
         let function = self.current_context_mut().pop_function();
-        self.current_context_mut().push_object(Object::from(function));
+        self.current_context_mut()
+            .push_object(Object::from(function));
         Ok(())
     }
 
-    fn build_variable(&mut self, name: &str, variable_info: &VariableInfo) -> Result<(), BuildError> {
+    fn build_variable(
+        &mut self,
+        name: &str,
+        variable_info: &VariableInfo,
+    ) -> Result<(), BuildError> {
         match (variable_info.spec.as_ref(), variable_info.default.as_ref()) {
-            (Some(_spec), None) => { todo!() }
+            (Some(_spec), None) => {
+                todo!()
+            }
             (_, Some(init)) => self.handle_expr(init.as_ref())?,
-            (None, None) => { unreachable!() }
+            (None, None) => {
+                unreachable!()
+            }
         }
- 
+
         self.handle_variable(name, variable_info, true)?;
 
         Ok(())
     }
 }
 
-
 //impl<'ctx> CodeGen<'ctx> {
 impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
     fn handle_entity(&mut self, entity: &Entity) -> Result<(), BuildError> {
         let name = entity.name();
         match entity.kind() {
-            EntityInfo::Structure(_) => { todo!() }
+            EntityInfo::Structure(_) => {
+                todo!()
+            }
             EntityInfo::Function(function_info) => self.build_function(name, function_info)?,
             EntityInfo::Variable(variable_info) => self.build_variable(name, variable_info)?,
-            EntityInfo::AssociatedFunction(_) => { todo!() }
-            EntityInfo::Param(_) => { todo!() }
-            EntityInfo::SelfParam { mutable } => { todo!() }
-            EntityInfo::Field(_) => { todo!() }
+            EntityInfo::AssociatedFunction(_) => {
+                todo!()
+            }
+            EntityInfo::Param(_) => {
+                todo!()
+            }
+            EntityInfo::SelfParam { mutable } => {
+                todo!()
+            }
+            EntityInfo::Field(_) => {
+                todo!()
+            }
             EntityInfo::Unresolved(_) => {}
             EntityInfo::Resolving => {}
             EntityInfo::Primitive => {}
@@ -225,7 +276,6 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
 
     //fn handle_top_level_stmt(&mut self, stmt: &HirStmt) -> Result<(), BuildError> {
     //}
-
 
     fn handle_stmt(&mut self, stmt: &HirStmt) -> Result<(), BuildError> {
         match stmt.inner() {
@@ -272,15 +322,15 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             }
             HirExprKind::Name(val) => self.handle_name(&val.borrow())?,
             HirExprKind::Binary(bin_expr) => {
-               self.handle_expr(bin_expr.left.as_ref())?;
-               self.handle_expr(bin_expr.right.as_ref())?;
+                self.handle_expr(bin_expr.left.as_ref())?;
+                self.handle_expr(bin_expr.right.as_ref())?;
 
                 let op = if bin_expr.op.is_cmp() {
                     Self::binary_op_for_type(bin_expr.op, bin_expr.left.ty())
                 } else {
                     Self::binary_op_for_type(bin_expr.op, ty.clone())
                 };
-                
+
                 self.emit_op(op);
             }
             HirExprKind::Unary(un_expr) => {}
@@ -317,9 +367,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
 
     fn handle_name(&mut self, name: &Entity) -> Result<(), BuildError> {
         let global = match name.kind() {
-            EntityInfo::Variable(variable_info) => {
-                variable_info.global
-            }
+            EntityInfo::Variable(variable_info) => variable_info.global,
             _ => true,
         };
 
@@ -327,8 +375,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             let context = self.current_context();
             let global_idx = &context.globals[name.name()];
             self.emit_op_u8(OpCode::LoadGlobal, global_idx.section_idx);
-        }
-        else {
+        } else {
             unimplemented!()
         }
 
@@ -419,7 +466,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             TypeKind::I64 => (OpCode::LoadI64, Value::I64(val)),
             _ => panic!("Type Missmatch"),
         };
-    
+
         let context = self.current_context_mut();
         context.load_constant(op, value);
         Ok(())
@@ -437,14 +484,22 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         Ok(())
     }
 
-    fn handle_variable(&mut self, name: &str, variable_info: &VariableInfo, set_op: bool) -> Result<(), BuildError> {
+    fn handle_variable(
+        &mut self,
+        name: &str,
+        variable_info: &VariableInfo,
+        set_op: bool,
+    ) -> Result<(), BuildError> {
         let context = self.current_context_mut();
         if variable_info.global {
             let global_idx = &context.globals[name];
-            let op = if set_op { OpCode::SetGlobal } else { OpCode::LoadGlobal };
+            let op = if set_op {
+                OpCode::SetGlobal
+            } else {
+                OpCode::LoadGlobal
+            };
             context.section.write_arg(op, global_idx.section_idx);
-        }
-        else {
+        } else {
             unimplemented!();
         }
 

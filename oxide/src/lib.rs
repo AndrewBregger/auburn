@@ -9,5 +9,5 @@ mod value;
 pub mod vm;
 
 pub use runtime::*;
-pub use value::{Value, Object};
+pub use value::{Object, Value};
 pub use vm::Vm;

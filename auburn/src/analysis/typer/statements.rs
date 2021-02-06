@@ -31,7 +31,7 @@ impl<'src> Typer<'src> {
 
         match stmt.kind() {
             StmtKind::Expr(expr) => {
-                if self.is_default_mode() {
+                if self.is_default_mode() && top_level {
                     let err = Error::invalid_expression_in_mode(self.mode);
                     return Err(err.with_position(stmt.position()));
                 }
@@ -60,7 +60,7 @@ impl<'src> Typer<'src> {
                 )))
             }
             StmtKind::Assignment { op, lvalue, rhs } => {
-                if self.is_default_mode() {
+                if self.is_default_mode() && top_level {
                     let err = Error::invalid_assignment_in_mode(self.mode);
                     return Err(err.with_position(stmt.position()));
                 }
@@ -92,7 +92,7 @@ impl<'src> Typer<'src> {
                 }
             }
             StmtKind::Print(param) => {
-                if self.is_default_mode() {
+                if self.is_default_mode() && top_level {
                     let err = Error::invalid_print_in_mode(self.mode);
                     return Err(err.with_position(stmt.position()));
                 }

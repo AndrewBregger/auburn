@@ -4,8 +4,12 @@ extern crate itertools;
 extern crate ordered_float;
 pub extern crate oxide;
 
-use std::{fmt::{self, Display, Formatter}, path::Path, str::FromStr};
 use std::rc::Rc;
+use std::{
+    fmt::{self, Display, Formatter},
+    path::Path,
+    str::FromStr,
+};
 
 use crate::error::Error;
 
@@ -25,7 +29,7 @@ pub mod utils;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LanguageMode {
     Default,
-    Script
+    Script,
 }
 
 impl Display for LanguageMode {
@@ -59,7 +63,10 @@ impl FromStr for LanguageMode {
         match s.to_lowercase().as_str() {
             "default" => Ok(Self::Default),
             "script" => Ok(Self::Script),
-            e => Err(LanguageModeParseError(format!("'{}' is not a valid langauge mode", e))),
+            e => Err(LanguageModeParseError(format!(
+                "'{}' is not a valid langauge mode",
+                e
+            ))),
         }
     }
 }

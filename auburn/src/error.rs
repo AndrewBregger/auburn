@@ -1,8 +1,11 @@
 use std::fmt::{Display, Formatter};
 
-use crate::{LanguageMode, ir::ast::{BinaryOp, UnaryOp}};
 use crate::syntax::{Operator, Position, Token};
 use crate::types::Type;
+use crate::{
+    ir::ast::{BinaryOp, UnaryOp},
+    LanguageMode,
+};
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum ErrorKind {
@@ -164,13 +167,20 @@ pub enum ErrorKind {
 
     #[error("unable to index type '{}'", ty)]
     InvalidIndexType { ty: Type },
-    
+
     #[error("invalid {} found in langauge mode '{}'", element, mode)]
-    InvalidElementInMode {
-        element: String,
-        mode: LanguageMode,
+    InvalidElementInMode { element: String, mode: LanguageMode },
+
+    #[error("'{}' entry is not a function, it is '{}'", name, entity_type)]
+    EntryNotFunction {
+        name: String,
+        entity_type: String,
     },
 
+    #[error("'{}' entry function is not found", name)]
+    EntryNotFound {
+        name: String
+    },
 
     #[error("Other: {0}")]
     Other(String),
@@ -409,15 +419,35 @@ impl<'src> Error {
     }
 
     pub fn invalid_assignment_in_mode(mode: LanguageMode) -> Self {
-        Self::new_default(ErrorKind::InvalidElementInMode { element: "assignment".to_string(), mode } )
+        Self::new_default(ErrorKind::InvalidElementInMode {
+            element: "assignment".to_string(),
+            mode,
+        })
     }
 
     pub fn invalid_expression_in_mode(mode: LanguageMode) -> Self {
-        Self::new_default(ErrorKind::InvalidElementInMode { element: "expression".to_string(), mode } )
+        Self::new_default(ErrorKind::InvalidElementInMode {
+            element: "expression".to_string(),
+            mode,
+        })
     }
 
     pub fn invalid_print_in_mode(mode: LanguageMode) -> Self {
-        Self::new_default(ErrorKind::InvalidElementInMode { element: "print".to_string(), mode } )
+        Self::new_default(ErrorKind::InvalidElementInMode {
+            element: "print".to_string(),
+            mode,
+        })
+    }
+
+    pub fn entry_not_function(name: String, entity_type: String) -> Self {
+        Self::new_default(ErrorKind::EntryNotFunction {
+            name,
+            entity_type
+        })
+    }
+
+    pub fn entry_not_found(name: String) -> Self {
+        Self::new_default(ErrorKind::EntryNotFound { name })
     }
 
     pub fn other(err: String) -> Self {

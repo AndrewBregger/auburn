@@ -1,9 +1,13 @@
 use std::{fmt::Display, mem::ManuallyDrop};
 
-use crate::{OxFunction, gc::{Cell, ObjectKind}, value::Object};
 use crate::{
     gc::{Allocator, Gc, GcObject},
-    OxString
+    OxString,
+};
+use crate::{
+    gc::{Cell, ObjectKind},
+    value::Object,
+    OxFunction,
 };
 
 #[derive(Debug, Clone)]
@@ -38,10 +42,9 @@ impl OxModule {
             object.disassemble();
             println!();
         }
-        
+
         self.code.disassemble();
     }
-
 }
 
 impl GcObject for OxModule {

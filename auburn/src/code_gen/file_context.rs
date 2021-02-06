@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use oxide::{Object, OxFunction, Section, Value, Vm, gc::Gc, vm::OpCode};
+use oxide::{gc::Gc, vm::OpCode, Object, OxFunction, Section, Value, Vm};
 
 use crate::ir::hir::HirFile;
 
@@ -32,7 +32,7 @@ pub(crate) struct FileContext<'ctx> {
     /// stack of function sections that are being generated
     pub(crate) function_stack: Vec<Gc<OxFunction>>,
     /// list of objects for this file.
-    pub(crate) objects: Vec<Object>
+    pub(crate) objects: Vec<Object>,
 }
 
 impl<'ctx> FileContext<'ctx> {
@@ -51,7 +51,9 @@ impl<'ctx> FileContext<'ctx> {
     }
 
     pub fn pop_function(&mut self) -> Gc<OxFunction> {
-        self.function_stack.pop().expect("FileContext::push and pop function not balenced")
+        self.function_stack
+            .pop()
+            .expect("FileContext::push and pop function not balenced")
     }
 
     pub fn push_object(&mut self, object: Object) -> usize {
@@ -62,8 +64,7 @@ impl<'ctx> FileContext<'ctx> {
     pub fn current_section(&self) -> &Section {
         if let Some(function) = self.function_stack.last() {
             function.section()
-        }
-        else {
+        } else {
             &self.section
         }
     }
@@ -71,8 +72,7 @@ impl<'ctx> FileContext<'ctx> {
     pub fn current_section_mut(&mut self) -> &mut Section {
         if let Some(function) = self.function_stack.last_mut() {
             function.section_mut()
-        }
-        else {
+        } else {
             &mut self.section
         }
     }

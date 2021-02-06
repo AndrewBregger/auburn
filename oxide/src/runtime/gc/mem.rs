@@ -1,6 +1,4 @@
-use std::{
-    alloc::{AllocError, Layout},
-};
+use std::alloc::{AllocError, Layout};
 use std::{
     ptr::NonNull,
     sync::{Arc, Mutex},
@@ -117,8 +115,12 @@ impl Memory {
         if layout.size() == 0 {
             return Ok(NonNull::slice_from_raw_parts(NonNull::<u8>::dangling(), 0));
         }
-        
-        let layout = Layout::from_size_align(layout.size() + std::mem::size_of::<Header>(), layout.align()).expect("failed to layout header");
+
+        let layout = Layout::from_size_align(
+            layout.size() + std::mem::size_of::<Header>(),
+            layout.align(),
+        )
+        .expect("failed to layout header");
 
         let ptr = unsafe { std::alloc::alloc(layout) };
         if ptr.is_null() {
@@ -244,4 +246,3 @@ unsafe impl std::alloc::Allocator for VecAllocator {
             .dealloc_vec(ptr.as_ptr(), l)
     }
 }
-

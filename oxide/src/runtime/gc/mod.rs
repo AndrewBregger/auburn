@@ -2,8 +2,15 @@ mod address;
 mod cell;
 mod mem;
 
-pub use mem::{Allocator, VecAllocator, Header, Memory};
-use std::{alloc::Layout, collections::BTreeSet, fmt::{write, Display}, marker::PhantomData, ops::{Deref, DerefMut}, sync::{Arc, Mutex}};
+pub use mem::{Allocator, Header, Memory, VecAllocator};
+use std::{
+    alloc::Layout,
+    collections::BTreeSet,
+    fmt::{write, Display},
+    marker::PhantomData,
+    ops::{Deref, DerefMut},
+    sync::{Arc, Mutex},
+};
 
 pub use address::Address;
 pub use cell::{Cell, GcObject, ObjectKind};
@@ -120,20 +127,24 @@ impl GcAlloc {
     }
 
     pub fn alloc(&mut self, layout: Layout) -> Option<Address> {
-        let address = self.memory
+        let address = self
+            .memory
             .lock()
             .expect("failed to retrieve memory lock")
             .alloc_inner(layout)
             .map(|ptr| Address::from_ptr(ptr.as_ptr() as *mut u8))
             .ok();
-        
+
         address.map(|a| self.allocations.insert(a));
 
         address
     }
 
     pub fn dealloc(&mut self, ptr: Address) {
-        assert!(self.allocations.remove(&ptr), "allocation ptr was not found");
+        assert!(
+            self.allocations.remove(&ptr),
+            "allocation ptr was not found"
+        );
 
         self.dealloc_inner(ptr)
     }

@@ -33,10 +33,9 @@ pub struct File {
 impl File {
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, std::io::Error> {
         let path_buff = path.as_ref().to_path_buf();
-    
+
         println!("File name: {}", path_buff.display());
         println!("Ext: {:?}", path_buff.extension());
-
 
         let content = read_to_string(path)?;
 
@@ -103,8 +102,7 @@ impl File {
     pub fn stem(&self) -> &str {
         if let Some(os_s) = self.path.file_stem() {
             os_s.to_str().unwrap()
-        }
-        else {
+        } else {
             unreachable!()
         }
     }

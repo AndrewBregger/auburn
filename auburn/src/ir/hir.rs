@@ -11,6 +11,8 @@ use crate::syntax::Position;
 use crate::system::FileId;
 use crate::types::Type;
 
+use super::ast::StmtKind;
+
 #[derive(Debug, Clone)]
 pub struct BinaryExpr {
     pub op: BinaryOp,
@@ -530,13 +532,15 @@ impl HirExpr {
 #[derive(Debug, Clone)]
 pub struct HirFile {
     id: FileId,
+    root: bool,
+    entry: Option<EntityRef>,
     stem: String,
     stmts: Vec<HirStmtPtr>,
 }
 
 impl HirFile {
     pub fn new(id: FileId, stem: String, stmts: Vec<HirStmtPtr>) -> Self {
-        Self { id, stem, stmts }
+        Self { id, stem, stmts, root: false, entry: None }
     }
 
     pub fn stem(&self) -> &str {
@@ -549,5 +553,30 @@ impl HirFile {
 
     pub fn id(&self) -> FileId {
         self.id
+    }
+
+    pub fn set_root(&mut self, root: bool) {
+        self.root = root;
+    }
+
+    pub fn set_entry(&mut self, entry: EntityRef) {
+        self.entry = Some(entry);
+    }
+
+    pub fn find_entity_by_name(&self, name: &str) -> Option<EntityRef> {
+       for stmt in self.stmts() {
+           match stmt.inner() {
+               HirStmtKind::Item(entity) => {
+                   let entity_borrow = entity.borrow();
+                   if entity_borrow.name() == name {
+                       std::mem::drop(entity_borrow);
+                       return Some(entity.clone());
+                   }
+                   else { continue; }
+               }
+               _ => continue,
+           }
+       }
+       None
     }
 }

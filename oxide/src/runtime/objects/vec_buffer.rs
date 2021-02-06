@@ -1,6 +1,11 @@
-use std::{marker::PhantomData, mem::ManuallyDrop, ops::{Deref, DerefMut, Index, IndexMut}, slice::SliceIndex};
+use std::{
+    marker::PhantomData,
+    mem::ManuallyDrop,
+    ops::{Deref, DerefMut, Index, IndexMut},
+    slice::SliceIndex,
+};
 
-use crate::gc::{VecAllocator, Cell, GcObject};
+use crate::gc::{Cell, GcObject, VecAllocator};
 
 #[derive(Debug, Clone)]
 pub struct VecBuffer<Ty> {
@@ -46,8 +51,10 @@ impl<Ty> DerefMut for VecBuffer<Ty> {
     }
 }
 
-impl<Ty, Idx> Index<Idx> for VecBuffer<Ty> 
-    where Idx: SliceIndex<[Ty]> {
+impl<Ty, Idx> Index<Idx> for VecBuffer<Ty>
+where
+    Idx: SliceIndex<[Ty]>,
+{
     type Output = <Idx as SliceIndex<[Ty]>>::Output;
 
     fn index(&self, index: Idx) -> &Self::Output {
@@ -55,8 +62,10 @@ impl<Ty, Idx> Index<Idx> for VecBuffer<Ty>
     }
 }
 
-impl<Ty, Idx> IndexMut<Idx> for VecBuffer<Ty> 
-    where Idx: SliceIndex<[Ty]> {
+impl<Ty, Idx> IndexMut<Idx> for VecBuffer<Ty>
+where
+    Idx: SliceIndex<[Ty]>,
+{
     fn index_mut(&mut self, index: Idx) -> &mut Self::Output {
         self.buffer.index_mut(index)
     }
