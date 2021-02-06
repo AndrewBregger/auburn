@@ -172,15 +172,10 @@ pub enum ErrorKind {
     InvalidElementInMode { element: String, mode: LanguageMode },
 
     #[error("'{}' entry is not a function, it is '{}'", name, entity_type)]
-    EntryNotFunction {
-        name: String,
-        entity_type: String,
-    },
+    EntryNotFunction { name: String, entity_type: String },
 
     #[error("'{}' entry function is not found", name)]
-    EntryNotFound {
-        name: String
-    },
+    EntryNotFound { name: String },
 
     #[error("Other: {0}")]
     Other(String),
@@ -440,10 +435,7 @@ impl<'src> Error {
     }
 
     pub fn entry_not_function(name: String, entity_type: String) -> Self {
-        Self::new_default(ErrorKind::EntryNotFunction {
-            name,
-            entity_type
-        })
+        Self::new_default(ErrorKind::EntryNotFunction { name, entity_type })
     }
 
     pub fn entry_not_found(name: String) -> Self {

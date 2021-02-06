@@ -1,4 +1,9 @@
-use std::{collections::HashMap, fmt::Display, rc::Rc, sync::atomic::{AtomicUsize, Ordering}};
+use std::{
+    collections::HashMap,
+    fmt::Display,
+    rc::Rc,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 use crate::ir::ast::{BinaryOp, UnaryOp};
 use crate::types::Type;
@@ -17,10 +22,8 @@ pub struct Scope {
     children: Vec<Rc<Scope>>,
 }
 
-
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FunctionId(String, usize);
-
 
 impl FunctionId {
     fn new(name: String) -> Self {

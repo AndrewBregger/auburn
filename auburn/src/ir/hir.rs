@@ -532,7 +532,6 @@ impl HirExpr {
 #[derive(Debug, Clone)]
 pub struct HirFile {
     id: FileId,
-    root: bool,
     entry: Option<EntityRef>,
     stem: String,
     stmts: Vec<HirStmtPtr>,
@@ -540,7 +539,12 @@ pub struct HirFile {
 
 impl HirFile {
     pub fn new(id: FileId, stem: String, stmts: Vec<HirStmtPtr>) -> Self {
-        Self { id, stem, stmts, root: false, entry: None }
+        Self {
+            id,
+            stem,
+            stmts,
+            entry: None,
+        }
     }
 
     pub fn stem(&self) -> &str {
@@ -555,8 +559,8 @@ impl HirFile {
         self.id
     }
 
-    pub fn set_root(&mut self, root: bool) {
-        self.root = root;
+    pub fn is_root(&self) -> bool {
+        self.entry.is_some()
     }
 
     pub fn set_entry(&mut self, entry: EntityRef) {
@@ -564,19 +568,20 @@ impl HirFile {
     }
 
     pub fn find_entity_by_name(&self, name: &str) -> Option<EntityRef> {
-       for stmt in self.stmts() {
-           match stmt.inner() {
-               HirStmtKind::Item(entity) => {
-                   let entity_borrow = entity.borrow();
-                   if entity_borrow.name() == name {
-                       std::mem::drop(entity_borrow);
-                       return Some(entity.clone());
-                   }
-                   else { continue; }
-               }
-               _ => continue,
-           }
-       }
-       None
+        for stmt in self.stmts() {
+            match stmt.inner() {
+                HirStmtKind::Item(entity) => {
+                    let entity_borrow = entity.borrow();
+                    if entity_borrow.name() == name {
+                        std::mem::drop(entity_borrow);
+                        return Some(entity.clone());
+                    } else {
+                        continue;
+                    }
+                }
+                _ => continue,
+            }
+        }
+        None
     }
 }

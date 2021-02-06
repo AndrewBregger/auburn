@@ -1,4 +1,3 @@
-use crate::{analysis::scope::{Scope, ScopeKind, ScopeRef}, syntax::{FilePos, Position, Span}};
 use crate::analysis::{Entity, EntityInfo, EntityRef};
 use crate::error::Error;
 use crate::ir::ast::{Identifier, ItemKind, Node, StmtKind};
@@ -6,6 +5,10 @@ use crate::ir::hir::HirFile;
 use crate::syntax::ParsedFile;
 use crate::types::{Type, TypeKind, TypeMap};
 use crate::{analysis::entity::Path, LanguageMode};
+use crate::{
+    analysis::scope::{Scope, ScopeKind, ScopeRef},
+    syntax::{FilePos, Position, Span},
+};
 use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -153,19 +156,27 @@ impl<'src> Typer<'src> {
         if let Some(entity) = file.find_entity_by_name("main") {
             let entity_borrow = entity.borrow();
             if let EntityInfo::Function(_) = entity_borrow.kind() {
-                std::mem::drop(entity_borrow);
-                file.set_root(true);
+                //std::mem::drop(entity_borrow);
                 file.set_entry(entity.clone());
                 Ok(file)
+            } else {
+                let err = Error::entry_not_function(
+                    "main".to_string(),
+                    entity_borrow.type_name().to_string(),
+                );
+                Err(err.with_position(Position::new(
+                    Span::default(),
+                    FilePos::default(),
+                    file.id(),
+                )))
             }
-            else {
-                let err = Error::entry_not_function("main".to_string(), entity_borrow.type_name().to_string());
-                Err(err.with_position(Position::new(Span::default(), FilePos::default(), file.id())))
-            }
-        }
-        else {
+        } else {
             let err = Error::entry_not_found("main".to_string());
-            Err(err.with_position(Position::new(Span::default(), FilePos::default(), file.id())))
+            Err(err.with_position(Position::new(
+                Span::default(),
+                FilePos::default(),
+                file.id(),
+            )))
         }
     }
 
