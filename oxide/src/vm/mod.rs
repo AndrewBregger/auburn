@@ -16,7 +16,6 @@ use call_frame::CallFrame;
 use itertools::{self, Itertools};
 pub use op_codes::{Instruction, OpCode};
 use ordered_float::OrderedFloat;
-use runtime::Error as RuntimeError;
 use runtime::{OxFunction, OxStruct};
 
 static DEFAULT_MEM_SIZE: usize = 2056;
@@ -283,11 +282,16 @@ impl Vm {
         Gc::<OxInstance>::new(instance_address)
     }
 
-    pub fn run_module(&mut self, module: Gc<OxModule>) -> Result<(), RuntimeError> {
-        self.run(module.code())
+    pub fn run_module(&mut self, module: Gc<OxModule>) -> Result<(), runtime::Error> {
+        if let Some(entry_function) = module.get_entry() {
+            self.run(entry_function)
+        }
+        else {
+            Err(runtime::Error::missing_module_entry(module.as_ref().name().clone()))
+        }
     }
 
-    pub fn run(&mut self, function: Gc<OxFunction>) -> Result<(), RuntimeError> {
+    pub fn run(&mut self, function: Gc<OxFunction>) -> Result<(), runtime::Error> {
         let call_frame = CallFrame::new(function, self.top_stack);
         self.push_stack(Value::Function(function));
         self.push_frame(call_frame);
