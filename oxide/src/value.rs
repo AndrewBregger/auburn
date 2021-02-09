@@ -306,6 +306,23 @@ impl Value {
             _ => false,
         }
     }
+
+    pub fn disassemble(&self) {
+        match self {
+            Self::String(s) => println!("<string {}>", s),
+            Self::Function(f) => {
+                f.disassemble();
+            }
+            Self::Struct(s) => {
+                s.disassemble();
+            }
+            Self::Instance(inst) => {
+                println!("<instance {}>", inst);
+            }
+            Self::Module(module) => module.disassemble(),
+            _ => println!("<{} {}>", self.ty(), self),
+        }
+    }
 }
 
 macro_rules! value_from {
@@ -332,6 +349,11 @@ value_from!(F32, f32);
 value_from!(F64, f64);
 
 value_from!(Bool, bool);
+value_from!(Char, char);
+value_from!(Struct, Gc<OxStruct>);
+value_from!(Function, Gc<OxFunction>);
+value_from!(Module, Gc<OxModule>);
+value_from!(String, Gc<OxString>);
 
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -358,46 +380,3 @@ impl Display for Value {
     }
 }
 
-// wapper around all object types.
-#[derive(Debug, Clone, Copy)]
-pub enum Object {
-    String(Gc<OxString>),
-    Function(Gc<OxFunction>),
-    Struct(Gc<OxStruct>),
-    Instance(Gc<OxInstance>),
-    Module(Gc<OxModule>),
-}
-
-impl Object {
-    pub fn disassemble(&self) {
-        match self {
-            Object::String(s) => println!("<string {}>", s),
-            Object::Function(f) => {
-                f.disassemble();
-            }
-            Object::Struct(s) => {
-                s.disassemble();
-            }
-            Object::Instance(inst) => {
-                println!("<instance {}>", inst);
-            }
-            Object::Module(module) => module.disassemble(),
-        }
-    }
-}
-
-macro_rules! object_from {
-    ($from:ty, $to:ident) => {
-        impl From<$from> for Object {
-            fn from(other: $from) -> Self {
-                Self::$to(other)
-            }
-        }
-    };
-}
-
-object_from!(Gc<OxString>, String);
-object_from!(Gc<OxFunction>, Function);
-object_from!(Gc<OxStruct>, Struct);
-object_from!(Gc<OxInstance>, Instance);
-object_from!(Gc<OxModule>, Module);

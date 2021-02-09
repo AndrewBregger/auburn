@@ -113,8 +113,18 @@ impl Section {
                     ));
                     ip += 1;
                 }
+                OpCode::LoadGlobal => {
+                    let value = self.read(ip);
+                    let con = self.get_global(value as usize);
+                    res.push(Instruction::with_arg_and_const(
+                        ip - 1,
+                        op_code,
+                        value as u16,
+                        con,
+                    ));
+                    ip += 1;
+                }
                 OpCode::SetGlobal
-                | OpCode::LoadGlobal
                 | OpCode::LoadLocal
                 | OpCode::SetLocal
                 | OpCode::SetRegister

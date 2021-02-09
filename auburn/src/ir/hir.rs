@@ -584,4 +584,8 @@ impl HirFile {
         }
         None
     }
+
+    pub fn get_entry(&self) -> Option<EntityRef> {
+        self.entry.as_ref().map(|e| e.clone())
+    }
 }

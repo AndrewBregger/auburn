@@ -2,7 +2,6 @@ use std::{fmt::Display, ops::Deref};
 
 use crate::{
     gc::{Cell, GcObject, ObjectKind},
-    value::Object,
     OxString, Value, VecBuffer,
 };
 
@@ -10,11 +9,11 @@ use crate::{
 pub struct OxStruct {
     cell: Cell,
     name: OxString,
-    elements: VecBuffer<Object>,
+    elements: VecBuffer<Value>,
 }
 
 impl OxStruct {
-    pub fn new(name: OxString, elements: VecBuffer<Object>) -> Self {
+    pub fn new(name: OxString, elements: VecBuffer<Value>) -> Self {
         Self {
             cell: Cell::new(ObjectKind::Struct),
             name,
@@ -25,8 +24,8 @@ impl OxStruct {
     pub fn disassemble(&self) {
         println!("<disassembly for {}>", self.name);
 
-        for object in self.elements.deref().as_slice() {
-            object.disassemble();
+        for value in self.elements.deref().as_slice() {
+            value.disassemble();
             println!();
         }
     }

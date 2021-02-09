@@ -2,9 +2,8 @@ extern crate clap;
 
 use std::rc::Rc;
 use std::{
-    fmt::{self, Display},
+    fmt,
     path::Path,
-    str::FromStr,
 };
 
 use auburn::{

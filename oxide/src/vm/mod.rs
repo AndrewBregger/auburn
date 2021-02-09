@@ -10,7 +10,7 @@ use crate::{
 use crate::{
     gc::{Allocator, Gc, VecAllocator},
     runtime::{self, Buffer},
-    Object, OxInstance, OxModule, OxString, Section, Value, VecBuffer,
+    OxInstance, OxModule, OxString, Section, Value, VecBuffer,
 };
 use call_frame::CallFrame;
 use itertools::{self, Itertools};
@@ -699,15 +699,14 @@ impl Vm {
     pub fn allocate_module(
         &mut self,
         name: OxString,
-        code: Gc<OxFunction>,
-        objects: Vec<Object, Allocator>,
+        elements: Vec<Value, Allocator>,
     ) -> Gc<OxModule> {
         let layout = Layout::new::<OxModule>();
         let module_address = self.allocate(layout);
 
         unsafe {
             let buffer = &mut *(module_address.as_ptr_mut() as *mut OxModule);
-            *buffer = OxModule::new(name, code, objects);
+            *buffer = OxModule::new(name, elements);
         }
 
         Gc::<OxModule>::new(module_address)

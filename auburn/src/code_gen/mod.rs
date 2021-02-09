@@ -19,7 +19,7 @@ use ir::hir;
 use oxide::{
     gc::{Allocator, Gc},
     vm::OpCode,
-    Object, OxFunction, OxModule, Section, Value, Vm,
+    OxFunction, OxModule, Section, Value, Vm,
 };
 
 use ordered_float::OrderedFloat;
@@ -159,12 +159,17 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             .remove(&hir_file.id())
             .expect("unable to remove file context");
 
-        let mut objects = Vec::with_capacity_in(context.objects.len(), self.vm.allocator());
-        objects.extend(context.objects.drain(..).into_iter());
+        let mut values = Vec::with_capacity_in(context.values.len(), self.vm.allocator());
+        values.extend(context.values.drain(..).into_iter());
+        let mut module = self.vm.allocate_module(name, values);
 
-        let code = self.vm.allocate_function(name.clone(), 0, context.section);
 
-        let module = self.vm.allocate_module(name, code, objects);
+        if let Some(entry) = hir_file.get_entry() {
+            if let Some(global_info) = context.globals.get(entry.borrow().name()) {
+                let module_mut = module.as_ref_mut();
+                module_mut.set_entry(global_info.object_idx);
+            }
+        }
 
         Ok(module)
     }
@@ -179,15 +184,15 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
 
         let context = self.current_context_mut();
 
-        for item in items.iter() {
+        for (idx, item) in items.iter().enumerate() {
             let entity_borrow = item.borrow();
             let name = entity_borrow.name();
-            let idx = context.section.add_global();
             context
                 .globals
-                .entry(name.to_owned())
-                .or_insert(GlobalInfo::new(name.to_owned(), idx));
+                .insert(name.to_owned(), GlobalInfo::new(name.to_owned(), idx));
         }
+
+        println!("{:?}", context.globals);
 
         std::mem::drop(context);
 
@@ -217,9 +222,11 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         self.current_context_mut().push_function(function);
         self.handle_expr(mir_function.body.as_ref())?;
         self.emit_op(OpCode::Return);
-        let function = self.current_context_mut().pop_function();
-        self.current_context_mut()
-            .push_object(Object::from(function));
+        let context = self.current_context_mut();
+        let function = if let Some(function_info) = context.current_function() {
+            function_info.function.clone()
+        } else { panic!("failed to get the current function") };
+        context.push_object(Value::from(function));
         Ok(())
     }
 
@@ -228,18 +235,59 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         name: &str,
         variable_info: &VariableInfo,
     ) -> Result<(), BuildError> {
-        match (variable_info.spec.as_ref(), variable_info.default.as_ref()) {
-            (Some(_spec), None) => {
-                todo!()
+        if variable_info.global {
+            // @todo: handle function calls for globals.
+            let default = variable_info.default.as_ref().unwrap();
+            if default.is_literal() {
+                let inner = default.inner();
+                let value = match inner.kind() {
+                    HirExprKind::Integer(val) => {
+                        match default.ty().kind() {
+                            TypeKind::U8 => Value::from(*val as u8),
+                            TypeKind::U16 => Value::from(*val as u16),
+                            TypeKind::U32 => Value::from(*val as u32),
+                            TypeKind::U64 => Value::from(*val as u64),
+                            TypeKind::I8 => Value::from(*val as i8),
+                            TypeKind::I16 => Value::from(*val as i16),
+                            TypeKind::Integer | TypeKind::I32 => Value::from(*val as i32),
+                            TypeKind::I64 => Value::from(*val),
+                            _ => unreachable!(),
+                        }
+                    }
+                    HirExprKind::Float(val) => match default.ty().kind() {
+                        TypeKind::Float | TypeKind::F32 => Value::from(val.into_inner() as f32),
+                        TypeKind::F64 => Value::from(val.into_inner()),
+                        _ => unreachable!(),
+                    }
+                    HirExprKind::String(val) => {
+                        let ox_string = self.vm.allocate_string_ptr(val.as_str());
+                        Value::from(ox_string)
+                    }
+                    HirExprKind::Char(val) => Value::from(*val),
+                    HirExprKind::Bool(val) => Value::from(*val),
+                    _ => unreachable!(),
+                };
+
+                let context = self.current_context_mut();
+                context.push_object(value);
             }
-            (_, Some(init)) => self.handle_expr(init.as_ref())?,
-            (None, None) => {
-                unreachable!()
+            else {
+                panic!("non literals for globals is not supported by the vm")
             }
         }
+        else {
+            match (variable_info.spec.as_ref(), variable_info.default.as_ref()) {
+                (Some(_spec), None) => {
+                    todo!()
+                }
+                (_, Some(init)) => self.handle_expr(init.as_ref())?,
+                (None, None) => {
+                    unreachable!()
+                }
+            }
 
-        self.handle_variable(name, variable_info, true)?;
-
+            self.handle_variable(name, variable_info, true)?;
+        }
         Ok(())
     }
 }
@@ -266,9 +314,10 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             EntityInfo::Field(_) => {
                 todo!()
             }
-            EntityInfo::Unresolved(_) => {}
-            EntityInfo::Resolving => {}
-            EntityInfo::Primitive => {}
+            EntityInfo::Resolving => {
+                panic!("Attempting to generate an entity still being resolved")
+            }
+            _ => {}
         }
 
         Ok(())
@@ -372,9 +421,9 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         };
 
         if global {
-            let context = self.current_context();
-            let global_idx = &context.globals[name.name()];
-            self.emit_op_u8(OpCode::LoadGlobal, global_idx.section_idx);
+            let context = self.current_context_mut();
+            let global_idx = context.load_global_in_function(name.name());
+            self.emit_op_u8(OpCode::LoadGlobal, global_idx);
         } else {
             unimplemented!()
         }
@@ -490,15 +539,18 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         variable_info: &VariableInfo,
         set_op: bool,
     ) -> Result<(), BuildError> {
+        println!("handle_variable: {}", name);
         let context = self.current_context_mut();
         if variable_info.global {
-            let global_idx = &context.globals[name];
             let op = if set_op {
                 OpCode::SetGlobal
             } else {
                 OpCode::LoadGlobal
             };
-            context.section.write_arg(op, global_idx.section_idx);
+
+            let global_idx = context.load_global_in_function(name);
+            let section = context.current_section_mut();
+            section.write_arg(op, global_idx);
         } else {
             unimplemented!();
         }

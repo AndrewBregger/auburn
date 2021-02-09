@@ -1,12 +1,8 @@
 use std::{fmt::Display, mem::ManuallyDrop};
 
-use crate::{
-    gc::{Allocator, Gc, GcObject},
-    OxString,
-};
+use crate::{OxString, Value, gc::{Allocator, Gc, GcObject}};
 use crate::{
     gc::{Cell, ObjectKind},
-    value::Object,
     OxFunction,
 };
 
@@ -18,17 +14,17 @@ pub struct OxModule {
     name: OxString,
     /// entry object index
     entry: Option<usize>,
-    /// list of objects
-    objects: ManuallyDrop<Vec<Object, Allocator>>,
+    /// list of values
+    values: ManuallyDrop<Vec<Value, Allocator>>,
 }
 
 impl OxModule {
-    pub fn new(name: OxString, code: Gc<OxFunction>, objects: Vec<Object, Allocator>) -> Self {
+    pub fn new(name: OxString, values: Vec<Value, Allocator>) -> Self {
         Self {
             cell: Cell::new(ObjectKind::Module),
             name,
             entry: None,
-            objects: ManuallyDrop::new(objects),
+            values: ManuallyDrop::new(values),
         }
     }
 
@@ -36,8 +32,8 @@ impl OxModule {
         &self.name 
     }
 
-    pub fn objects(&self) -> &[Object] {
-        self.objects.as_slice()
+    pub fn values(&self) -> &[Value] {
+        self.values.as_slice()
     }
 
     pub fn set_entry(&mut self, entry: usize) {
@@ -46,12 +42,12 @@ impl OxModule {
 
     pub fn disassemble(&self) {
         println!(
-            "Module: {}, objects: {} entry: {}",
+            "Module: {}, Values: {} Entry: {}",
             self.name,
-            self.objects.len(),
+            self.values.len(),
             self.entry.map_or("None".to_string(), |e| format!("{}", e))
         );
-        for (idx, object) in self.objects.iter().enumerate() {
+        for (idx, object) in self.values.iter().enumerate() {
             object.disassemble();
             println!();
         }
@@ -59,8 +55,8 @@ impl OxModule {
 
     pub fn get_entry(&self) -> Option<Gc<OxFunction>> {
         if let Some(idx) = self.entry {
-            match &self.objects[idx] {
-                Object::Function(function) => Some(function.clone()),
+            match &self.values[idx] {
+                Value::Function(function) => Some(function.clone()),
                 _ => panic!("Compiler Error: entry for module '{}' is not a function", self.name),
             }
         }

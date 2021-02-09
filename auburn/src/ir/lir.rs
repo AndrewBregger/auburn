@@ -5,9 +5,53 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
+use oxide::Value;
+
 use crate::ir::ast::{BinaryOp, UnaryOp};
 use crate::types::Type;
 
+#[derive(Debug, Clone)]
+pub struct LocalInfo {}
+
+#[derive(Debug, Clone)]
+pub struct GlobalInfo {}
+
+#[derive(Debug, Clone)]
+pub struct FunctionInfo {}
+
+
+
+#[derive(Debug, Clone)]
+pub enum SymbolInfo {
+    Local(LocalInfo),
+    Global(GlobalInfo),
+    Function(FunctionInfo),
+}
+
+#[derive(Debug, Clone)]
+pub struct Symbol {
+    name: String,
+    info: SymbolInfo,
+}
+
+impl Symbol {
+    pub fn new(name: String, info: SymbolInfo) -> Self {
+        Self {
+            name,
+            info
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        self.name.as_str()
+    }
+
+    pub fn info(&self) -> &SymbolInfo {
+        &self.info
+    }
+}
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ScopeId(usize);
 
 impl ScopeId {
@@ -17,9 +61,11 @@ impl ScopeId {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Scope {
     next: ScopeId,
     children: Vec<Rc<Scope>>,
+    elements: HashMap<String, Symbol>,
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -38,10 +84,12 @@ impl Display for FunctionId {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Function {
     id: FunctionId,
     arity: usize,
     scope: Scope,
+    body: Vec<BasicBlock>,
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -54,11 +102,13 @@ impl BlockId {
     }
 }
 
-pub struct LirBasicBlock {
+#[derive(Debug, Clone)]
+pub struct BasicBlock {
     id: BlockId,
     instructions: Vec<Instruction>,
 }
 
+#[derive(Debug, Clone)]
 pub struct Binary {
     pub op: BinaryOp,
     pub op_type: Rc<Type>,
@@ -70,6 +120,7 @@ impl Binary {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Unary {
     pub op: UnaryOp,
     pub op_type: Rc<Type>,
@@ -81,13 +132,30 @@ impl Unary {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct FnCall {
     pub function: FunctionId,
     pub arity: usize,
 }
 
+#[derive(Debug, Clone)]
+pub enum JumpOp {
+    JmpTrue,
+    JmpFalse,
+    JmpLoop,
+}
+
+#[derive(Debug, Clone)]
+pub struct Jump {
+    pub op: JumpOp,
+    pub dst: BlockId,
+}
+
+#[derive(Debug, Clone)]
 pub enum Instruction {
+    LoadConstant(Value),
     Binary(Binary),
     Unary(Unary),
     FnCall(FnCall),
+    Jump(Jump)
 }

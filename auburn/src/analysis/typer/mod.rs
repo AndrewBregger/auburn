@@ -151,7 +151,7 @@ impl<'a> Typer<'a> {
 }
 
 impl<'src> Typer<'src> {
-    pub fn resolve_root(mut self, parsed_file: ParsedFile) -> Result<HirFile, Error> {
+    pub fn resolve_root(self, parsed_file: ParsedFile) -> Result<HirFile, Error> {
         let mut file = self.resolve_file(parsed_file)?;
         if let Some(entity) = file.find_entity_by_name("main") {
             let entity_borrow = entity.borrow();
