@@ -1,6 +1,4 @@
-use crate::analysis::typer::Typer;
-use crate::analysis::typer::EXPR_RESULT_USED;
-use crate::error::Error;
+use crate::analysis::typer::Typer; use crate::analysis::typer::EXPR_RESULT_USED; use crate::error::Error;
 use crate::ir::ast::{AssignmentOp, Node, Stmt, StmtKind};
 use crate::ir::hir::{Assignment, HirStmt, HirStmtKind, MirNode};
 use std::ops::Deref;
@@ -104,7 +102,7 @@ impl<'src> Typer<'src> {
                     self.type_map.get_unit(),
                 )))
             }
-            StmtKind::Empty => unreachable!(),
+            StmtKind::Empty => unreachable!("{:?}", stmt.position()),
         }
     }
 }

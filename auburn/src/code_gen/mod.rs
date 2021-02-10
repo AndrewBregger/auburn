@@ -34,6 +34,7 @@ pub struct CodeGen<'vm, 'ctx> {
     vm: &'vm mut Vm,
     file_stack: Vec<FileId>,
     file_context: HashMap<FileId, FileContext<'ctx>>,
+    scope_index: usize,
 }
 
 impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
@@ -48,6 +49,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             vm,
             file_stack: vec![],
             file_context: HashMap::new(),
+            scope_index: 0,
         };
 
         code_gen.build_module(hir_file)
@@ -140,6 +142,14 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         let section = self.current_section_mut();
         section.patch_jmp(offset);
     }
+
+    fn push_scope(&mut self) {
+        self.scope_index += 1;
+    }
+
+    fn pop_scope(&mut self) {
+        self.scope_index -= 1;
+    }
 }
 
 //impl<'ctx> CodeGen<'ctx> {
@@ -180,6 +190,8 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             "file stack is empty, currently not processing a file"
         );
 
+        self.push_scope();
+
         let (items, stmts) = Self::split_stmts(hir_file.stmts());
 
         let context = self.current_context_mut();
@@ -205,6 +217,9 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         }
         // eof, exit from the file here.
         self.emit_op(OpCode::Return);
+
+        self.push_scope();
+
         Ok(())
     }
 
@@ -213,6 +228,8 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         name: &str,
         mir_function: &FunctionInfo,
     ) -> Result<(), BuildError> {
+        self.push_scope();
+
         let name_string = self.vm.allocate_string(name);
         let function = self.vm.allocate_function(
             name_string,
@@ -222,6 +239,9 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         self.current_context_mut().push_function(function);
         self.handle_expr(mir_function.body.as_ref())?;
         self.emit_op(OpCode::Return);
+
+        self.pop_scope();
+
         let context = self.current_context_mut();
         let function = if let Some(function_info) = context.current_function() {
             function_info.function.clone()
@@ -285,9 +305,16 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
                     unreachable!()
                 }
             }
-
-            self.handle_variable(name, variable_info, true)?;
+            self.build_local(name, variable_info)?;
         }
+        Ok(())
+    }
+
+    fn build_local(&mut self, name: &str, _variable_info: &VariableInfo) -> Result<(), BuildError> {
+        let scope_index = self.scope_index;
+        let context = self.current_context_mut();
+        let idx = context.push_local(name, scope_index);
+        self.emit_op_u8(OpCode::SetLocal, idx);
         Ok(())
     }
 }
@@ -425,18 +452,32 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             let global_idx = context.load_global_in_function(name.name());
             self.emit_op_u8(OpCode::LoadGlobal, global_idx);
         } else {
-            unimplemented!()
+            let context = self.current_context_mut();
+
+            let stack_idx = context
+                .current_function()
+                .and_then(|funct| funct.look_up_local(name.name()))
+                .expect("failed to find local info").stack_idx as u8;
+
+            context.current_section_mut().write_arg(OpCode::LoadLocal, stack_idx);
         }
 
         Ok(())
     }
 
     fn handle_block(&mut self, block_expr: &BlockExpr) -> Result<(), BuildError> {
+        self.push_scope();
         for stmt in block_expr.stmts.iter() {
             self.handle_stmt(stmt.as_ref())?;
         }
+        // pop locals
+        self.pop_scope();
 
         Ok(())
+    }
+
+    fn handle_returning_block(&mut self, block_expr: &BlockExpr, dst: usize) -> Result<(), BuildError> {
+        todo!()
     }
 
     fn handle_assignment(&mut self, assignment: &Assignment) -> Result<(), BuildError> {
@@ -552,7 +593,17 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             let section = context.current_section_mut();
             section.write_arg(op, global_idx);
         } else {
-            unimplemented!();
+            let op = if set_op {
+                OpCode::SetLocal
+            } else {
+                OpCode::LoadLocal
+            };
+            let stack_idx = {
+                let function = self.current_context_mut().current_function_mut().expect("failed to get current function");
+                function.look_up_local(name).expect("failed to find local").stack_idx as u8
+            };
+
+            self.current_section_mut().write_arg(op, stack_idx);
         }
 
         Ok(())

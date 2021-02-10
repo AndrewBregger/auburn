@@ -186,7 +186,6 @@ impl<'src> Typer<'src> {
             file_name: parsed_file.file_name.clone(),
         });
         // println!("Stmts: {}", parsed_file.stmts.len());
-        let mut globals = vec![];
 
         for stmt in &parsed_file.stmts {
             match stmt.kind() {
@@ -207,7 +206,8 @@ impl<'src> Typer<'src> {
                 _ => {}
             }
         }
-
+    
+        let mut globals = vec![];
         for stmt in &parsed_file.stmts {
             let stmt = self.resolve_stmt_inner(stmt.as_ref(), true)?;
             globals.push(stmt.clone())

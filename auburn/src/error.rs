@@ -174,7 +174,7 @@ pub enum ErrorKind {
     #[error("'{}' entry is not a function, it is '{}'", name, entity_type)]
     EntryNotFunction { name: String, entity_type: String },
 
-    #[error("'{}' entry function is not found", name)]
+    #[error("entry function '{}' is not found", name)]
     EntryNotFound { name: String },
 
     #[error("Other: {0}")]

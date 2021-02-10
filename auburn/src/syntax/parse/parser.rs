@@ -1,4 +1,6 @@
-use std::convert::TryFrom;
+use std::{convert::TryFrom, ops::Deref};
+
+use itertools::Itertools;
 
 use crate::error::Error;
 use crate::ir::ast::{
@@ -153,6 +155,7 @@ impl<'src> Parser<'src> {
                 break;
             }
         }
+
         Ok(parsed_file)
     }
 
@@ -516,6 +519,8 @@ impl<'src> Parser<'src> {
                         false,
                         Control::Bracket,
                     )?;
+
+                    let stmts = stmts.into_iter().filter(|stmt| -> bool { !stmt.kind().is_empty() }).collect_vec();
 
                     let end = self.expect(Token::ControlPair(Control::Bracket, PairKind::Close))?;
                     let position = position.extended_to_token(end);

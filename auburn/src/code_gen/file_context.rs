@@ -21,12 +21,15 @@ impl GlobalInfo {
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct LocalInfo {
+    pub name: String,
+    pub scope_level: usize,
+    pub stack_idx: usize,
 }
 
 pub(crate) struct FunctionInfo {
     pub(crate) function: Gc<OxFunction>,
     pub(crate) global_map: HashMap<usize, u8>,
-    pub(crate) locals: HashMap<usize, LocalInfo>,
+    pub(crate) locals: Vec<LocalInfo>,
 }
 
 impl FunctionInfo {
@@ -34,7 +37,7 @@ impl FunctionInfo {
         Self {
             function,
             global_map: HashMap::new(),
-            locals: HashMap::new(),
+            locals: vec![],
         }
     }
 
@@ -44,6 +47,15 @@ impl FunctionInfo {
 
     pub fn section_mut(&mut self) -> &mut Section {
         self.function.section_mut()
+    }
+
+    pub fn look_up_local(&self, name: &str) -> Option<&LocalInfo> {
+        for local_info in self.locals.iter().rev() {
+            if local_info.name == name {
+                return Some(local_info)
+            }
+        }
+        None
     }
 }
 
@@ -141,5 +153,20 @@ impl<'ctx> FileContext<'ctx> {
         else {
             panic!()
         }
+    }
+
+    pub fn push_local(&mut self, name: &str, scope_level: usize) -> u8 {
+        let function = self.current_function_mut().expect("unable to get current function");
+        let local_idx = function.locals.len();
+
+        let local_info = LocalInfo {
+            name: name.to_owned(),
+            scope_level,
+            stack_idx: local_idx,
+        };
+    
+        function.locals.push(local_info);
+
+        local_idx as u8
     }
 }
