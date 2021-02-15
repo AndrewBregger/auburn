@@ -35,6 +35,7 @@ pub struct CodeGen<'vm, 'ctx> {
     file_stack: Vec<FileId>,
     file_context: HashMap<FileId, FileContext<'ctx>>,
     scope_index: usize,
+    handling_params: bool,
 }
 
 impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
@@ -50,6 +51,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             file_stack: vec![],
             file_context: HashMap::new(),
             scope_index: 0,
+            handling_params: false,
         };
 
         code_gen.build_module(hir_file)
@@ -181,6 +183,11 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             }
         }
 
+        for funct in context.function_stack.iter() {
+            println!("Globals: {:#?}", funct.global_map);
+            println!("Locals: {:#?}", funct.locals);
+        }
+
         Ok(module)
     }
 
@@ -204,8 +211,6 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
                 .insert(name.to_owned(), GlobalInfo::new(name.to_owned(), idx));
         }
 
-        println!("{:?}", context.globals);
-
         std::mem::drop(context);
 
         for entity in items.into_iter() {
@@ -216,7 +221,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             self.handle_stmt(stmt.as_ref())?;
         }
         // eof, exit from the file here.
-        self.emit_op(OpCode::Return);
+        // self.emit_op(OpCode::Return);
 
         self.push_scope();
 
@@ -237,6 +242,9 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             Section::new(&self.vm),
         );
         self.current_context_mut().push_function(function);
+        
+        self.handle_function_params(mir_function)?;
+
         self.handle_expr(mir_function.body.as_ref())?;
         self.emit_op(OpCode::Return);
 
@@ -247,6 +255,18 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             function_info.function.clone()
         } else { panic!("failed to get the current function") };
         context.push_object(Value::from(function));
+        Ok(())
+    }
+
+    fn handle_function_params(&mut self,  mir_function: &FunctionInfo) -> Result<(), BuildError> {
+        self.handling_params = true;
+        
+        for (_, param_entity) in mir_function.params.elements() {
+            self.handle_entity(&param_entity.borrow())?;
+        }
+
+        self.handling_params = false;
+
         Ok(())
     }
 
@@ -305,18 +325,21 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
                     unreachable!()
                 }
             }
-            self.build_local(name, variable_info)?;
+            self.build_local(name)?;
         }
         Ok(())
     }
 
-    fn build_local(&mut self, name: &str, _variable_info: &VariableInfo) -> Result<(), BuildError> {
+    fn build_local(&mut self, name: &str /* _variable_info: &VariableInfo */) -> Result<(), BuildError> {
         let scope_index = self.scope_index;
         let context = self.current_context_mut();
-        let idx = context.push_local(name, scope_index);
-        self.emit_op_u8(OpCode::SetLocal, idx);
+        context.push_local(name, scope_index);
+        if !self.handling_params {
+            self.emit_op(OpCode::PushLocal);
+        }
         Ok(())
     }
+
 }
 
 //impl<'ctx> CodeGen<'ctx> {
@@ -333,7 +356,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
                 todo!()
             }
             EntityInfo::Param(_) => {
-                todo!()
+                self.build_local(name)?;
             }
             EntityInfo::SelfParam { mutable } => {
                 todo!()
@@ -444,9 +467,11 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
     fn handle_name(&mut self, name: &Entity) -> Result<(), BuildError> {
         let global = match name.kind() {
             EntityInfo::Variable(variable_info) => variable_info.global,
+            EntityInfo::Param(_) => false,
             _ => true,
         };
-
+        
+        println!("Variable Global: {} {}", name.name(), global);
         if global {
             let context = self.current_context_mut();
             let global_idx = context.load_global_in_function(name.name());

@@ -56,7 +56,7 @@ impl EntityPrinter {
                 MirPrinter::print_expr_inner(function.body.as_ref(), indent + 1);
             }
             EntityInfo::Variable(variable) => {
-                println!("{}Mutable: {}", Self::indent(indent + 1), variable.mutable);
+                println!("{}Mutable: {} Global: {}", Self::indent(indent + 1), variable.mutable, variable.global);
                 if let Some(spec) = variable.spec.as_ref() {
                     MirPrinter::print_spec_inner(&spec.deref().borrow(), indent + 1);
                 }
