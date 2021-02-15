@@ -38,6 +38,7 @@ define_opcodes!(
     "load_char" => LoadChar,
     "load_local" => LoadLocal,
     "set_local" => SetLocal,
+    "push_local" => PushLocal,
 
     "add_i8"  => AddI8,
     "add_i16" => AddI16,
@@ -144,6 +145,7 @@ define_opcodes!(
     "label" => Label,
     "pop" => Pop,
     "print" => Print,
+    "frame_stack" => FrameStack,
     "__NUMOPS__" => NumOps,
     OpCode
 );

@@ -229,6 +229,8 @@ impl Section {
                 | OpCode::GreaterEqF32
                 | OpCode::GreaterEqF64
                 | OpCode::Pop
+                | OpCode::FrameStack
+                | OpCode::PushLocal
                 | OpCode::Print => {
                     res.push(Instruction::simple(ip - 1, op_code));
                 }

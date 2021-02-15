@@ -111,7 +111,7 @@ impl Memory {
     }
 
     pub fn alloc_inner(&mut self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        println!("allocating: {:?}", layout);
+        // println!("allocating: {:?}", layout);
         if layout.size() == 0 {
             return Ok(NonNull::slice_from_raw_parts(NonNull::<u8>::dangling(), 0));
         }

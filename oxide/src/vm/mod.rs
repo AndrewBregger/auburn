@@ -253,8 +253,10 @@ impl Vm {
                         funct.arity()
                     );
                 }
-
-                let call_frame = CallFrame::new(*funct, self.top_stack - value as usize);
+                let stack_start = self.top_stack - value as usize;
+                println!("calling {} start_stack: {}", funct.name(), stack_start);
+                self.print_stack();
+                let call_frame = CallFrame::new(*funct, stack_start);
                 self.push_frame(call_frame);
             }
             _ => {
@@ -307,7 +309,7 @@ impl Vm {
             };
 
             let op_code = OpCode::from_u8(op_code_raw).unwrap();
-            println!("OpCode {:014x} {}", self.frame().ip - 1, op_code);
+            // println!("OpCode {:014x} {}", self.frame().ip - 1, op_code);
             match op_code {
                 OpCode::LoadI8 => {
                     load_constant!(is_i8, "i8", self);
@@ -372,17 +374,15 @@ impl Vm {
                 }
                 OpCode::LoadLocal => {
                     let frame = self.frame_mut();
-                    let ip = frame.ip;
                     let local = frame.local_start;
-                    let idx = frame.section().read(ip);
+                    let idx = frame.section().read(frame.ip);
                     frame.ip += 1;
                     self.push_stack(self.stack[local + idx as usize].clone());
                 }
                 OpCode::SetLocal => {
                     let frame = self.frame_mut();
-                    let ip = frame.ip;
                     let local = frame.local_start;
-                    let idx = frame.section().read(ip);
+                    let idx = frame.section().read(frame.ip);
                     frame.ip += 1;
                     let value = self.pop();
                     self.stack[local + idx as usize] = value;
@@ -457,6 +457,10 @@ impl Vm {
                     frame.ip = ip;
                     let instance = self.new_instance(fields);
                     let value = Value::Instance(instance);
+                    self.push_stack(value);
+                }
+                OpCode::PushLocal => {
+                    let value = self.pop();
                     self.push_stack(value);
                 }
                 OpCode::AddI8
@@ -570,6 +574,15 @@ impl Vm {
                 OpCode::Print => {
                     let value = self.pop();
                     println!("{}", value)
+                }
+                OpCode::FrameStack => {
+                    let frame = self.frame();
+                    let local_stack = frame.local_start;
+                    println!("-------Frame Stack {:10}---------", frame.function.name());
+                    for idx in local_stack..self.top_stack {
+                        println!("{}| {}", idx, self.stack[idx]);
+                    }
+                    println!("------------------------------");
                 }
                 OpCode::Exit => {
                     self.print_stack();
