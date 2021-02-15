@@ -1,5 +1,6 @@
-fn test() {
-	let one = 1
+let one = 1
+
+fn main() {
 	let two = 2
 	let three = 3
 	let four = 4
@@ -7,8 +8,4 @@ fn test() {
 	print one + three
 	print four / two
 	print four / two - two
-}
-
-fn main() {
-	test()
 }
