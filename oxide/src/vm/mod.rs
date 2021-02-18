@@ -294,7 +294,8 @@ impl Vm {
     }
 
     pub fn run(&mut self, function: Gc<OxFunction>) -> Result<(), runtime::Error> {
-        let call_frame = CallFrame::new(function, self.top_stack);
+        // + 1 to offset for the pushing of the fucntion onto the stack.
+        let call_frame = CallFrame::new(function, self.top_stack + 1);
         self.push_stack(Value::Function(function));
         self.push_frame(call_frame);
 
