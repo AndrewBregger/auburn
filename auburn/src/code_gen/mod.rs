@@ -48,6 +48,7 @@ pub struct CodeGen<'vm, 'ctx> {
     scope_index: usize,
     handling_params: bool,
     result_used: bool,
+    is_function_scope: bool,
 }
 
 impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
@@ -65,6 +66,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             scope_index: 0,
             handling_params: false,
             result_used: false,
+            is_function_scope: false,
         };
 
         code_gen.build_module(hir_file)
@@ -256,7 +258,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         
         self.handle_function_params(mir_function)?;
 
-        self.handle_expr(mir_function.body.as_ref())?;
+        self.handle_expr_inner(mir_function.body.as_ref(), true)?;
         self.emit_op(OpCode::Return);
 
         self.pop_scope();
@@ -402,6 +404,10 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
     }
 
     fn handle_expr(&mut self, expr: &HirExpr) -> Result<(), BuildError> {
+        self.handle_expr_inner(expr, false)
+    }
+
+    fn handle_expr_inner(&mut self, expr: &HirExpr, is_scope: bool) -> Result<(), BuildError> {
         let inner = expr.inner();
         let ty = expr.ty();
         match inner.kind() {
@@ -465,10 +471,10 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             HirExprKind::AssociatedFunction(_) => {}
             HirExprKind::Block(block_expr) => {
                 if self.result_used {
-                    self.handle_returning_block(block_expr)?;
+                    self.handle_returning_block(block_expr, 2, is_scope)?;
                 }
                 else {
-                    self.handle_block(block_expr)?;
+                    self.handle_block(block_expr, is_scope)?;
                 }
             }
             HirExprKind::Tuple(_) => {}
@@ -516,18 +522,24 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         Ok(())
     }
 
-    fn handle_block(&mut self, block_expr: &BlockExpr) -> Result<(), BuildError> {
+    fn handle_block(&mut self, block_expr: &BlockExpr, is_scope: bool) -> Result<(), BuildError> {
         self.push_scope();
         for stmt in block_expr.stmts.iter() {
             self.handle_stmt(stmt.as_ref())?;
         }
+    
+        // only output the scope cleanup if 
+        if !is_scope {
+            self.cleanup_top_scope();
+        }
+
         // pop locals
         self.pop_scope();
 
         Ok(())
     }
 
-    fn handle_returning_block(&mut self, block_expr: &BlockExpr, dst: usize) -> Result<(), BuildError> {
+    fn handle_returning_block(&mut self, block_expr: &BlockExpr, dst: usize, is_scope: bool) -> Result<(), BuildError> {
         todo!()
     }
 
@@ -657,5 +669,26 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         }
 
         Ok(())
+    }
+
+    fn cleanup_top_scope(&mut self) {
+        let current_level = self.scope_index;
+        let locals = self.current_context().current_function().expect("invalid current function").locals.as_slice();
+        let mut lost_locals = 0;
+        for local in locals.iter().rev() {
+            if local.scope_level < current_level {
+                break;
+            }
+            lost_locals += 1;
+        }
+        std::mem::drop(locals);
+
+        (0..lost_locals).for_each(|_| self.emit_op(OpCode::Pop));
+
+        let function = self.current_context_mut().current_function_mut().expect("invalid current function");
+        let len = function.locals.len();
+        let start = len - lost_locals;
+        function.locals.drain(start..len);
+        assert_eq!(function.locals.len(), start);
     }
 }

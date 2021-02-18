@@ -1,4 +1,10 @@
-fn binary_op_for_type(op: BinaryOp, ty: Rc<Type>) -> OpCode {
+use std::rc::Rc;
+
+use oxide::vm::OpCode;
+
+use crate::{ir::ast::BinaryOp, types::{Type, TypeKind}};
+
+pub fn binary_op_for_type(op: BinaryOp, ty: Rc<Type>) -> OpCode {
     match op {
         BinaryOp::Plus => match ty.kind() {
             TypeKind::U8 => OpCode::AddU8,

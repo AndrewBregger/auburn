@@ -1,4 +1,6 @@
 #![feature(allocator_api)]
+#![feature(drain_filter)]
+
 extern crate debug_cell;
 extern crate itertools;
 extern crate ordered_float;
