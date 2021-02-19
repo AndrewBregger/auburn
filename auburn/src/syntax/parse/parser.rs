@@ -536,22 +536,36 @@ impl<'src> Parser<'src> {
                 }
 
                 let open = self.consume()?.unwrap();
+                let position = open.position();
                 self.allow_newline()?;
 
-                let position = open.position();
-                let stmts = self.parse_inner_pair(
-                    |p| p.parse_expr(),
-                    Token::Newline,
-                    true,
-                    false,
-                    Control::Bracket,
-                )?;
+                let expr = self.parse_expr()?;
 
-                let end = self.expect(Token::ControlPair(Control::Paren, PairKind::Close))?;
-                let position = position.extended_to_token(end);
 
-                let kind = ExprKind::Tuple(stmts);
-                Ok(Box::new(Expr::new_with_position(kind, position)))
+                if self.check_for(Token::Op(Operator::Comma)) {
+                    self.consume()?;
+                    let mut elements = vec![expr];
+
+                    let rest_elements = self.parse_inner_pair(
+                        |p| p.parse_expr(),
+                        Token::Op(Operator::Comma),
+                        false,
+                        false,
+                        Control::Paren,
+                    )?;
+
+                    let end = self.expect(Token::ControlPair(Control::Paren, PairKind::Close))?;
+                    let position = position.extended_to_token(end);
+
+                    elements.extend(rest_elements);
+
+                    let kind = ExprKind::Tuple(elements);
+                    Ok(Box::new(Expr::new_with_position(kind, position)))
+                }
+                else {
+                    self.expect(Token::ControlPair(Control::Paren, PairKind::Close))?;
+                    Ok(expr)
+                }
             }
             Token::Kw(Keyword::SelfType) => {
                 let position = self.current_position();
