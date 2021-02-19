@@ -477,7 +477,15 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
                     self.handle_block(block_expr, is_scope)?;
                 }
             }
-            HirExprKind::Tuple(_) => {}
+            HirExprKind::Tuple(tuple_expr) => {
+                save_state!(self.result_used, true, {
+                    for element in tuple_expr.elements.iter() {
+                        self.handle_expr(element.as_ref())?;
+                    }
+                });
+
+                self.emit_op_u16(OpCode::NewTuple, tuple_expr.elements.len() as u16);
+            }
             HirExprKind::Loop(loop_expr) => {}
             HirExprKind::While(while_expr) => self.handle_while(while_expr)?,
             HirExprKind::For(for_expr) => {}

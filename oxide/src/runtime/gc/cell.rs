@@ -12,6 +12,8 @@ pub enum ObjectKind {
     Struct,
     /// module object
     Module,
+    // tuple object
+    Tuple,
 }
 
 #[derive(Debug, Clone, Copy)]

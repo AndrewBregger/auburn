@@ -1,6 +1,6 @@
 use crate::{
     gc::Gc,
-    runtime::{OxFunction, OxString, OxStruct},
+    runtime::{OxFunction, OxString, OxStruct, OxTuple},
     OxInstance, OxModule,
 };
 use std::fmt::{Display, Formatter};
@@ -24,6 +24,7 @@ pub enum Value {
     Struct(Gc<OxStruct>),
     Instance(Gc<OxInstance>),
     Module(Gc<OxModule>),
+    Tuple(Gc<OxTuple>),
     Unit,
 }
 
@@ -46,6 +47,7 @@ impl Value {
             Self::Struct(_) => "struct",
             Self::Instance(..) => "instance",
             Self::Module(..) => "module",
+            Self::Tuple(..) => "tuple",
             Self::Char(..) => "char",
             Self::Unit => "unit",
         }
@@ -150,7 +152,7 @@ impl Value {
             *val
         } else {
             panic!(
-                "Attempting to get an bool from a value of type {}",
+                "Attempting to get a bool from a value of type {}",
                 self.ty()
             );
         }
@@ -161,7 +163,7 @@ impl Value {
             val
         } else {
             panic!(
-                "Attempting to get an string from a value of type {}",
+                "Attempting to get a string from a value of type {}",
                 self.ty()
             );
         }
@@ -172,7 +174,7 @@ impl Value {
             Self::Function(val) => val,
             _ => {
                 panic!(
-                    "Attempting to get an string from a value of type {}",
+                    "Attempting to get a string from a value of type {}",
                     self.ty()
                 );
             }
@@ -184,7 +186,7 @@ impl Value {
             Self::Function(val) => val.as_ref_mut(),
             _ => {
                 panic!(
-                    "Attempting to get an string from a value of type {}",
+                    "Attempting to get a string from a value of type {}",
                     self.ty()
                 );
             }
@@ -196,9 +198,27 @@ impl Value {
             *val
         } else {
             panic!(
-                "Attempting to get an char from a value of type {}",
+                "Attempting to get a char from a value of type {}",
                 self.ty()
             );
+        }
+    }
+
+    pub fn as_tuple(&self) -> &OxTuple {
+        if let Self::Tuple(val) = self {
+            val.as_ref()
+        }
+        else {
+            panic!("Attempting to get a tuple from a value of type {}", self.ty());
+        }
+    }
+
+    pub fn as_tuple_mut(&mut self) -> &mut OxTuple {
+        if let Self::Tuple(val) = self {
+            val.as_ref_mut()
+        }
+        else {
+            panic!("Attempting to get a tuple from a value of type {}", self.ty());
         }
     }
 
@@ -300,6 +320,13 @@ impl Value {
         }
     }
 
+    pub fn is_tuple(&self) -> bool {
+        match self {
+            Self::Tuple(..) => true,
+            _ => false,
+        }
+    }
+
     pub fn is_char(&self) -> bool {
         match self {
             Self::Char(..) => true,
@@ -320,6 +347,7 @@ impl Value {
                 println!("<instance {}>", inst);
             }
             Self::Module(module) => module.disassemble(),
+            Self::Tuple(tuple) => tuple.disassemble(),
             _ => println!("<{} {}>", self.ty(), self),
         }
     }
@@ -375,6 +403,7 @@ impl Display for Value {
             Self::Module(val) => write!(f, "{}", val),
             Self::Instance(val) => write!(f, "{}", val),
             Self::Char(val) => write!(f, "{}", val),
+            Self::Tuple(val) => write!(f, "{}", val),
             Self::Unit => write!(f, "<>"),
         }
     }

@@ -138,6 +138,7 @@ define_opcodes!(
     "jmp_if_true" => JmpTrue,
     "jmp_if_false" => JmpFalse,
     "new_object" => NewObject,
+    "new_tuple" => NewTuple,
     "jmp" => Jmp,
     "loop" => Loop,
     "exit" => Exit,

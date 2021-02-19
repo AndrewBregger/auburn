@@ -10,7 +10,7 @@ use crate::{
 use crate::{
     gc::{Allocator, Gc, VecAllocator},
     runtime::{self, Buffer},
-    OxInstance, OxModule, OxString, Section, Value, VecBuffer,
+    OxInstance, OxModule, OxString, OxTuple, Section, Value, VecBuffer,
 };
 use call_frame::CallFrame;
 use itertools::{self, Itertools};
@@ -274,14 +274,26 @@ impl Vm {
 
         let fields_slice =
             unsafe { std::slice::from_raw_parts_mut(instance.fields_ptr_mut(), fields as usize) };
-        let field_values = (0..fields).map(|_| self.pop()).collect_vec();
+        (0..fields).rev().for_each(|idx| fields_slice[idx as usize] = self.pop());
         let name = self.pop().clone().as_string().clone();
-        for (idx, field) in field_values.into_iter().rev().enumerate() {
-            fields_slice[idx] = field;
-        }
         *instance = OxInstance::new(name, fields);
 
         Gc::<OxInstance>::new(instance_address)
+    }
+
+    pub fn new_tuple(&mut self, elements_count: u16) -> Gc<OxTuple> {
+        let instance_address = self.allocate_tuple();
+        let instance = unsafe {
+            let ptr = instance_address.as_ptr() as *mut OxTuple;
+            &mut *ptr
+        };
+
+        let mut elements = self.allocate_vec(elements_count as usize);
+        unsafe { elements.set_len(elements_count as usize) };
+        (0..elements_count).rev().for_each(|idx| elements[idx as usize] = self.pop());
+        *instance = OxTuple::new(elements);
+        Gc::<OxTuple>::new(instance_address)
+
     }
 
     pub fn run_module(&mut self, module: Gc<OxModule>) -> Result<(), runtime::Error> {
@@ -460,6 +472,15 @@ impl Vm {
                     let value = Value::Instance(instance);
                     self.push_stack(value);
                 }
+                OpCode::NewTuple => {
+                    let frame = self.frame_mut();
+                    let mut ip = frame.ip;
+                    let fields = read_to::<u16>(frame.section().data(), &mut ip);
+                    frame.ip = ip;
+                    let instance = self.new_tuple(fields);
+                    let value = Value::Tuple(instance);
+                    self.push_stack(value);
+                }
                 OpCode::PushLocal => {
                     let value = self.pop();
                     self.push_stack(value);
@@ -625,6 +646,15 @@ impl Vm {
             std::mem::size_of::<OxInstance>() + fields as usize * std::mem::size_of::<Value>();
         let layout = Layout::from_size_align(size, std::mem::align_of::<OxStruct>())
             .expect("failed to layout memory for struct");
+
+        self.allocate(layout)
+    }
+
+    pub fn allocate_tuple(&mut self) -> Address {
+        let size =
+            std::mem::size_of::<OxTuple>(); //+ fields as usize * std::mem::size_of::<Value>();
+        let layout = Layout::from_size_align(size, std::mem::align_of::<OxStruct>())
+            .expect("failed to layout memory for tuple");
 
         self.allocate(layout)
     }
