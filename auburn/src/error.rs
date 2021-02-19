@@ -13,6 +13,9 @@ pub enum ErrorKind {
     #[error("invalid character: '{}'", ch)]
     InvalidCharacter { ch: char },
 
+    #[error("expecting '\"' found eof")]
+    ExpectingQuotation,
+
     // #[error("expected operator, found: '{}'", found.text())]
     // ExpectedOperator { found: OwnedToken },
     #[error("unknown escaped character: '{0}'")]
@@ -232,6 +235,10 @@ impl<'src> Error {
 
     pub fn invalid_character(ch: char) -> Self {
         Self::new_default(ErrorKind::InvalidCharacter { ch })
+    }
+
+    pub fn expected_quotation() -> Self {
+        Self::new_default(ErrorKind::ExpectingQuotation)
     }
 
     pub fn uneven_pairs() -> Self {

@@ -127,7 +127,7 @@ impl Core {
                 err
             );
 
-            if start_coord.line() == 0 && start_coord.column() == 0 {
+            if start_coord.line() == 0 && start_coord.column() == 0 || start_coord.line() != pos.end().line() {
                 return;
             }
 
