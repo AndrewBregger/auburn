@@ -45,7 +45,7 @@ impl MirPrinter {
                 EntityPrinter::print_impl(&assignment.lvalue.borrow(), indent + 1);
                 Self::print_expr_inner(assignment.rhs.as_ref(), indent + 1);
             }
-            HirStmtKind::Print(expr) => {
+            HirStmtKind::Echo(expr) => {
                 Self::print_expr_inner(expr.as_ref(), indent + 1);
             }
         }

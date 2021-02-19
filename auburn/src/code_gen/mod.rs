@@ -394,9 +394,9 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             HirStmtKind::Expr(expr) => self.handle_expr(expr.as_ref())?,
             HirStmtKind::Item(entity) => self.handle_entity(&entity.borrow())?,
             HirStmtKind::Assignment(assignment) => self.handle_assignment(assignment)?,
-            HirStmtKind::Print(expr) => {
+            HirStmtKind::Echo(expr) => {
                 self.handle_expr(expr.as_ref())?;
-                self.emit_op(OpCode::Print);
+                self.emit_op(OpCode::Echo);
             }
         }
 

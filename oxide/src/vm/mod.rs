@@ -572,7 +572,7 @@ impl Vm {
                     self.pop();
                 }
                 OpCode::Call => self.call_value(),
-                OpCode::Print => {
+                OpCode::Echo => {
                     let value = self.pop();
                     println!("{}", value)
                 }

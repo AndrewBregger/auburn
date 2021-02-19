@@ -144,7 +144,7 @@ define_opcodes!(
     "call" => Call,
     "label" => Label,
     "pop" => Pop,
-    "print" => Print,
+    "echo" => Echo,
     "frame_stack" => FrameStack,
     "__NUMOPS__" => NumOps,
     OpCode

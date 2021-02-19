@@ -4,9 +4,9 @@ let three = 3.0
 let four = 4.0
 
 fn test(one f32, two f32, three f32, four f32) {
-	print one + three
-	print four / two
-	print four / two - two
+	echo one + three
+	echo four / two
+	echo four / two - two
 }
 
 fn main() {

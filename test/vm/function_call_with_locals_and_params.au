@@ -5,9 +5,9 @@ fn test(one f32, two f32) {
 	let three = one + two
 	let four = two * two
 
-	print one + three
-	print four / two
-	print four / two - two
+	echo one + three
+	echo four / two
+	echo four / two - two
 }
 
 fn main() {

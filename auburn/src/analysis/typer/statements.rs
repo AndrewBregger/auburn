@@ -89,7 +89,7 @@ impl<'src> Typer<'src> {
                     _ => todo!("Assignment operator {} is not implemented", op),
                 }
             }
-            StmtKind::Print(param) => {
+            StmtKind::Echo(param) => {
                 if self.is_default_mode() && top_level {
                     let err = Error::invalid_print_in_mode(self.mode);
                     return Err(err.with_position(stmt.position()));
@@ -97,7 +97,7 @@ impl<'src> Typer<'src> {
 
                 let expr = self.resolve_expr(param.as_ref(), None)?;
                 Ok(Rc::new(HirStmt::new(
-                    HirStmtKind::Print(expr),
+                    HirStmtKind::Echo(expr),
                     param.position(),
                     self.type_map.get_unit(),
                 )))

@@ -4,7 +4,7 @@ let three = 3
 let four = 4
 
 fn main() {
-	print one + three
-	print four / two
-	print four / two - two
+	echo one + three
+	echo four / two
+	echo four / two - two
 }

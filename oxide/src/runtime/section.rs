@@ -231,7 +231,7 @@ impl Section {
                 | OpCode::Pop
                 | OpCode::FrameStack
                 | OpCode::PushLocal
-                | OpCode::Print => {
+                | OpCode::Echo => {
                     res.push(Instruction::simple(ip - 1, op_code));
                 }
                 OpCode::NumOps => {}

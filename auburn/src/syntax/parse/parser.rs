@@ -173,12 +173,12 @@ impl<'src> Parser<'src> {
                 let kind = StmtKind::Item(item);
                 Ok(Box::new(Stmt::new_with_position(kind, position)))
             }
-            Token::Kw(Keyword::Print) => {
+            Token::Kw(Keyword::Echo) => {
                 self.consume()?;
                 let expr = self.parse_expr()?;
                 let position = position.extended_to(expr.as_ref());
                 Ok(Box::new(Stmt::new_with_position(
-                    StmtKind::Print(expr),
+                    StmtKind::Echo(expr),
                     position,
                 )))
             }

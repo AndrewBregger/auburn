@@ -296,7 +296,7 @@ impl NodeType for HirStmtKind {
             Self::Expr(_) => "Expr Stmt",
             Self::Item(_) => "Item Stmt",
             Self::Assignment(_) => "Assignment Stmt",
-            Self::Print(_) => "Print Stmt",
+            Self::Echo(_) => "Echo Stmt",
         }
     }
 
@@ -352,7 +352,7 @@ pub enum HirStmtKind {
     Expr(Rc<HirExpr>),
     Item(EntityRef),
     Assignment(Assignment),
-    Print(HirExprPtr),
+    Echo(HirExprPtr),
 }
 
 // the actual type will be the ty() of MirNode
