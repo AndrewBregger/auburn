@@ -22,8 +22,9 @@ macro_rules! save_state {
 }
 
 
-#[derive(Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum BuildError {
+    #[error("{0}")]
     FeatureNotSupported(String),
 }
 

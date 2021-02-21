@@ -105,7 +105,7 @@ impl Core {
         match err {
             CoreError::IoError(err, file_name) => self.print_io_error(err, file_name),
             CoreError::CompilerError(err) => self.print_compiler_error(err),
-            CoreError::BuildError(err) => {} //self.print_code_gen_error(err),
+            CoreError::BuildError(err) => self.print_build_error(err),
         }
     }
 
@@ -164,10 +164,10 @@ impl Core {
             .expect("cursor string is not valid utf8??");
         println!(" \t{}{}", offset, cursor);
     }
-
-    // fn print_code_gen_error(&self, err: &GenError) {
-    //     println!("{}", err);
-    // }
+    
+    fn print_build_error(&self, err: &BuildError) {
+        println!("{}", err);
+    }
 
     fn execute(&mut self, arg: Arguments) -> Result<(), CoreError> {
         let options = arg.build_options();
