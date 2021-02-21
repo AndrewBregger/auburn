@@ -379,6 +379,7 @@ impl<'src> Parser<'src> {
                     }
 
                     self.consume()?;
+                    self.allow_newline()?;
 
                     let mut fields = vec![];
                     loop {
@@ -391,6 +392,7 @@ impl<'src> Parser<'src> {
 
                         if self.check_for(Token::Op(Operator::Comma)) {
                             self.consume()?;
+                            self.allow_newline()?;
                         } else {
                             break;
                         }
@@ -433,6 +435,7 @@ impl<'src> Parser<'src> {
             let ident = self.parse_ident()?;
             self.expect(Token::Op(Operator::Colon))?;
             let expr = self.parse_expr()?;
+            self.allow_newline()?;
             Ok(StructExprField::Bind(ident, expr))
         } else {
             let expr = self.parse_expr_with_res(NAMED_FIELD_EXPR)?;
