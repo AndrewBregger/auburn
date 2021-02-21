@@ -201,6 +201,10 @@ pub enum ExprKind {
     },
     Block(Vec<Box<Stmt>>),
     Tuple(Vec<Box<Expr>>),
+    TupleIndex {
+        operand: Box<Expr>,
+        element: u64,
+    },
     Loop(Box<Expr>),
     While(Box<Expr>, Box<Expr>),
     For {
@@ -405,6 +409,7 @@ impl NodeType for ExprKind {
             Self::Method { .. } => "Method",
             Self::Block(..) => "Block",
             Self::Tuple(..) => "Tuple",
+            Self::TupleIndex { .. } => "Tuple Index",
             Self::Loop(..) => "Loop",
             Self::While(..) => "While",
             Self::For { .. } => "For",

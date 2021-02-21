@@ -1,4 +1,4 @@
-use crate::analysis::entity::StructureInfo;
+use crate::{analysis::entity::StructureInfo, ir::hir::TupleIndex};
 use crate::analysis::typer::{
     Typer, ALLOW_CONTROL_FLOW_EXPRESSIONS, ASSOCIATIVE_FUNCTION, BLOCK, EXPR_RESULT_USED, FUNCTION,
     FUNCTION_BODY, SELF_PARAM_IDENT,
@@ -218,6 +218,21 @@ impl<'src> Typer<'src> {
                 );
                 Rc::new(HirExpr::new(mir_expr_inner, expr.position(), tuple_type))
             }
+            ExprKind::TupleIndex { operand, element } => {
+                let operand = self.resolve_expr(operand.as_ref(), expected_type.clone())?;
+
+                let result_meta = operand.inner().meta();
+                let mir_expr_inner = HirExprInner::new(
+                    AddressMode::Value,
+                    result_meta.clone(),
+                    HirExprKind::TupleIndex(TupleIndex {
+                        tuple: operand.clone(),
+                        field: *element,
+                    }),
+                );
+                let ty = operand.ty().clone();
+                Rc::new(HirExpr::new(mir_expr_inner, expr.position(), ty))
+            }
             ExprKind::If { .. } => self.resolve_if(expr, None, expr.position())?,
             ExprKind::Loop(body) => self.resolve_loop(body.as_ref(), expr.position())?,
             ExprKind::While(cond, body) => {
@@ -287,7 +302,9 @@ impl<'src> Typer<'src> {
                 body,
             } => {}
             */
-            _ => todo!(),
+            
+            ExprKind::For { element, expr, body } => { todo!() }
+            ExprKind::SelfType => { todo!() }
         };
 
         if let Some(expected_type) = &expected_type {

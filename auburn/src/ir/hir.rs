@@ -74,6 +74,12 @@ pub struct TupleExpr {
 }
 
 #[derive(Debug, Clone)]
+pub struct TupleIndex {
+    pub tuple: Rc<HirExpr>,
+    pub field: u64,
+}
+
+#[derive(Debug, Clone)]
 pub struct LoopExpr {
     pub body: Rc<HirExpr>,
 }
@@ -132,6 +138,7 @@ pub enum HirExprKind {
     AssociatedFunction(AssociatedFunctionExpr),
     Block(BlockExpr),
     Tuple(TupleExpr),
+    TupleIndex(TupleIndex),
     Loop(LoopExpr),
     While(WhileExpr),
     For(ForExpr),
@@ -272,6 +279,7 @@ impl NodeType for HirExprKind {
             Self::AssociatedFunction(..) => "Associated Function",
             Self::Block(..) => "Block",
             Self::Tuple(..) => "Tuple",
+            Self::TupleIndex(..) => "Tuple Index",
             Self::Loop(..) => "Loop",
             Self::While(..) => "While",
             Self::For { .. } => "For",

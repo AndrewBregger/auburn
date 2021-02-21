@@ -20,6 +20,14 @@ impl OxTuple {
         }
     }
 
+    pub fn get_attr(&self, index: usize) -> &Value {
+        unsafe { self.elements.get_unchecked(index) }
+    }
+
+    pub fn len(&self) -> usize {
+        self.elements.len()
+    }
+
     pub fn disassemble(&self) {
         println!("<tuple {}>", self.elements.len());
     }

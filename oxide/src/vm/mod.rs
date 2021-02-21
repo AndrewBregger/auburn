@@ -481,6 +481,17 @@ impl Vm {
                     let value = Value::Tuple(instance);
                     self.push_stack(value);
                 }
+                OpCode::TupleAttr => {
+                    let frame = self.frame_mut();
+                    let mut ip = frame.ip;
+                    let index = read_to::<u16>(frame.section().data(), &mut ip) as usize;
+                    frame.ip = ip;
+                    let value = self.pop();
+                    let tuple = value.as_tuple();
+                    debug_assert!(index < tuple.len(), "invalid tuple index");
+                    self.push_stack(tuple.get_attr(index).clone());
+
+                }
                 OpCode::PushLocal => {
                     let value = self.pop();
                     self.push_stack(value);

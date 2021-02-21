@@ -139,7 +139,8 @@ impl Section {
                 | OpCode::JmpFalse
                 | OpCode::Jmp
                 | OpCode::NewObject 
-                | OpCode::NewTuple => {
+                | OpCode::NewTuple 
+                | OpCode::TupleAttr => {
                     let offset = ip - 1;
                     let value = read_to::<u16>(self.data(), &mut ip);
                     res.push(Instruction::with_arg(offset, op_code, value as u16));

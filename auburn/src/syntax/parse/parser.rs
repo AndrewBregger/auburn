@@ -1,4 +1,4 @@
-use std::{convert::TryFrom, ops::Deref};
+use std::{convert::{TryFrom, TryInto}, ops::Deref};
 
 use itertools::Itertools;
 
@@ -345,6 +345,16 @@ impl<'src> Parser<'src> {
                                 let kind = ExprKind::Field(operand.clone(), Box::new(name));
                                 operand = Box::new(Expr::new_with_position(kind, position));
                             }
+                        }
+                        Token::Integer(val) => {
+                            let position = position.extended_to_token(current.clone());
+                            self.consume()?;
+
+                            let kind = ExprKind::TupleIndex {
+                                operand: operand.clone(),
+                                element: val,
+                            };
+                            operand = Box::new(Expr::new_with_position(kind, position));
                         }
                         _ => {
                             break;

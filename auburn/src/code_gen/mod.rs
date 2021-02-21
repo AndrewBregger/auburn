@@ -486,6 +486,11 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
 
                 self.emit_op_u16(OpCode::NewTuple, tuple_expr.elements.len() as u16);
             }
+            HirExprKind::TupleIndex(tuple_index) => {
+                self.handle_expr(tuple_index.tuple.as_ref())?;
+                let index = tuple_index.field as u16;
+                self.emit_op_u16(OpCode::TupleAttr, index);
+            }
             HirExprKind::Loop(loop_expr) => {}
             HirExprKind::While(while_expr) => self.handle_while(while_expr)?,
             HirExprKind::For(for_expr) => {}
