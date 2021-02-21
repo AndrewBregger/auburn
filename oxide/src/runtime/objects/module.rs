@@ -1,6 +1,6 @@
 use std::{fmt::Display, mem::ManuallyDrop};
 
-use crate::{OxString, Value, gc::{Allocator, Gc, GcObject}};
+use crate::{AttributeAccess, OxString, Value, gc::{Allocator, Gc, GcObject}};
 use crate::{
     gc::{Cell, ObjectKind},
     OxFunction,
@@ -55,7 +55,7 @@ impl OxModule {
 
     pub fn get_entry(&self) -> Option<Gc<OxFunction>> {
         if let Some(idx) = self.entry {
-            match &self.values[idx] {
+            match self.get_attr(idx) {
                 Value::Function(function) => Some(function.clone()),
                 _ => panic!("Compiler Error: entry for module '{}' is not a function", self.name),
             }
@@ -79,3 +79,17 @@ impl Display for OxModule {
         write!(f, "<module {}>", self.name)
     }
 }
+
+impl AttributeAccess for OxModule {
+    type Output = Value;
+
+    fn get_attr(&self, idx: usize) -> &<Self as AttributeAccess>::Output {
+        unsafe { self.values.get_unchecked(idx) }
+    }
+
+    fn get_attr_mut(&mut self, idx: usize) -> &mut <Self as AttributeAccess>::Output {
+        unsafe { self.values.get_unchecked_mut(idx) }
+    }
+
+}
+

@@ -1,24 +1,25 @@
 use std::fmt::Display;
 
-use crate::{
-    gc::{Cell, Gc, GcObject, ObjectKind},
-    OxString, Value,
-};
+use crate::{AttributeAccess, OxString, OxStruct, Value, gc::{Cell, Gc, GcObject, ObjectKind}};
 
 #[derive(Debug, Clone)]
 pub struct OxInstance {
     cell: Cell,
-    name: OxString,
+    object: Gc<OxStruct>,
     fields: u16,
 }
 
 impl OxInstance {
-    pub fn new(name: OxString, fields: u16) -> Self {
+    pub fn new(object: Gc<OxStruct>, fields: u16) -> Self {
         Self {
             cell: Cell::new(ObjectKind::Instance),
-            name,
+            object,
             fields,
         }
+    }
+
+    pub fn len(&self) -> u16 {
+        self.fields
     }
 
     pub fn fields_ptr(&self) -> *const Value {
@@ -38,7 +39,7 @@ impl OxInstance {
 
 impl Display for OxInstance {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "<instance {}>", self.name)
+        write!(f, "<instance {}>", self.object.name())
     }
 }
 
@@ -49,5 +50,21 @@ impl GcObject for OxInstance {
 
     fn as_cell_mut(&mut self) -> &mut Cell {
         &mut self.cell
+    }
+}
+
+impl AttributeAccess for OxInstance {
+    type Output = Value;
+
+
+    fn get_attr(&self, idx: usize) -> &<Self as AttributeAccess>::Output {
+        let fields_ptr = self.fields_ptr();
+        
+        unsafe { &*fields_ptr.add(idx) }
+    }
+    
+    fn get_attr_mut(&mut self, idx: usize) -> &mut <Self as AttributeAccess>::Output {
+        let fields_ptr_mut = self.fields_ptr_mut();
+        unsafe { &mut *fields_ptr_mut.add(idx) }
     }
 }

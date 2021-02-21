@@ -204,21 +204,57 @@ impl Value {
         }
     }
 
-    pub fn as_tuple(&self) -> &OxTuple {
+    pub fn as_tuple(&self) -> &Gc<OxTuple> {
         if let Self::Tuple(val) = self {
-            val.as_ref()
+            val
         }
         else {
             panic!("Attempting to get a tuple from a value of type {}", self.ty());
         }
     }
 
-    pub fn as_tuple_mut(&mut self) -> &mut OxTuple {
+    pub fn as_tuple_mut(&mut self) -> &mut Gc<OxTuple> {
         if let Self::Tuple(val) = self {
-            val.as_ref_mut()
+            val
         }
         else {
             panic!("Attempting to get a tuple from a value of type {}", self.ty());
+        }
+    }
+
+    pub fn as_struct(&self) -> &Gc<OxStruct> {
+        if let Self::Struct(val) = self {
+            val
+        }
+        else {
+            panic!("Attempting to get a struct from a value of type {}", self.ty());
+        }
+    }
+
+    pub fn as_struct_mut(&mut self) -> &mut Gc<OxStruct> {
+        if let Self::Struct(val) = self {
+            val
+        }
+        else {
+            panic!("Attempting to get a struct from a value of type {}", self.ty());
+        }
+    }
+
+    pub fn as_instance(&self) -> &Gc<OxInstance> {
+        if let Self::Instance(val) = self {
+            val
+        }
+        else {
+            panic!("Attempting to get a instance from a value of type {}", self.ty());
+        }
+    }
+
+    pub fn as_instance_mut(&mut self) -> &mut Gc<OxInstance> {
+        if let Self::Instance(val) = self {
+            val
+        }
+        else {
+            panic!("Attempting to get a instance from a value of type {}", self.ty());
         }
     }
 
@@ -333,6 +369,14 @@ impl Value {
             _ => false,
         }
     }
+
+    pub fn is_instance(&self) -> bool {
+        match self {
+            Self::Instance(..) => true,
+            _ => false,
+        }
+    }
+
 
     pub fn disassemble(&self) {
         match self {

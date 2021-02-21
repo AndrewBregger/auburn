@@ -3,10 +3,7 @@ mod op_codes;
 
 use std::alloc::Layout;
 
-use crate::{
-    gc::{Address, GcAlloc},
-    mem::read_to,
-};
+use crate::{AttributeAccess, gc::{Address, GcAlloc}, mem::read_to};
 use crate::{
     gc::{Allocator, Gc, VecAllocator},
     runtime::{self, Buffer},
@@ -275,7 +272,7 @@ impl Vm {
         let fields_slice =
             unsafe { std::slice::from_raw_parts_mut(instance.fields_ptr_mut(), fields as usize) };
         (0..fields).rev().for_each(|idx| fields_slice[idx as usize] = self.pop());
-        let name = self.pop().clone().as_string().clone();
+        let name = self.pop().clone().as_struct().clone();
         *instance = OxInstance::new(name, fields);
 
         Gc::<OxInstance>::new(instance_address)
@@ -463,7 +460,7 @@ impl Vm {
                     let reg = frame.read_byte() as usize;
                     self.push_stack(self.registers[reg]);
                 }
-                OpCode::NewObject => {
+                OpCode::NewInstance => {
                     let frame = self.frame_mut();
                     let mut ip = frame.ip;
                     let fields = read_to::<u16>(frame.section().data(), &mut ip);
@@ -481,20 +478,34 @@ impl Vm {
                     let value = Value::Tuple(instance);
                     self.push_stack(value);
                 }
+                OpCode::InstanceAttr => {
+                    let frame = self.frame_mut();
+                    let mut ip = frame.ip;
+                    let idx = read_to::<u16>(frame.section().data(), &mut ip);
+                    frame.ip = ip;
+                    let value = self.pop();
+                    debug_assert!(value.is_instance()); 
+                    let instance = value.as_instance();
+                    debug_assert!(idx < instance.len());
+
+                    self.push_stack(instance.get_attr(idx as usize).clone());
+                }
                 OpCode::TupleAttr => {
                     let frame = self.frame_mut();
                     let mut ip = frame.ip;
                     let index = read_to::<u16>(frame.section().data(), &mut ip) as usize;
                     frame.ip = ip;
                     let value = self.pop();
+                    debug_assert!(value.is_tuple());
+
                     let tuple = value.as_tuple();
                     debug_assert!(index < tuple.len(), "invalid tuple index");
                     self.push_stack(tuple.get_attr(index).clone());
 
                 }
                 OpCode::PushLocal => {
-                    let value = self.pop();
-                    self.push_stack(value);
+                    // no-op
+                    // Technically this can be remvoed.
                 }
                 OpCode::AddI8
                 | OpCode::AddI16
@@ -749,6 +760,18 @@ impl Vm {
         }
 
         Gc::<OxFunction>::new(function_address)
+    }
+
+    pub fn allocate_struct(&mut self, name: OxString, methods: VecBuffer<Value>) -> Gc<OxStruct> {
+        let layout = Layout::new::<OxStruct>();
+        let struct_address = self.allocate(layout);
+
+        unsafe {
+            let buffer = &mut *(struct_address.as_ptr_mut() as *mut OxStruct);
+            *buffer = OxStruct::new(name, methods);
+        }
+
+        Gc::<OxStruct>::new(struct_address)
     }
 
     pub fn allocate_module(

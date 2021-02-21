@@ -1,27 +1,11 @@
 mod file_context;
 mod type_helpers;
 
-use crate::{
-    analysis::{self, Entity, EntityInfo, FunctionInfo, VariableInfo},
-    ir::{
-        self,
-        ast::BinaryOp,
-        hir::{
-            Assignment, BlockExpr, HirExpr, HirExprPtr, HirFile, HirItem, HirItemPtr, HirStmt,
-            HirStmtKind, HirStmtPtr, IfExpr, IfExprBranch, MirNode, WhileExpr,
-        },
-    },
-    system::{FileId, FileMap},
-    types::{Type, TypeKind},
-};
+use crate::{analysis::{self, Entity, EntityInfo, FunctionInfo, StructureInfo, VariableInfo}, ir::{self, ast::BinaryOp, hir::{Assignment, BlockExpr, FieldExpr, HirExpr, HirExprPtr, HirFile, HirItem, HirItemPtr, HirStmt, HirStmtKind, HirStmtPtr, IfExpr, IfExprBranch, MirNode, StructExpr, WhileExpr}}, system::{FileId, FileMap}, types::{Type, TypeKind}};
 use file_context::FileContext;
 use hir::HirExprKind;
 use ir::hir;
-use oxide::{
-    gc::{Allocator, Gc},
-    vm::OpCode,
-    OxFunction, OxModule, Section, Value, Vm,
-};
+use oxide::{OxFunction, OxModule, OxStruct, Section, Value, Vm, gc::{Allocator, Gc}, vm::OpCode};
 
 use ordered_float::OrderedFloat;
 use std::{cell::RefCell, collections::HashMap, convert::TryInto, ops::Deref, rc::Rc};
@@ -39,7 +23,10 @@ macro_rules! save_state {
 
 
 #[derive(Debug)]
-pub enum BuildError {}
+pub enum BuildError {
+    FeatureNotSupported(String),
+}
+
 pub struct CodeGen<'vm, 'ctx> {
     file_map: &'ctx FileMap,
     vm: &'vm mut Vm,
@@ -229,7 +216,14 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         std::mem::drop(context);
 
         for entity in items.into_iter() {
-            self.handle_entity(&entity.borrow())?;
+            match self.handle_entity(&entity.borrow())? {
+                Some(value) => {
+                    let context = self.current_context_mut();
+                    context.push_object(value);
+                }
+                None => {}
+            }
+            
         }
 
         for stmt in stmts.into_iter() {
@@ -245,7 +239,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         &mut self,
         name: &str,
         mir_function: &FunctionInfo,
-    ) -> Result<(), BuildError> {
+    ) -> Result<Gc<OxFunction>, BuildError> {
         self.push_scope();
 
         let name_string = self.vm.allocate_string(name);
@@ -267,8 +261,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         let function = if let Some(function_info) = context.current_function() {
             function_info.function.clone()
         } else { panic!("failed to get the current function") };
-        context.push_object(Value::from(function));
-        Ok(())
+        Ok(function)
     }
 
     fn handle_function_params(&mut self,  mir_function: &FunctionInfo) -> Result<(), BuildError> {
@@ -353,37 +346,62 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         Ok(())
     }
 
+    
+    fn build_struct(&mut self, name: &str, struct_info: &StructureInfo) -> Result<Gc<OxStruct>, BuildError> {
+        let mut methods = self.vm.allocate_vec::<Value>(struct_info.methods.len());
+
+        for (_, element) in struct_info.methods.elements() {
+            debug_assert!(element.borrow().is_function());
+            match self.handle_entity(&element.borrow())? {
+                Some(value) => {
+                    methods.push(value);
+                }
+                None => {}
+            }
+        }
+        
+        let name = self.vm.allocate_string(name);
+        let structure = self.vm.allocate_struct(name, methods);
+        Ok(structure)
+    }
+
 }
 
 //impl<'ctx> CodeGen<'ctx> {
 impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
-    fn handle_entity(&mut self, entity: &Entity) -> Result<(), BuildError> {
+    fn handle_entity(&mut self, entity: &Entity) -> Result<Option<Value>, BuildError> {
         let name = entity.name();
         match entity.kind() {
-            EntityInfo::Structure(_) => {
-                todo!()
+            EntityInfo::Structure(struct_info) => {
+                let structure = self.build_struct(name, struct_info)?;
+                Ok(Some(Value::from(structure)))
             }
-            EntityInfo::Function(function_info) => self.build_function(name, function_info)?,
-            EntityInfo::Variable(variable_info) => self.build_variable(name, variable_info)?,
+            EntityInfo::Function(function_info) => {
+                let function = self.build_function(name, function_info)?;
+                Ok(Some(Value::from(function)))
+            }
+            EntityInfo::Variable(variable_info) => {
+                self.build_variable(name, variable_info)?;
+                Ok(None)
+            }
             EntityInfo::AssociatedFunction(_) => {
                 todo!()
             }
             EntityInfo::Param(_) => {
                 self.build_local(name)?;
+                Ok(None)
             }
             EntityInfo::SelfParam { mutable } => {
                 todo!()
             }
-            EntityInfo::Field(_) => {
+            EntityInfo::Field(field_expr) => {
                 todo!()
             }
             EntityInfo::Resolving => {
                 panic!("Attempting to generate an entity still being resolved")
             }
-            _ => {}
+            _ => { unreachable!() }
         }
-
-        Ok(())
     }
 
     //fn handle_top_level_stmt(&mut self, stmt: &HirStmt) -> Result<(), BuildError> {
@@ -392,7 +410,14 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
     fn handle_stmt(&mut self, stmt: &HirStmt) -> Result<(), BuildError> {
         match stmt.inner() {
             HirStmtKind::Expr(expr) => self.handle_expr(expr.as_ref())?,
-            HirStmtKind::Item(entity) => self.handle_entity(&entity.borrow())?,
+            HirStmtKind::Item(entity) => {
+                match self.handle_entity(&entity.borrow())? {
+                    Some(_value) => {
+                        return Err(BuildError::FeatureNotSupported(format!("local {} not supported", entity.borrow().type_name())));
+                    }
+                    None => {}
+                }
+            }
             HirStmtKind::Assignment(assignment) => self.handle_assignment(assignment)?,
             HirStmtKind::Echo(expr) => {
                 self.handle_expr(expr.as_ref())?;
@@ -454,7 +479,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
                 self.emit_op(op);
             }
             HirExprKind::Unary(un_expr) => {}
-            HirExprKind::Field(_) => {}
+            HirExprKind::Field(field_expr) =>  self.handle_field_expr(field_expr)?,
             HirExprKind::Index(_) => {}
             HirExprKind::FieldAccess(_) => {}
             HirExprKind::Call(call_expr) => {
@@ -495,7 +520,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             HirExprKind::While(while_expr) => self.handle_while(while_expr)?,
             HirExprKind::For(for_expr) => {}
             HirExprKind::If(if_expr) => self.handle_if(if_expr)?,
-            HirExprKind::StructExpr(struct_expr) => {}
+            HirExprKind::StructExpr(struct_expr) => self.handle_struct_expr(struct_expr)?,
             HirExprKind::SelfLit => {}
             HirExprKind::Break => {}
             HirExprKind::Continue => {}
@@ -595,6 +620,41 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         let section = self.current_section_mut();
         section.write_loop(ip);
         section.patch_jmp(exit_jmp);
+        Ok(())
+    }
+
+	fn handle_struct_expr(&mut self, struct_expr: &StructExpr) -> Result<(), BuildError> {
+		let struct_type = struct_expr.struct_type.clone();
+        println!("struct_type: {}", struct_type);
+		debug_assert!(struct_type.is_struct()); 
+
+        if let TypeKind::Struct { entity } = struct_type.kind() {
+            let entity_borrow = entity.borrow();
+            let name = entity_borrow.name();
+            let context = self.current_context_mut();
+            let global_idx = context.load_global_in_function(name);
+            self.emit_op_u8(OpCode::LoadGlobal, global_idx);
+        }
+        else { unreachable!() };
+        
+
+        for (_, field) in struct_expr.fields.iter() {
+            self.handle_expr(field.as_ref())?;
+        }
+
+        self.emit_op_u16(OpCode::NewInstance, struct_expr.fields.len() as u16);
+        Ok(())
+	}
+
+    fn handle_field_expr(&mut self, field_expr: &FieldExpr) -> Result<(), BuildError> {
+        save_state!(self.result_used, true, self.handle_expr(field_expr.operand.as_ref())?);
+        let field_borrow = field_expr.field.borrow();
+        match field_borrow.kind() {
+            EntityInfo::Field(local_info) => {
+                self.emit_op_u16(OpCode::InstanceAttr, local_info.index as u16);
+            }
+            _ => panic!("field access of invalid entity type: {}", field_borrow.type_name()),
+        }
         Ok(())
     }
 

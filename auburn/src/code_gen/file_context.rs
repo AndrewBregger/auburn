@@ -132,7 +132,10 @@ impl<'ctx> FileContext<'ctx> {
         // find the global by name.
         // panics if name doesnt exist:
         //  should be handled by the type checker.
-        let global_idx = self.globals[name].object_idx;
+        let global_idx = match self.globals.get(name) {
+            Some(info) => info.object_idx,
+            None => panic!("attempting to load an object that is not a global: '{}'", name)
+        };
 
         if self.values.len() <= global_idx {
             panic!("{}: {} global value not found {}", name, global_idx, self.values.len());

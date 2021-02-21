@@ -137,8 +137,9 @@ define_opcodes!(
     "set_register" => SetRegister,
     "load_register" => LoadRegister,
 
-    "new_object" => NewObject,
+    "new_instance" => NewInstance,
     "new_tuple" => NewTuple,
+    "object_attr" => InstanceAttr,
     "tuple_attr" => TupleAttr,
 
     "jmp_if_true" => JmpTrue,
