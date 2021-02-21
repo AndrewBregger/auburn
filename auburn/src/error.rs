@@ -180,6 +180,16 @@ pub enum ErrorKind {
     #[error("entry function '{}' is not found", name)]
     EntryNotFound { name: String },
 
+    #[error("duplicate initialization of field '{}'", field_name)]
+    DuplicateFieldInitialization {
+        field_name: String
+    },
+    
+    #[error("missing field '{}' in struct expression", field_name)]
+    MissingFieldInStructInit {
+        field_name: String,
+    },
+
     #[error("Other: {0}")]
     Other(String),
 }
@@ -447,6 +457,14 @@ impl<'src> Error {
 
     pub fn entry_not_found(name: String) -> Self {
         Self::new_default(ErrorKind::EntryNotFound { name })
+    }
+
+    pub fn duplicate_field_initialization(field_name: String) -> Self {
+        Self::new_default(ErrorKind::DuplicateFieldInitialization { field_name })
+    }
+
+    pub fn missing_field_in_struct_init(field_name: String) -> Self {
+        Self::new_default(ErrorKind::MissingFieldInStructInit { field_name })
     }
 
     pub fn other(err: String) -> Self {

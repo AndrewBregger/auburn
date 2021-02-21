@@ -595,10 +595,12 @@ impl<'src> Typer<'src> {
                     let field_borrow = field_entity.deref().borrow();
                     if !operand.inner().kind().is_self() {
                         // otherwise, we need to check if this field can be access in this context.
+                        // @TODO: if the struct is declared in the same file then we do not need to
+                        // check the visibility.
                         match field_borrow.visibility() {
                             Visibility::Private => {
                                 let err = Error::inaccessible_subentity(
-                                    "field",
+                                    entity.borrow().type_name(),            
                                     operand_type.as_ref(),
                                     field.kind().value.clone(),
                                 )
@@ -644,7 +646,7 @@ impl<'src> Typer<'src> {
                     }
                 } else {
                     let err = Error::unknown_subfield(
-                        "field",
+                        entity.borrow().type_name(),            
                         operand_type.as_ref(),
                         field.kind().value.clone(),
                     )
@@ -913,17 +915,27 @@ impl<'src> Typer<'src> {
         position: Position,
     ) -> Result<HirExprPtr, Error> {
         let mut mir_fields = vec![];
+        let elements = structure.fields.elements();
+        let mut inited_fields = vec![false; elements.len()];
+
         for field in fields {
             match field {
                 StructExprField::Bind(name, expr) => {
                     let field_name = name.kind().value.as_str();
-                    if let Some(field) = structure.fields.elements().get(field_name) {
+                    if let Some(field) = elements.get(field_name) {
                         let mir_field =
                             self.resolve_expr(expr.as_ref(), Some(field.deref().borrow().ty()))?;
-                        if let EntityInfo::Param(local_info) = field.deref().borrow().kind() {
+                        if let EntityInfo::Field(local_info) = field.deref().borrow().kind() {
+                            if inited_fields[local_info.index] {
+                                // duplicate initializations of field
+                                let err = Error::duplicate_field_initialization(field_name.to_owned());
+                                return Err(err.with_position(name.position()));
+                            }
+
+                            inited_fields[local_info.index] = true;
                             mir_fields.push((local_info.index, mir_field));
                         } else {
-                            panic!("Compiler Error: Invalid entity for struct field");
+                            panic!("Compiler Error: Invalid entity for struct field: {}: {}", field.borrow().type_name(), field.borrow().name());
                         }
                     } else {
                         let err = Error::undeclared_field_in_struct_binding(
@@ -936,10 +948,16 @@ impl<'src> Typer<'src> {
                 StructExprField::Field(expr) => match expr.kind() {
                     ExprKind::Name(name) => {
                         let field_name = name.kind().value.as_str();
-                        if let Some(field) = structure.fields.elements().get(field_name) {
+                        if let Some(field) = elements.get(field_name) {
                             let mir_field = self
                                 .resolve_expr(expr.as_ref(), Some(field.deref().borrow().ty()))?;
                             if let EntityInfo::Field(local_info) = field.deref().borrow().kind() {
+                                if inited_fields[local_info.index] {
+                                    // duplicate initializations of field
+                                    let err = Error::duplicate_field_initialization(field_name.to_owned());
+                                    return Err(err.with_position(name.position()));
+                                }
+                                inited_fields[local_info.index] = true;
                                 mir_fields.push((local_info.index, mir_field));
                             } else {
                                 panic!("Compiler Error: Invalid entity for struct field");
@@ -956,6 +974,33 @@ impl<'src> Typer<'src> {
                 },
             }
         }
+
+        let fully_inited = inited_fields.iter().fold(true, |acc, x| acc && *x);
+        if !fully_inited {
+            let mut fields_list = elements.iter().map(|(_, field)| (field.borrow().name().to_owned(), field.borrow().as_local().clone())).collect_vec();
+            fields_list.sort_by(|a, b| a.1.index.cmp(&b.1.index));
+            for (idx, inited) in inited_fields.into_iter().enumerate() {
+                if inited {
+                    continue
+                }
+                let field = &fields_list[idx]; 
+                
+                match field.1.default.as_ref() {
+                    Some(default) => {
+                        mir_fields.push((idx, default.clone()));
+                    }
+                    None => {
+                        let err = Error::missing_field_in_struct_init(field.0.to_owned());
+                        return Err(err.with_position(position));
+                    }
+                }
+            }
+        }
+
+        mir_fields.sort_by(|a, b| a.0.cmp(&b.0));
+
+        debug_assert!(mir_fields.len() == elements.len());
+
         let struct_expr = StructExpr {
             struct_type: struct_type.clone(),
             fields: mir_fields,
