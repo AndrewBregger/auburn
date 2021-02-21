@@ -1,0 +1,6 @@
+fn main() {
+	let tpl = (2, 2.1, "2.0")
+	echo tpl.0
+	echo tpl.1
+	echo tpl.2
+}
