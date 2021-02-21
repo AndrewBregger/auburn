@@ -17,3 +17,5 @@ fn test() {
         foo.set_x(1.0)
     }
 }
+
+fn main() {}

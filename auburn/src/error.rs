@@ -1,14 +1,20 @@
 use std::fmt::{Display, Formatter};
 
-use crate::ir::ast::{BinaryOp, UnaryOp};
 use crate::syntax::{Operator, Position, Token};
 use crate::types::Type;
+use crate::{
+    ir::ast::{BinaryOp, UnaryOp},
+    LanguageMode,
+};
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum ErrorKind {
     // lex errors
     #[error("invalid character: '{}'", ch)]
     InvalidCharacter { ch: char },
+
+    #[error("expecting '\"' found eof")]
+    ExpectingQuotation,
 
     // #[error("expected operator, found: '{}'", found.text())]
     // ExpectedOperator { found: OwnedToken },
@@ -164,45 +170,26 @@ pub enum ErrorKind {
 
     #[error("unable to index type '{}'", ty)]
     InvalidIndexType { ty: Type },
-    // #[error("expecting keyword '{}' found '{}'", expected.to_string(), found.text())]
-    // ExpectedKeyword {
-    //     expected: Keyword,
-    //     found: OwnedToken,
-    // },
-    //
-    // #[error("expecting operator '{}' found '{}'", expected.to_string(), found.text())]
-    // ExpectedSpecificOperator {
-    //     expected: Operator,
-    //     found: OwnedToken,
-    // },
-    //
-    // #[error("expecting identifier found '{}'", found.text())]
-    // ExpectedIdentifier { found: OwnedToken },
 
-    // #[error("expected newline found '{}'", found.text())]
-    // ExpectedNewline { found: OwnedToken },
+    #[error("invalid {} found in langauge mode '{}'", element, mode)]
+    InvalidElementInMode { element: String, mode: LanguageMode },
 
-    // #[error("expected expression following '{}', found '{}'", following.text(), found.text())]
-    // ExpectedExpression {
-    //     following: OwnedToken,
-    //     found: OwnedToken,
-    // },
+    #[error("'{}' entry is not a function, it is '{}'", name, entity_type)]
+    EntryNotFunction { name: String, entity_type: String },
 
-    // #[error("expected types specification following '{}', found '{}'", following.text(), found.text())]
-    // ExpectedTypeSpec {
-    //     following: OwnedToken,
-    //     found: OwnedToken,
-    // },
-    //
-    // #[error("unable to determine types of {}, missing types or initializing expression", if *is_param { "parameter" } else { "local"})]
-    // InvalidLocalItem { is_param: bool },
-    //
-    // #[error("'self' must be the first parameter")]
-    // InvalidSelfParam,
-    //
-    // #[error("invalid context for types parameters")]
-    // InvalidTypeParameter,
-    //
+    #[error("entry function '{}' is not found", name)]
+    EntryNotFound { name: String },
+
+    #[error("duplicate initialization of field '{}'", field_name)]
+    DuplicateFieldInitialization {
+        field_name: String
+    },
+    
+    #[error("missing field '{}' in struct expression", field_name)]
+    MissingFieldInStructInit {
+        field_name: String,
+    },
+
     #[error("Other: {0}")]
     Other(String),
 }
@@ -258,6 +245,10 @@ impl<'src> Error {
 
     pub fn invalid_character(ch: char) -> Self {
         Self::new_default(ErrorKind::InvalidCharacter { ch })
+    }
+
+    pub fn expected_quotation() -> Self {
+        Self::new_default(ErrorKind::ExpectingQuotation)
     }
 
     pub fn uneven_pairs() -> Self {
@@ -439,57 +430,42 @@ impl<'src> Error {
         Self::new_default(ErrorKind::InvalidIndexType { ty: ty.clone() })
     }
 
-    // fn execpted_keyword(expected: token::Kw, token: &Token) -> Self {
-    //     Self::ExpectedKeyword {
-    //         expected,
-    //         found: token.to_owned(),
-    //     }
-    // }
-    //
-    // fn execpted_specific_operator(expected: token::Op, token: &Token) -> Self {
-    //     Self::ExpectedSpecificOperator {
-    //         expected,
-    //         found: token.to_owned(),
-    //     }
-    // }
-    //
-    // fn expected_identifier(token: &Token) -> Self {
-    //     Self::ExpectedIdentifer {
-    //         found: token.to_owned(),
-    //     }
-    // }
-    //
-    // fn expected_newline(token: &Token) -> Self {
-    //     Self::ExpectedNewline {
-    //         found: token.to_owned(),
-    //     }
-    // }
-    //
-    // fn expected_expression(following: &Token, found: &Token) -> Self {
-    //     Self::ExpectedExpression {
-    //         following: following.to_owned(),
-    //         found: found.to_owned(),
-    //     }
-    // }
-    //
-    // fn expected_typespec(following: &Token, found: &Token) -> Self {
-    //     Self::ExpectedTypeSpec {
-    //         following: following.to_owned(),
-    //         found: found.to_owned(),
-    //     }
-    // }
-    //
-    // fn invalid_local_item(is_param: bool) -> Self {
-    //     Self::InvalidLocalItem { is_param }
-    // }
-    //
-    // fn invalid_self_param() -> Self {
-    //     Self::InvalidSelfParam
-    // }
-    //
-    // fn invalid_type_parameter() -> Self {
-    //     Self::InvalidTypeParameter
-    // }
+    pub fn invalid_assignment_in_mode(mode: LanguageMode) -> Self {
+        Self::new_default(ErrorKind::InvalidElementInMode {
+            element: "assignment".to_string(),
+            mode,
+        })
+    }
+
+    pub fn invalid_expression_in_mode(mode: LanguageMode) -> Self {
+        Self::new_default(ErrorKind::InvalidElementInMode {
+            element: "expression".to_string(),
+            mode,
+        })
+    }
+
+    pub fn invalid_print_in_mode(mode: LanguageMode) -> Self {
+        Self::new_default(ErrorKind::InvalidElementInMode {
+            element: "print".to_string(),
+            mode,
+        })
+    }
+
+    pub fn entry_not_function(name: String, entity_type: String) -> Self {
+        Self::new_default(ErrorKind::EntryNotFunction { name, entity_type })
+    }
+
+    pub fn entry_not_found(name: String) -> Self {
+        Self::new_default(ErrorKind::EntryNotFound { name })
+    }
+
+    pub fn duplicate_field_initialization(field_name: String) -> Self {
+        Self::new_default(ErrorKind::DuplicateFieldInitialization { field_name })
+    }
+
+    pub fn missing_field_in_struct_init(field_name: String) -> Self {
+        Self::new_default(ErrorKind::MissingFieldInStructInit { field_name })
+    }
 
     pub fn other(err: String) -> Self {
         Self::new_default(ErrorKind::Other(err))

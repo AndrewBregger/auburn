@@ -1,0 +1,14 @@
+let one = 1.0
+let two = 2.0
+let three = 3.0
+let four = 4.0
+
+fn test(one f32, two f32, three f32, four f32) {
+	echo one + three
+	echo four / two
+	echo four / two - two
+}
+
+fn main() {
+	test(one, two, three, four)
+}

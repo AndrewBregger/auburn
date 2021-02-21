@@ -211,7 +211,7 @@ impl<'src> Lexer<'src> {
         let _start_index = self.span.0 + 1;
         let mut value = String::new();
 
-        while !self.check_for('"') {
+        while self.ch.is_some() && !self.check_for('"') {
             let ch = if self.check_for('\\') {
                 self.validate_escape()?
             } else {
@@ -221,6 +221,10 @@ impl<'src> Lexer<'src> {
             value.push(ch);
 
             self.advance();
+        }
+
+        if self.ch.is_none() {
+            return Err(Error::expected_quotation().with_position(Position::new(self.span, self.file_pos, self.file())));
         }
 
         self.advance();

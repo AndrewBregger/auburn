@@ -1,4 +1,6 @@
 use std::fmt::{Display, Formatter};
+
+use crate::Value;
 macro_rules! define_opcodes {
     ($($name:literal => $en:ident), *, $ty:ident) => {
         #[repr(u8)]
@@ -33,8 +35,10 @@ define_opcodes!(
     "load_f32" => LoadF32,
     "load_f64" => LoadF64,
     "load_str" => LoadStr,
+    "load_char" => LoadChar,
     "load_local" => LoadLocal,
     "set_local" => SetLocal,
+    "push_local" => PushLocal,
 
     "add_i8"  => AddI8,
     "add_i16" => AddI16,
@@ -128,9 +132,16 @@ define_opcodes!(
 
     "load_global" => LoadGlobal,
     "set_global" => SetGlobal,
-
     "load_true" => LoadTrue,
     "load_false" => LoadFalse,
+    "set_register" => SetRegister,
+    "load_register" => LoadRegister,
+
+    "new_instance" => NewInstance,
+    "new_tuple" => NewTuple,
+    "object_attr" => InstanceAttr,
+    "tuple_attr" => TupleAttr,
+
     "jmp_if_true" => JmpTrue,
     "jmp_if_false" => JmpFalse,
     "jmp" => Jmp,
@@ -139,7 +150,8 @@ define_opcodes!(
     "call" => Call,
     "label" => Label,
     "pop" => Pop,
-    "print" => Print,
+    "echo" => Echo,
+    "frame_stack" => FrameStack,
     "__NUMOPS__" => NumOps,
     OpCode
 );
@@ -157,27 +169,44 @@ impl OpCode {
 /// structure to represent a single instruction.
 /// might use this in actual execution but for now it is
 /// only for disassembly
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Instruction {
     offset: usize,
     op_code: OpCode,
     args: Option<u16>,
+    con: Option<Value>,
 }
+
+impl PartialEq for Instruction {
+    // only compare a subset of the fields.
+    fn eq(&self, other: &Self) -> bool {
+        self.offset.eq(&other.offset)
+            && self.op_code.eq(&other.op_code)
+            && self.args.eq(&other.args)
+    }
+}
+
+impl Eq for Instruction {}
 
 impl Instruction {
     pub fn simple(offset: usize, op_code: OpCode) -> Self {
-        Self::new(offset, op_code, None)
+        Self::new(offset, op_code, None, None)
     }
 
     pub fn with_arg(offset: usize, op_code: OpCode, args: u16) -> Self {
-        Self::new(offset, op_code, Some(args))
+        Self::new(offset, op_code, Some(args), None)
     }
 
-    pub fn new(offset: usize, op_code: OpCode, args: Option<u16>) -> Self {
+    pub fn with_arg_and_const(offset: usize, op_code: OpCode, args: u16, con: Value) -> Self {
+        Self::new(offset, op_code, Some(args), Some(con))
+    }
+
+    pub fn new(offset: usize, op_code: OpCode, args: Option<u16>, con: Option<Value>) -> Self {
         Self {
             offset,
             op_code,
             args,
+            con,
         }
     }
 }
@@ -190,6 +219,10 @@ impl Display for Instruction {
             self.offset,
             self.op_code,
             self.args.map_or("".to_string(), |arg| arg.to_string())
-        )
+        )?;
+        if let Some(con) = self.con.as_ref() {
+            write!(f, " ({})", con)?;
+        }
+        Ok(())
     }
 }

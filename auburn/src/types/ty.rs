@@ -113,7 +113,10 @@ impl TypeKind {
     }
 
     pub fn is_struct(&self) -> bool {
-        false
+        match self {
+            TypeKind::Struct { .. } => true,
+            _ => false,
+        }
     }
 
     pub fn is_arithmetic(&self) -> bool {

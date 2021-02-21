@@ -1,21 +1,24 @@
 extern crate clap;
 
-use std::path::Path;
 use std::rc::Rc;
-
-use auburn::Executor;
-use auburn::{analysis::Analysis, generator::CodeGen};
-use auburn::{error::Error, oxide::vm::Vm};
-use auburn::{
-    generator::GenError,
-    syntax::{ParsedFile, Parser, Position},
+use std::{
+    fmt,
+    path::Path,
 };
-use auburn::{ir::hir::HirFile, oxide::OxFunction};
+
 use auburn::{
+    analysis::Analysis,
+    code_gen::{BuildError, CodeGen},
+    error::Error,
+    ir::hir::HirFile,
+    oxide::{gc::Gc, OxFunction, OxModule, Vm},
+    syntax::{ParsedFile, Parser, Position},
     system::{File, FileMap},
     utils::MirPrinter,
+    Executor, LanguageMode,
 };
 use clap::Clap;
+use fmt::Formatter;
 
 #[derive(Clap, Debug)]
 enum Command {
@@ -37,6 +40,20 @@ enum Command {
 struct Arguments {
     #[clap(subcommand)]
     command: Option<Command>,
+    #[clap(short, long)]
+    mode: Option<LanguageMode>,
+}
+
+pub struct Options {
+    mode: LanguageMode,
+}
+
+impl Arguments {
+    pub fn build_options(&self) -> Options {
+        Options {
+            mode: self.mode.unwrap_or_default(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -44,7 +61,7 @@ enum CoreError {
     IoError(std::io::Error, String),
     // CommandError(CommandError),
     CompilerError(Error),
-    BuildError(GenError),
+    BuildError(BuildError),
 }
 
 impl From<Error> for CoreError {
@@ -53,14 +70,15 @@ impl From<Error> for CoreError {
     }
 }
 
-impl From<GenError> for CoreError {
-    fn from(err: GenError) -> Self {
+impl From<BuildError> for CoreError {
+    fn from(err: BuildError) -> Self {
         Self::BuildError(err)
     }
 }
 
 pub struct Core {
     file_map: FileMap,
+    vm: Vm,
     analysis: Analysis,
 }
 
@@ -68,6 +86,7 @@ impl Core {
     pub fn new() -> Self {
         Self {
             file_map: FileMap::new(),
+            vm: Vm::new(),
             analysis: Analysis::new(),
         }
     }
@@ -86,7 +105,7 @@ impl Core {
         match err {
             CoreError::IoError(err, file_name) => self.print_io_error(err, file_name),
             CoreError::CompilerError(err) => self.print_compiler_error(err),
-            CoreError::BuildError(err) => self.print_code_gen_error(err),
+            CoreError::BuildError(err) => self.print_build_error(err),
         }
     }
 
@@ -99,10 +118,7 @@ impl Core {
         println!("Error Pos: {}", pos);
         if let Some(file) = self.file_map.file_by_id(&pos.file_id()) {
             let start_coord = pos.start();
-            let _end_coord = pos.end();
 
-            // if start_coord.line() == end_coord.line() {
-            let line = file.get_line(start_coord.line());
             println!(
                 "{}:{}:{}| {}",
                 file.path().display(),
@@ -110,6 +126,12 @@ impl Core {
                 start_coord.column(),
                 err
             );
+
+            if start_coord.line() == 0 && start_coord.column() == 0 || start_coord.line() != pos.end().line() {
+                return;
+            }
+
+            let line = file.get_line(start_coord.line());
             self.print_file_lines(line, pos);
         // } else {
         //     // let line = *file.get_lines(start_coord.0, end_coord.0).first().unwrap();
@@ -135,25 +157,27 @@ impl Core {
             })
             .collect::<String>();
 
-        if start_column <= end_column {
-            let cursor = String::from_utf8(vec![b'^'; end_column - start_column])
-                .expect("cursor string is not valid utf8??");
-            println!(" \t{}{}", offset, cursor);
+        if !start_column <= end_column {
+            return;
         }
+        let cursor = String::from_utf8(vec![b'^'; end_column - start_column])
+            .expect("cursor string is not valid utf8??");
+        println!(" \t{}{}", offset, cursor);
     }
-
-    fn print_code_gen_error(&self, err: &GenError) {
+    
+    fn print_build_error(&self, err: &BuildError) {
         println!("{}", err);
     }
 
     fn execute(&mut self, arg: Arguments) -> Result<(), CoreError> {
+        let options = arg.build_options();
         match arg.command {
-            Some(cmd) => self.execute_command(cmd),
-            None => self.execute_repl(),
+            Some(cmd) => self.execute_command(cmd, options),
+            None => self.execute_repl(options),
         }
     }
 
-    fn execute_command(&mut self, cmd: Command) -> Result<(), CoreError> {
+    fn execute_command(&mut self, cmd: Command, options: Options) -> Result<(), CoreError> {
         match cmd {
             Command::Parse { input } => {
                 let file = self
@@ -172,7 +196,7 @@ impl Core {
                     .parse_file(file.as_ref())
                     .map_err(|err| CoreError::from(err))?;
                 let resolved_file = self
-                    .resolve_root(parsed_file)
+                    .resolve_root(parsed_file, options.mode)
                     .map_err(|err| CoreError::from(err))?;
 
                 MirPrinter::print_file(&resolved_file);
@@ -182,43 +206,47 @@ impl Core {
                     .open_file(input.as_str())
                     .map_err(|err| CoreError::IoError(err, input))?;
 
-                let ox_function = self.build(file)?;
+                let ox_function = self.build(file, options)?;
                 ox_function.disassemble();
 
-                let mut vm = Vm::new();
-                match vm.run(ox_function) {
+                match self.vm.run_module(ox_function) {
                     Ok(_) => {
-                        vm.print_stack();
+                        self.vm.print_stack();
                     }
                     Err(err) => println!("{}", err),
                 }
             }
 
             Command::Build { input } => {
-                let file = self
-                    .open_file(input.as_str())
-                    .map_err(|err| CoreError::IoError(err, input))?;
-                let function = self.build(file)?;
-                function.disassemble();
+                let file = self.open(input.as_str())?;
+                let module = self.build(file, options)?;
+                module.disassemble();
+                self.vm.free();
             }
         }
         Ok(())
     }
 
-    fn build(&mut self, file: Rc<File>) -> Result<Box<OxFunction>, CoreError> {
+    fn open(&mut self, path: &str) -> Result<Rc<File>, CoreError> {
+        self.open_file(path)
+            .map_err(|err| CoreError::IoError(err, path.to_owned()))
+    }
+
+    fn build(&mut self, file: Rc<File>, options: Options) -> Result<Gc<OxModule>, CoreError> {
         let parsed_file = self
             .parse_file(file.as_ref())
             .map_err(Into::<CoreError>::into)?;
-        let mir_file = self
-            .resolve_root(parsed_file)
+        let hir_file = self
+            .resolve_root(parsed_file, options.mode)
             .map_err(Into::<CoreError>::into)?;
 
-        CodeGen::new(&self.file_map, &mir_file)
-            .build()
-            .map_err(|e| CoreError::from(e))
+        let module = CodeGen::build(&self.file_map, &hir_file, &mut self.vm)
+            .map_err(|e| CoreError::from(e))?;
+
+        Ok(module)
     }
 
-    fn execute_repl(&mut self) -> Result<(), CoreError> {
+    fn execute_repl(&mut self, _options: Options) -> Result<(), CoreError> {
         println!("REPL not implemented");
         Ok(())
     }
@@ -235,8 +263,8 @@ impl Executor for Core {
         parser.parse_file()
     }
 
-    fn resolve_root(&mut self, file: ParsedFile) -> Result<HirFile, Error> {
+    fn resolve_root(&mut self, file: ParsedFile, mode: LanguageMode) -> Result<HirFile, Error> {
         // got though imports and resolve them
-        self.analysis.check(file)
+        self.analysis.check(file, mode)
     }
 }

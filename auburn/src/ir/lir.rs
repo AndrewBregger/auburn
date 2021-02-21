@@ -1,198 +1,161 @@
-use crate::types::Type;
-use oxide::vm::OpCode;
+use std::{
+    collections::HashMap,
+    fmt::Display,
+    rc::Rc,
+    sync::atomic::{AtomicUsize, Ordering},
+};
+
 use oxide::Value;
-use std::borrow::Borrow;
-use std::cell::{Cell, RefCell};
-use std::collections::{BTreeMap, HashMap};
-use std::fmt::{Debug, Display, Formatter};
-use std::ops::Deref;
-use std::rc::Rc;
+
+use crate::ir::ast::{BinaryOp, UnaryOp};
+use crate::types::Type;
 
 #[derive(Debug, Clone)]
-pub struct LirFile {
-    blocks: Vec<LirBlock>,
-    functions: BTreeMap<usize, LirFunction>,
+pub struct LocalInfo {}
+
+#[derive(Debug, Clone)]
+pub struct GlobalInfo {}
+
+#[derive(Debug, Clone)]
+pub struct FunctionInfo {}
+
+
+
+#[derive(Debug, Clone)]
+pub enum SymbolInfo {
+    Local(LocalInfo),
+    Global(GlobalInfo),
+    Function(FunctionInfo),
 }
 
 #[derive(Debug, Clone)]
-pub struct LirFunction {
-    id: usize,
-    /// name of the function
+pub struct Symbol {
     name: String,
-    /// type of this function
-    ty: Rc<Type>,
-    blocks: Vec<LirBlock>,
+    info: SymbolInfo,
 }
 
-#[derive(Debug, Clone)]
-pub struct LirBlock {
-    name: LirLabelRef,
-    level: usize,
-    instructions: Vec<LirInstruction>,
-    locals: HashMap<String, Local>,
-}
-
-impl LirBlock {
-    pub fn new(name: LirLabelRef, level: usize) -> Self {
+impl Symbol {
+    pub fn new(name: String, info: SymbolInfo) -> Self {
         Self {
             name,
-            level,
-            instructions: vec![],
-            locals: HashMap::new(),
+            info
         }
     }
 
-    pub fn push_instruction(&mut self, inst: LirInstruction) {
-        self.instructions.push(inst);
+    pub fn name(&self) -> &str {
+        self.name.as_str()
     }
 
-    pub fn add_local(&mut self, local: Local) {
-        self.locals.insert(local.name.clone(), local);
+    pub fn info(&self) -> &SymbolInfo {
+        &self.info
     }
 }
-#[derive(Debug, Clone)]
-pub struct Local {
-    name: String,
-    slot: usize,
-    scope: usize,
-}
 
-#[derive(Debug, Clone)]
-pub struct CallInfo {
-    name: String,
-    function_id: usize,
-    result_used: bool,
-    // module: ModuleId,
-}
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ScopeId(usize);
 
-#[derive(Debug, Clone)]
-pub enum LirInstruction {
-    /// instructor for creating a new local in the current scope
-    CreateLocal {
-        name: String,
-        init: bool,
-    },
-
-    SetLocal {
-        name: String,
-    },
-
-    LoadLocal {
-        name: String,
-    },
-
-    Add {
-        ty: Rc<Type>,
-    },
-
-    Sub {
-        ty: Rc<Type>,
-    },
-
-    Mult {
-        ty: Rc<Type>,
-    },
-
-    Divide {
-        ty: Rc<Type>,
-    },
-
-    Less {
-        ty: Rc<Type>,
-    },
-
-    Greater {
-        ty: Rc<Type>,
-    },
-
-    LessEq {
-        ty: Rc<Type>,
-    },
-
-    GreaterEq {
-        ty: Rc<Type>,
-    },
-
-    EqEq {
-        ty: Rc<Type>,
-    },
-
-    NotEq {
-        ty: Rc<Type>,
-    },
-
-    Return,
-
-    LoadGlobal {
-        name: String,
-        slot: usize,
-    },
-
-    Constant(Value),
-
-    BoolConstant(bool),
-
-    StringConstant(String),
-
-    SetGlobal {
-        name: String,
-        slot: usize,
-    },
-
-    Call(CallInfo),
-
-    /// general jump, the type of the jmp specifies with type of jump to make
-    Jmp {
-        ty: OpCode,
-        label: LirLabelRef,
-    },
-}
-
-#[derive(Debug, Clone)]
-pub struct LirLabel {
-    label: String,
-    location: usize,
-}
-
-pub type LirLabelRef = Rc<RefCell<LirLabel>>;
-
-impl Display for LirLabel {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.label)
+impl ScopeId {
+    fn next() -> Self {
+        static TOKEN: AtomicUsize = AtomicUsize::new(0);
+        Self(TOKEN.fetch_add(1, Ordering::SeqCst))
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct LabelBuilder {
-    label_prefix: String,
-    next_label: RefCell<usize>,
+pub struct Scope {
+    next: ScopeId,
+    children: Vec<Rc<Scope>>,
+    elements: HashMap<String, Symbol>,
 }
 
-impl LabelBuilder {
-    pub fn new(prefix: &str) -> Self {
-        Self {
-            label_prefix: prefix.to_owned(),
-            next_label: RefCell::new(0),
-        }
-    }
+#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct FunctionId(String, usize);
 
-    pub fn next(&self) -> LirLabel {
-        let label = format!("{}_{}", self.label_prefix, self.next_label.borrow());
-        *self.next_label.borrow_mut() += 1;
-        LirLabel::new(label)
+impl FunctionId {
+    fn new(name: String) -> Self {
+        static TOKEN: AtomicUsize = AtomicUsize::new(0);
+        Self(name, TOKEN.fetch_add(1, Ordering::SeqCst))
     }
 }
 
-impl LirLabel {
-    pub fn new(label: String) -> Self {
-        Self { label, location: 0 }
+impl Display for FunctionId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}[{}]", self.0, self.1)
     }
+}
 
-    pub fn set_location(&mut self, location: usize) {
-        self.location = location;
-    }
+#[derive(Debug, Clone)]
+pub struct Function {
+    id: FunctionId,
+    arity: usize,
+    scope: Scope,
+    body: Vec<BasicBlock>,
+}
 
-    pub fn label(&self) -> &str {
-        self.label.as_str()
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct BlockId(usize);
+
+impl BlockId {
+    fn next() -> Self {
+        static TOKEN: AtomicUsize = AtomicUsize::new(0);
+        Self(TOKEN.fetch_add(1, Ordering::SeqCst))
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct BasicBlock {
+    id: BlockId,
+    instructions: Vec<Instruction>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Binary {
+    pub op: BinaryOp,
+    pub op_type: Rc<Type>,
+}
+
+impl Binary {
+    pub fn new(op: BinaryOp, op_type: Rc<Type>) -> Self {
+        Self { op, op_type }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Unary {
+    pub op: UnaryOp,
+    pub op_type: Rc<Type>,
+}
+
+impl Unary {
+    pub fn new(op: UnaryOp, op_type: Rc<Type>) -> Self {
+        Self { op, op_type }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FnCall {
+    pub function: FunctionId,
+    pub arity: usize,
+}
+
+#[derive(Debug, Clone)]
+pub enum JumpOp {
+    JmpTrue,
+    JmpFalse,
+    JmpLoop,
+}
+
+#[derive(Debug, Clone)]
+pub struct Jump {
+    pub op: JumpOp,
+    pub dst: BlockId,
+}
+
+#[derive(Debug, Clone)]
+pub enum Instruction {
+    LoadConstant(Value),
+    Binary(Binary),
+    Unary(Unary),
+    FnCall(FnCall),
+    Jump(Jump)
 }

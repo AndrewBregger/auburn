@@ -1,13 +1,22 @@
 mod call_frame;
 mod op_codes;
 
-use crate::mem::read_to;
-use crate::runtime;
-use crate::Value;
+use std::alloc::Layout;
+
+use crate::{AttributeAccess, gc::{Address, GcAlloc}, mem::read_to};
+use crate::{
+    gc::{Allocator, Gc, VecAllocator},
+    runtime::{self, Buffer},
+    OxInstance, OxModule, OxString, OxTuple, Section, Value, VecBuffer,
+};
 use call_frame::CallFrame;
+use itertools::{self, Itertools};
 pub use op_codes::{Instruction, OpCode};
 use ordered_float::OrderedFloat;
-use runtime::{Error as RuntimeError, OxFunction};
+use runtime::{OxFunction, OxStruct};
+
+static DEFAULT_MEM_SIZE: usize = 2056;
+static DEFAULT_STACK_SIZE: usize = 2056;
 
 macro_rules! binary_op {
     ($name:ident, $start_op:ident, $op:tt) => {
@@ -135,10 +144,11 @@ macro_rules! conditional_binary_op {
 macro_rules! load_constant {
     ($cond:ident, $name:literal, $self:expr) => {
         let frame = $self.frame_mut();
-        let idx = *unsafe {
+        let idx = {
             let section = frame.section();
-            section.read_unchecked(frame.ip)
+            section.read(frame.ip)
         };
+
         frame.ip += 1;
         let value = frame.section().get_constant(idx as usize);
         if value.$cond() {
@@ -150,8 +160,11 @@ macro_rules! load_constant {
 }
 
 pub struct Vm {
+    allocator: GcAlloc,
+
     stack: Vec<Value>,
     call_stack: Vec<CallFrame>,
+    registers: [Value; 8],
     top_stack: usize,
     top_frame: usize,
 }
@@ -159,11 +172,21 @@ pub struct Vm {
 impl Vm {
     pub fn new() -> Self {
         Self {
-            stack: vec![Value::Unit; 2056],
+            allocator: GcAlloc::new(DEFAULT_MEM_SIZE),
+            stack: vec![Value::Unit; DEFAULT_STACK_SIZE],
+            registers: [Value::Unit; 8],
             call_stack: vec![CallFrame::default(); 512],
             top_stack: 0,
             top_frame: 0,
         }
+    }
+
+    pub fn allocator(&self) -> Allocator {
+        self.allocator.allocator()
+    }
+
+    pub fn allocator_vec(&self) -> VecAllocator {
+        self.allocator.allocator_vec()
     }
 
     pub fn push_stack(&mut self, value: Value) {
@@ -213,7 +236,7 @@ impl Vm {
     pub fn call_value(&mut self) {
         let value = {
             let frame = self.frame_mut();
-            let arity = unsafe { *frame.section().read_unchecked(frame.ip) };
+            let arity = frame.section().read(frame.ip);
             frame.ip += 1;
             arity
         };
@@ -227,9 +250,10 @@ impl Vm {
                         funct.arity()
                     );
                 }
-
-                let funct = funct.as_ref() as *const _;
-                let call_frame = CallFrame::new(funct, self.top_stack - value as usize);
+                let stack_start = self.top_stack - value as usize;
+                println!("calling {} start_stack: {}", funct.name(), stack_start);
+                self.print_stack();
+                let call_frame = CallFrame::new(*funct, stack_start);
                 self.push_frame(call_frame);
             }
             _ => {
@@ -238,10 +262,49 @@ impl Vm {
         }
     }
 
-    pub fn run(&mut self, function: Box<OxFunction>) -> Result<(), RuntimeError> {
-        let funct = function.as_ref() as *const _;
+    pub fn new_instance(&mut self, fields: u16) -> Gc<OxInstance> {
+        let instance_address = self.allocate_instance(fields);
+        let instance = unsafe {
+            let ptr = instance_address.as_ptr() as *mut OxInstance;
+            &mut *ptr
+        };
 
-        let call_frame = CallFrame::new(funct, self.top_stack);
+        let fields_slice =
+            unsafe { std::slice::from_raw_parts_mut(instance.fields_ptr_mut(), fields as usize) };
+        (0..fields).rev().for_each(|idx| fields_slice[idx as usize] = self.pop());
+        let name = self.pop().clone().as_struct().clone();
+        *instance = OxInstance::new(name, fields);
+
+        Gc::<OxInstance>::new(instance_address)
+    }
+
+    pub fn new_tuple(&mut self, elements_count: u16) -> Gc<OxTuple> {
+        let instance_address = self.allocate_tuple();
+        let instance = unsafe {
+            let ptr = instance_address.as_ptr() as *mut OxTuple;
+            &mut *ptr
+        };
+
+        let mut elements = self.allocate_vec(elements_count as usize);
+        unsafe { elements.set_len(elements_count as usize) };
+        (0..elements_count).rev().for_each(|idx| elements[idx as usize] = self.pop());
+        *instance = OxTuple::new(elements);
+        Gc::<OxTuple>::new(instance_address)
+
+    }
+
+    pub fn run_module(&mut self, module: Gc<OxModule>) -> Result<(), runtime::Error> {
+        if let Some(entry_function) = module.get_entry() {
+            self.run(entry_function)
+        }
+        else {
+            Err(runtime::Error::missing_module_entry(module.as_ref().name().clone()))
+        }
+    }
+
+    pub fn run(&mut self, function: Gc<OxFunction>) -> Result<(), runtime::Error> {
+        // + 1 to offset for the pushing of the fucntion onto the stack.
+        let call_frame = CallFrame::new(function, self.top_stack + 1);
         self.push_stack(Value::Function(function));
         self.push_frame(call_frame);
 
@@ -250,13 +313,13 @@ impl Vm {
 
             let op_code_raw = {
                 let frame = self.frame_mut();
-                let code = *unsafe { frame.section().read_unchecked(frame.ip) };
+                let code = frame.section().read(frame.ip);
                 frame.ip += 1;
                 code
             };
 
             let op_code = OpCode::from_u8(op_code_raw).unwrap();
-            println!("OpCode {:014x} {}", self.frame().ip - 1, op_code);
+            // println!("OpCode {:014x} {}", self.frame().ip - 1, op_code);
             match op_code {
                 OpCode::LoadI8 => {
                     load_constant!(is_i8, "i8", self);
@@ -291,6 +354,9 @@ impl Vm {
                 OpCode::LoadStr => {
                     load_constant!(is_string, "string", self);
                 }
+                OpCode::LoadChar => {
+                    load_constant!(is_char, "char", self);
+                }
                 OpCode::LoadTrue => {
                     self.push_stack(Value::from(true));
                 }
@@ -313,25 +379,20 @@ impl Vm {
                     let frame = self.frame_mut();
                     let mut ip = frame.ip;
                     let idx = read_to::<u8>(frame.section().data(), &mut ip);
-                    frame
-                        .funct_mut()
-                        .section_mut()
-                        .set_global(idx as usize, top);
+                    frame.funct().section_mut().set_global(idx as usize, top);
                     frame.ip = ip;
                 }
                 OpCode::LoadLocal => {
                     let frame = self.frame_mut();
-                    let ip = frame.ip;
                     let local = frame.local_start;
-                    let idx = unsafe { *frame.section().read_unchecked(ip) };
+                    let idx = frame.section().read(frame.ip);
                     frame.ip += 1;
                     self.push_stack(self.stack[local + idx as usize].clone());
                 }
                 OpCode::SetLocal => {
                     let frame = self.frame_mut();
-                    let ip = frame.ip;
                     let local = frame.local_start;
-                    let idx = unsafe { *frame.section().read_unchecked(ip) };
+                    let idx = frame.section().read(frame.ip);
                     frame.ip += 1;
                     let value = self.pop();
                     self.stack[local + idx as usize] = value;
@@ -382,8 +443,69 @@ impl Vm {
                     let last_frame = self.pop_frame();
                     self.top_stack = last_frame.local_start.saturating_sub(1);
                     self.push_stack(top);
-                    println!("Top Stack: {}", self.top_stack);
-                    self.print_stack();
+
+                    // if we are returning from the top function then exit.
+                    if self.top_frame == 0 {
+                        break;
+                    }
+                }
+                OpCode::SetRegister => {
+                    let frame = self.frame();
+                    let reg = frame.read_byte() as usize;
+                    let value = self.pop();
+                    self.registers[reg] = value;
+                }
+                OpCode::LoadRegister => {
+                    let frame = self.frame();
+                    let reg = frame.read_byte() as usize;
+                    self.push_stack(self.registers[reg]);
+                }
+                OpCode::NewInstance => {
+                    let frame = self.frame_mut();
+                    let mut ip = frame.ip;
+                    let fields = read_to::<u16>(frame.section().data(), &mut ip);
+                    frame.ip = ip;
+                    let instance = self.new_instance(fields);
+                    let value = Value::Instance(instance);
+                    self.push_stack(value);
+                }
+                OpCode::NewTuple => {
+                    let frame = self.frame_mut();
+                    let mut ip = frame.ip;
+                    let fields = read_to::<u16>(frame.section().data(), &mut ip);
+                    frame.ip = ip;
+                    let instance = self.new_tuple(fields);
+                    let value = Value::Tuple(instance);
+                    self.push_stack(value);
+                }
+                OpCode::InstanceAttr => {
+                    let frame = self.frame_mut();
+                    let mut ip = frame.ip;
+                    let idx = read_to::<u16>(frame.section().data(), &mut ip);
+                    frame.ip = ip;
+                    let value = self.pop();
+                    debug_assert!(value.is_instance()); 
+                    let instance = value.as_instance();
+                    debug_assert!(idx < instance.len());
+
+                    self.push_stack(instance.get_attr(idx as usize).clone());
+                }
+                OpCode::TupleAttr => {
+                    let frame = self.frame_mut();
+                    let mut ip = frame.ip;
+                    let index = read_to::<u16>(frame.section().data(), &mut ip) as usize;
+                    frame.ip = ip;
+                    let value = self.pop();
+                    debug_assert!(value.is_tuple());
+
+                    let tuple = value.as_tuple();
+                    debug_assert!(index < tuple.len(), "invalid tuple index");
+                    self.push_stack(tuple.get_attr(index).clone());
+
+                }
+                OpCode::PushLocal => {
+                    // no-op
+                    // Technically this can be remvoed.
                 }
                 OpCode::AddI8
                 | OpCode::AddI16
@@ -493,9 +615,18 @@ impl Vm {
                     self.pop();
                 }
                 OpCode::Call => self.call_value(),
-                OpCode::Print => {
-                    let value = self.top();
+                OpCode::Echo => {
+                    let value = self.pop();
                     println!("{}", value)
+                }
+                OpCode::FrameStack => {
+                    let frame = self.frame();
+                    let local_stack = frame.local_start;
+                    println!("-------Frame Stack {:10}---------", frame.function.name());
+                    for idx in local_stack..self.top_stack {
+                        println!("{}| {}", idx, self.stack[idx]);
+                    }
+                    println!("------------------------------");
                 }
                 OpCode::Exit => {
                     self.print_stack();
@@ -517,4 +648,145 @@ impl Vm {
     conditional_binary_op!(perform_greater, GreaterI8, >);
     conditional_binary_op!(perform_lesseq, LessEqI8, <);
     conditional_binary_op!(perform_greatereq, GreaterEqI8, >);
+
+    // allocation interface
+    pub fn collect(&mut self) {
+        self.mark();
+        self.sweep();
+    }
+
+    fn mark(&mut self) {}
+
+    fn sweep(&mut self) {}
+
+    pub fn free(&mut self) {
+        self.allocator.free_all_allocations();
+    }
+
+    pub fn allocate_instance(&mut self, fields: u16) -> Address {
+        let size =
+            std::mem::size_of::<OxInstance>() + fields as usize * std::mem::size_of::<Value>();
+        let layout = Layout::from_size_align(size, std::mem::align_of::<OxStruct>())
+            .expect("failed to layout memory for struct");
+
+        self.allocate(layout)
+    }
+
+    pub fn allocate_tuple(&mut self) -> Address {
+        let size =
+            std::mem::size_of::<OxTuple>(); //+ fields as usize * std::mem::size_of::<Value>();
+        let layout = Layout::from_size_align(size, std::mem::align_of::<OxStruct>())
+            .expect("failed to layout memory for tuple");
+
+        self.allocate(layout)
+    }
+
+    fn allocate(&mut self, layout: Layout) -> Address {
+        match self.allocator.alloc(layout) {
+            Some(address) => address,
+            None => {
+                self.collect();
+                self.allocator.alloc(layout).unwrap()
+            }
+        }
+    }
+
+    pub fn deallocate(&mut self, address: Address) {
+        self.allocator.dealloc(address)
+    }
+
+    pub fn allocate_buffer(&mut self, size: usize) -> Gc<Buffer> {
+        // the size of the buffer header and the size of the actual buffer
+        let buffer_size = std::mem::size_of::<Buffer>() + size;
+        let layout = Layout::from_size_align(buffer_size, std::mem::align_of::<Buffer>())
+            .expect("memory layout of buffer is improper");
+        let buffer_address = self.allocate(layout);
+
+        unsafe {
+            let buffer = &mut *(buffer_address.as_ptr_mut() as *mut Buffer);
+            *buffer = Buffer::new(size);
+        }
+
+        Gc::<Buffer>::new(buffer_address)
+    }
+
+    pub fn allocate_vec_ptr<Ty: Sync + Send + Copy + Sized>(
+        &mut self,
+        count: usize,
+    ) -> Gc<VecBuffer<Ty>> {
+        let address = self.allocate(Layout::new::<VecBuffer<Ty>>());
+        unsafe {
+            let buffer = address.as_ptr_mut() as *mut VecBuffer<Ty>;
+            *buffer = self.allocate_vec::<Ty>(count);
+        }
+        Gc::<VecBuffer<Ty>>::new(address)
+    }
+
+    pub fn allocate_vec<Ty: Sync + Send + Copy + Sized>(&mut self, count: usize) -> VecBuffer<Ty> {
+        VecBuffer::<Ty>::new(Vec::with_capacity_in(count, self.allocator_vec()))
+    }
+
+    pub fn allocate_string(&mut self, value: &str) -> OxString {
+        let array_buffer = self.allocate_vec::<char>(value.len());
+        let mut ox_string = OxString::new(array_buffer, value.len());
+        ox_string.set_from_str(value);
+        ox_string
+    }
+
+    pub fn allocate_string_ptr(&mut self, value: &str) -> Gc<OxString> {
+        let layout = Layout::new::<OxString>();
+        let address = self.allocate(layout);
+
+        unsafe {
+            let buffer = address.as_ptr_mut() as *mut OxString;
+            *buffer = self.allocate_string(value);
+        }
+
+        Gc::<OxString>::new(address)
+    }
+
+    pub fn allocate_function(
+        &mut self,
+        name: OxString,
+        arity: u8,
+        section: Section,
+    ) -> Gc<OxFunction> {
+        let layout = Layout::new::<OxFunction>();
+        let function_address = self.allocate(layout);
+
+        unsafe {
+            let buffer = &mut *(function_address.as_ptr_mut() as *mut OxFunction);
+            *buffer = OxFunction::new(name, arity, section);
+        }
+
+        Gc::<OxFunction>::new(function_address)
+    }
+
+    pub fn allocate_struct(&mut self, name: OxString, methods: VecBuffer<Value>) -> Gc<OxStruct> {
+        let layout = Layout::new::<OxStruct>();
+        let struct_address = self.allocate(layout);
+
+        unsafe {
+            let buffer = &mut *(struct_address.as_ptr_mut() as *mut OxStruct);
+            *buffer = OxStruct::new(name, methods);
+        }
+
+        Gc::<OxStruct>::new(struct_address)
+    }
+
+    pub fn allocate_module(
+        &mut self,
+        name: OxString,
+        elements: Vec<Value, Allocator>,
+    ) -> Gc<OxModule> {
+        let layout = Layout::new::<OxModule>();
+        let module_address = self.allocate(layout);
+
+        unsafe {
+            let buffer = &mut *(module_address.as_ptr_mut() as *mut OxModule);
+            *buffer = OxModule::new(name, elements);
+        }
+
+        Gc::<OxModule>::new(module_address)
+    }
 }

@@ -1,0 +1,17 @@
+fn main() {
+	mut x = 9
+	if x < 10 {
+		echo "x is less than 10"
+	}
+	else {
+		echo "x is greather than 10"
+	}
+
+	x = 9
+	if x > 10 {
+		echo "x is less than 10"
+	}
+	else {
+		echo "x is greather than 10"
+	}
+}

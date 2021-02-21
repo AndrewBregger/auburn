@@ -1,8 +1,12 @@
-use crate::{runtime::OxFunction, Section};
+use crate::{
+    gc::{Address, Gc},
+    runtime::OxFunction,
+    Section,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub struct CallFrame {
-    pub function: *const OxFunction,
+    pub function: Gc<OxFunction>,
     pub local_start: usize,
     pub ip: usize,
 }
@@ -10,7 +14,7 @@ pub struct CallFrame {
 impl Default for CallFrame {
     fn default() -> Self {
         Self {
-            function: std::ptr::null() as *const OxFunction,
+            function: Gc::null(),
             local_start: 0,
             ip: 0,
         }
@@ -18,7 +22,7 @@ impl Default for CallFrame {
 }
 
 impl CallFrame {
-    pub fn new(function: *const OxFunction, local_start: usize) -> Self {
+    pub fn new(function: Gc<OxFunction>, local_start: usize) -> Self {
         Self {
             function,
             local_start,
@@ -26,19 +30,16 @@ impl CallFrame {
         }
     }
 
-    pub fn funct(&self) -> &OxFunction {
-        println!("getting function");
-        unsafe { std::mem::transmute(self.function) }
-    }
-
-    pub fn funct_mut(&mut self) -> &mut OxFunction {
-        println!("getting function mut");
-        unsafe { std::mem::transmute(self.function) }
+    pub fn funct(&self) -> Gc<OxFunction> {
+        self.function
     }
 
     pub fn section(&self) -> &Section {
-        unsafe { self.function.as_ref() }
-            .expect("function pointer is null")
-            .section()
+        assert_ne!(self.function.ptr(), Address::null());
+        self.function.section()
+    }
+
+    pub fn read_byte(&self) -> u8 {
+        self.section().read(self.ip)
     }
 }

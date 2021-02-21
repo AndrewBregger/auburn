@@ -1,4 +1,6 @@
-use std::convert::TryFrom;
+use std::{convert::{TryFrom, TryInto}, ops::Deref};
+
+use itertools::Itertools;
 
 use crate::error::Error;
 use crate::ir::ast::{
@@ -136,7 +138,7 @@ impl<'src> Parser<'src> {
     //----------------------------------------------------------------------------------------------
 
     pub fn parse_file(&mut self) -> Result<ParsedFile, Error> {
-        let mut parsed_file = ParsedFile::new(self.file.file_name().to_owned(), self.file.id());
+        let mut parsed_file = ParsedFile::new(self.file.name().to_owned(), self.file.id());
         while let Some(current) = self.current.clone() {
             if current.is_eof() {
                 break;
@@ -153,6 +155,7 @@ impl<'src> Parser<'src> {
                 break;
             }
         }
+
         Ok(parsed_file)
     }
 
@@ -170,12 +173,12 @@ impl<'src> Parser<'src> {
                 let kind = StmtKind::Item(item);
                 Ok(Box::new(Stmt::new_with_position(kind, position)))
             }
-            Token::Kw(Keyword::Print) => {
+            Token::Kw(Keyword::Echo) => {
                 self.consume()?;
                 let expr = self.parse_expr()?;
                 let position = position.extended_to(expr.as_ref());
                 Ok(Box::new(Stmt::new_with_position(
-                    StmtKind::Print(expr),
+                    StmtKind::Echo(expr),
                     position,
                 )))
             }
@@ -343,6 +346,16 @@ impl<'src> Parser<'src> {
                                 operand = Box::new(Expr::new_with_position(kind, position));
                             }
                         }
+                        Token::Integer(val) => {
+                            let position = position.extended_to_token(current.clone());
+                            self.consume()?;
+
+                            let kind = ExprKind::TupleIndex {
+                                operand: operand.clone(),
+                                element: val,
+                            };
+                            operand = Box::new(Expr::new_with_position(kind, position));
+                        }
                         _ => {
                             break;
                         }
@@ -366,6 +379,7 @@ impl<'src> Parser<'src> {
                     }
 
                     self.consume()?;
+                    self.allow_newline()?;
 
                     let mut fields = vec![];
                     loop {
@@ -378,6 +392,7 @@ impl<'src> Parser<'src> {
 
                         if self.check_for(Token::Op(Operator::Comma)) {
                             self.consume()?;
+                            self.allow_newline()?;
                         } else {
                             break;
                         }
@@ -420,6 +435,7 @@ impl<'src> Parser<'src> {
             let ident = self.parse_ident()?;
             self.expect(Token::Op(Operator::Colon))?;
             let expr = self.parse_expr()?;
+            self.allow_newline()?;
             Ok(StructExprField::Bind(ident, expr))
         } else {
             let expr = self.parse_expr_with_res(NAMED_FIELD_EXPR)?;
@@ -517,6 +533,8 @@ impl<'src> Parser<'src> {
                         Control::Bracket,
                     )?;
 
+                    let stmts = stmts.into_iter().filter(|stmt| -> bool { !stmt.kind().is_empty() }).collect_vec();
+
                     let end = self.expect(Token::ControlPair(Control::Bracket, PairKind::Close))?;
                     let position = position.extended_to_token(end);
 
@@ -531,22 +549,36 @@ impl<'src> Parser<'src> {
                 }
 
                 let open = self.consume()?.unwrap();
+                let position = open.position();
                 self.allow_newline()?;
 
-                let position = open.position();
-                let stmts = self.parse_inner_pair(
-                    |p| p.parse_expr(),
-                    Token::Newline,
-                    true,
-                    false,
-                    Control::Bracket,
-                )?;
+                let expr = self.parse_expr()?;
 
-                let end = self.expect(Token::ControlPair(Control::Paren, PairKind::Close))?;
-                let position = position.extended_to_token(end);
 
-                let kind = ExprKind::Tuple(stmts);
-                Ok(Box::new(Expr::new_with_position(kind, position)))
+                if self.check_for(Token::Op(Operator::Comma)) {
+                    self.consume()?;
+                    let mut elements = vec![expr];
+
+                    let rest_elements = self.parse_inner_pair(
+                        |p| p.parse_expr(),
+                        Token::Op(Operator::Comma),
+                        false,
+                        false,
+                        Control::Paren,
+                    )?;
+
+                    let end = self.expect(Token::ControlPair(Control::Paren, PairKind::Close))?;
+                    let position = position.extended_to_token(end);
+
+                    elements.extend(rest_elements);
+
+                    let kind = ExprKind::Tuple(elements);
+                    Ok(Box::new(Expr::new_with_position(kind, position)))
+                }
+                else {
+                    self.expect(Token::ControlPair(Control::Paren, PairKind::Close))?;
+                    Ok(expr)
+                }
             }
             Token::Kw(Keyword::SelfType) => {
                 let position = self.current_position();

@@ -1,4 +1,5 @@
-mod error;
+pub mod error;
+pub mod gc;
 mod objects;
 mod section;
 

@@ -1,4 +1,3 @@
-use crate::analysis::entity::EntityInfo;
 use crate::analysis::entity::Path;
 use crate::analysis::scope::{Scope, ScopeKind};
 use crate::analysis::typer::Typer;
@@ -8,6 +7,7 @@ use crate::ir::ast::Visibility;
 use crate::ir::hir::HirFile;
 use crate::syntax::ParsedFile;
 use crate::types::TypeMap;
+use crate::{analysis::entity::EntityInfo, LanguageMode};
 
 pub struct Analysis {
     type_map: TypeMap,
@@ -66,7 +66,7 @@ impl Analysis {
         // load prelude
     }
 
-    pub fn check(&mut self, file: ParsedFile) -> Result<HirFile, Error> {
-        Typer::new(&mut self.type_map, &mut self.scope_stack).resolve_file(file)
+    pub fn check(&mut self, file: ParsedFile, mode: LanguageMode) -> Result<HirFile, Error> {
+        Typer::new(&mut self.type_map, &mut self.scope_stack, mode).resolve_root(file)
     }
 }

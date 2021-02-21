@@ -1,0 +1,9 @@
+fn main() {
+	let x = 9
+	if x > 10 {
+		echo "x is less than 11"
+	}
+	else {
+		echo "x is greather than 11"
+	}
+}

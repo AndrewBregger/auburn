@@ -1,0 +1,4 @@
+fn main() {
+	let tpl = (1, 2.0, "hello")
+	echo tpl
+}

@@ -11,6 +11,8 @@ use crate::syntax::Position;
 use crate::system::FileId;
 use crate::types::Type;
 
+use super::ast::StmtKind;
+
 #[derive(Debug, Clone)]
 pub struct BinaryExpr {
     pub op: BinaryOp,
@@ -72,6 +74,12 @@ pub struct TupleExpr {
 }
 
 #[derive(Debug, Clone)]
+pub struct TupleIndex {
+    pub tuple: Rc<HirExpr>,
+    pub field: u64,
+}
+
+#[derive(Debug, Clone)]
 pub struct LoopExpr {
     pub body: Rc<HirExpr>,
 }
@@ -130,6 +138,7 @@ pub enum HirExprKind {
     AssociatedFunction(AssociatedFunctionExpr),
     Block(BlockExpr),
     Tuple(TupleExpr),
+    TupleIndex(TupleIndex),
     Loop(LoopExpr),
     While(WhileExpr),
     For(ForExpr),
@@ -270,6 +279,7 @@ impl NodeType for HirExprKind {
             Self::AssociatedFunction(..) => "Associated Function",
             Self::Block(..) => "Block",
             Self::Tuple(..) => "Tuple",
+            Self::TupleIndex(..) => "Tuple Index",
             Self::Loop(..) => "Loop",
             Self::While(..) => "While",
             Self::For { .. } => "For",
@@ -294,7 +304,7 @@ impl NodeType for HirStmtKind {
             Self::Expr(_) => "Expr Stmt",
             Self::Item(_) => "Item Stmt",
             Self::Assignment(_) => "Assignment Stmt",
-            Self::Print(_) => "Print Stmt",
+            Self::Echo(_) => "Echo Stmt",
         }
     }
 
@@ -350,7 +360,7 @@ pub enum HirStmtKind {
     Expr(Rc<HirExpr>),
     Item(EntityRef),
     Assignment(Assignment),
-    Print(HirExprPtr),
+    Echo(HirExprPtr),
 }
 
 // the actual type will be the ty() of MirNode
@@ -530,12 +540,23 @@ impl HirExpr {
 #[derive(Debug, Clone)]
 pub struct HirFile {
     id: FileId,
+    entry: Option<EntityRef>,
+    stem: String,
     stmts: Vec<HirStmtPtr>,
 }
 
 impl HirFile {
-    pub fn new(id: FileId, stmts: Vec<HirStmtPtr>) -> Self {
-        Self { id, stmts }
+    pub fn new(id: FileId, stem: String, stmts: Vec<HirStmtPtr>) -> Self {
+        Self {
+            id,
+            stem,
+            stmts,
+            entry: None,
+        }
+    }
+
+    pub fn stem(&self) -> &str {
+        self.stem.as_str()
     }
 
     pub fn stmts(&self) -> &[HirStmtPtr] {
@@ -544,5 +565,35 @@ impl HirFile {
 
     pub fn id(&self) -> FileId {
         self.id
+    }
+
+    pub fn is_root(&self) -> bool {
+        self.entry.is_some()
+    }
+
+    pub fn set_entry(&mut self, entry: EntityRef) {
+        self.entry = Some(entry);
+    }
+
+    pub fn find_entity_by_name(&self, name: &str) -> Option<EntityRef> {
+        for stmt in self.stmts() {
+            match stmt.inner() {
+                HirStmtKind::Item(entity) => {
+                    let entity_borrow = entity.borrow();
+                    if entity_borrow.name() == name {
+                        std::mem::drop(entity_borrow);
+                        return Some(entity.clone());
+                    } else {
+                        continue;
+                    }
+                }
+                _ => continue,
+            }
+        }
+        None
+    }
+
+    pub fn get_entry(&self) -> Option<EntityRef> {
+        self.entry.as_ref().map(|e| e.clone())
     }
 }

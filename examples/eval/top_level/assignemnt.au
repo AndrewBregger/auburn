@@ -1,0 +1,5 @@
+mut x = 1.0
+print x
+x = x * 2.4 + 3.2
+print x
+

@@ -1,8 +1,8 @@
+#![feature(allocator_api)]
 extern crate auburn;
 
-use std::error::Error;
-
 use crate::core::Core;
+use std::error::Error;
 
 mod core;
 

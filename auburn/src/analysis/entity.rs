@@ -247,6 +247,14 @@ impl Entity {
         }
     }
 
+    pub fn as_local(&self) -> &LocalInfo {
+        match &self.kind {
+            EntityInfo::Param(info) 
+            | EntityInfo::Field(info) => info,
+            _ => panic!("Attempting to get local info from an entity that is not a parameter or fields"),
+        }
+    }
+
     pub fn is_type(&self) -> bool {
         match self.kind {
             EntityInfo::Primitive | EntityInfo::Structure { .. } => true,
@@ -257,6 +265,20 @@ impl Entity {
     pub fn is_struct(&self) -> bool {
         match self.kind {
             EntityInfo::Structure { .. } => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_function(&self) -> bool  {
+        match self.kind {
+            EntityInfo::Function { .. } => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_field(&self) -> bool {
+        match self.kind {
+            EntityInfo::Field(..) => true,
             _ => false,
         }
     }

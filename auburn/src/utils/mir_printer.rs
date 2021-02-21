@@ -45,7 +45,7 @@ impl MirPrinter {
                 EntityPrinter::print_impl(&assignment.lvalue.borrow(), indent + 1);
                 Self::print_expr_inner(assignment.rhs.as_ref(), indent + 1);
             }
-            HirStmtKind::Print(expr) => {
+            HirStmtKind::Echo(expr) => {
                 Self::print_expr_inner(expr.as_ref(), indent + 1);
             }
         }
@@ -105,7 +105,17 @@ impl MirPrinter {
                     Self::print_expr_inner(actual.as_ref(), indent + 1);
                 }
             }
-            HirExprKind::Tuple(_tuple_expr) => {}
+            HirExprKind::Tuple(tuple_expr) => {
+                println!("{}Elements:", Self::indent(indent));
+                for element in tuple_expr.elements.iter() {
+                    Self::print_expr_inner(element.as_ref(), indent + 1);
+                }
+            }
+            HirExprKind::TupleIndex(tuple_index) => {
+                println!("{}Operand:", Self::indent(indent));
+                Self::print_expr_inner(tuple_index.tuple.as_ref(), indent + 1);
+                println!("{}Field: {}", Self::indent(indent), tuple_index.field);
+            }
             HirExprKind::Loop(loop_expr) => {
                 println!("{}Body:", Self::indent(indent));
                 Self::print_expr_inner(loop_expr.body.as_ref(), indent + 1);

@@ -1,0 +1,4 @@
+echo 10
+echo 1 + 10
+echo 10 / 4
+echo 3.4 * 2.4

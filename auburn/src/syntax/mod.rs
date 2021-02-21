@@ -1,4 +1,7 @@
-use std::fmt::{Display, Formatter};
+use std::{
+    fmt::{Display, Formatter},
+    path::Path,
+};
 
 mod parse;
 pub mod token;
@@ -168,6 +171,13 @@ impl ParsedFile {
             // imports: vec![],
             stmts: vec![],
         }
+    }
+
+    pub fn stem(&self) -> &str {
+        let path = Path::new(self.file_name.as_str());
+        path.file_stem()
+            .and_then(|f| f.to_str())
+            .expect("expected a file")
     }
 
     pub fn push_stmt(&mut self, stmt: Box<Stmt>) {

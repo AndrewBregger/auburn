@@ -1,0 +1,10 @@
+fn main() {
+	{
+		let x = 10
+		let y = 20
+		echo x + y
+	}
+	let z = 30
+	let w = 40
+	echo z - w
+}

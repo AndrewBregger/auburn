@@ -1,0 +1,16 @@
+mut con = true
+
+if con {
+	print 10
+}
+else {
+	print 12
+}
+
+con = false
+if con {
+	print 11
+}
+else {
+	print 13
+}

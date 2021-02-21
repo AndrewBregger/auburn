@@ -1,7 +1,11 @@
-use crate::runtime::{OxFunction, OxString};
+use crate::{
+    gc::Gc,
+    runtime::{OxFunction, OxString, OxStruct, OxTuple},
+    OxInstance, OxModule,
+};
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum Value {
     I8(i8),
     I16(i16),
@@ -14,8 +18,13 @@ pub enum Value {
     F32(f32),
     F64(f64),
     Bool(bool),
-    String(Box<OxString>),
-    Function(Box<OxFunction>),
+    Char(char),
+    String(Gc<OxString>),
+    Function(Gc<OxFunction>),
+    Struct(Gc<OxStruct>),
+    Instance(Gc<OxInstance>),
+    Module(Gc<OxModule>),
+    Tuple(Gc<OxTuple>),
     Unit,
 }
 
@@ -35,6 +44,11 @@ impl Value {
             Self::Bool(_) => "bool",
             Self::String(_) => "string",
             Self::Function(_) => "function",
+            Self::Struct(_) => "struct",
+            Self::Instance(..) => "instance",
+            Self::Module(..) => "module",
+            Self::Tuple(..) => "tuple",
+            Self::Char(..) => "char",
             Self::Unit => "unit",
         }
     }
@@ -138,7 +152,7 @@ impl Value {
             *val
         } else {
             panic!(
-                "Attempting to get an bool from a value of type {}",
+                "Attempting to get a bool from a value of type {}",
                 self.ty()
             );
         }
@@ -149,31 +163,98 @@ impl Value {
             val
         } else {
             panic!(
-                "Attempting to get an string from a value of type {}",
+                "Attempting to get a string from a value of type {}",
                 self.ty()
             );
         }
     }
 
     pub fn as_function(&self) -> &OxFunction {
-        if let Self::Function(val) = self {
-            val
+        match self {
+            Self::Function(val) => val,
+            _ => {
+                panic!(
+                    "Attempting to get a string from a value of type {}",
+                    self.ty()
+                );
+            }
+        }
+    }
+
+    pub fn as_function_mut(&mut self) -> &mut OxFunction {
+        match self {
+            Self::Function(val) => val.as_ref_mut(),
+            _ => {
+                panic!(
+                    "Attempting to get a string from a value of type {}",
+                    self.ty()
+                );
+            }
+        }
+    }
+
+    pub fn as_char(&self) -> char {
+        if let Self::Char(val) = self {
+            *val
         } else {
             panic!(
-                "Attempting to get an string from a value of type {}",
+                "Attempting to get a char from a value of type {}",
                 self.ty()
             );
         }
     }
 
-    pub fn as_function_mut(&mut self) -> &mut OxFunction {
-        if let Self::Function(val) = self {
+    pub fn as_tuple(&self) -> &Gc<OxTuple> {
+        if let Self::Tuple(val) = self {
             val
-        } else {
-            panic!(
-                "Attempting to get an string from a value of type {}",
-                self.ty()
-            );
+        }
+        else {
+            panic!("Attempting to get a tuple from a value of type {}", self.ty());
+        }
+    }
+
+    pub fn as_tuple_mut(&mut self) -> &mut Gc<OxTuple> {
+        if let Self::Tuple(val) = self {
+            val
+        }
+        else {
+            panic!("Attempting to get a tuple from a value of type {}", self.ty());
+        }
+    }
+
+    pub fn as_struct(&self) -> &Gc<OxStruct> {
+        if let Self::Struct(val) = self {
+            val
+        }
+        else {
+            panic!("Attempting to get a struct from a value of type {}", self.ty());
+        }
+    }
+
+    pub fn as_struct_mut(&mut self) -> &mut Gc<OxStruct> {
+        if let Self::Struct(val) = self {
+            val
+        }
+        else {
+            panic!("Attempting to get a struct from a value of type {}", self.ty());
+        }
+    }
+
+    pub fn as_instance(&self) -> &Gc<OxInstance> {
+        if let Self::Instance(val) = self {
+            val
+        }
+        else {
+            panic!("Attempting to get a instance from a value of type {}", self.ty());
+        }
+    }
+
+    pub fn as_instance_mut(&mut self) -> &mut Gc<OxInstance> {
+        if let Self::Instance(val) = self {
+            val
+        }
+        else {
+            panic!("Attempting to get a instance from a value of type {}", self.ty());
         }
     }
 
@@ -267,6 +348,53 @@ impl Value {
             _ => false,
         }
     }
+
+    pub fn is_object(&self) -> bool {
+        match self {
+            Self::Function(..) | Self::String(..) | Self::Instance(..) | Self::Module(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_tuple(&self) -> bool {
+        match self {
+            Self::Tuple(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_char(&self) -> bool {
+        match self {
+            Self::Char(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_instance(&self) -> bool {
+        match self {
+            Self::Instance(..) => true,
+            _ => false,
+        }
+    }
+
+
+    pub fn disassemble(&self) {
+        match self {
+            Self::String(s) => println!("<string {}>", s),
+            Self::Function(f) => {
+                f.disassemble();
+            }
+            Self::Struct(s) => {
+                s.disassemble();
+            }
+            Self::Instance(inst) => {
+                println!("<instance {}>", inst);
+            }
+            Self::Module(module) => module.disassemble(),
+            Self::Tuple(tuple) => tuple.disassemble(),
+            _ => println!("<{} {}>", self.ty(), self),
+        }
+    }
 }
 
 macro_rules! value_from {
@@ -293,6 +421,11 @@ value_from!(F32, f32);
 value_from!(F64, f64);
 
 value_from!(Bool, bool);
+value_from!(Char, char);
+value_from!(Struct, Gc<OxStruct>);
+value_from!(Function, Gc<OxFunction>);
+value_from!(Module, Gc<OxModule>);
+value_from!(String, Gc<OxString>);
 
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -310,7 +443,13 @@ impl Display for Value {
             Self::Bool(val) => write!(f, "{}", val),
             Self::String(val) => write!(f, "{}", val),
             Self::Function(val) => write!(f, "{}", val),
+            Self::Struct(val) => write!(f, "{}", val),
+            Self::Module(val) => write!(f, "{}", val),
+            Self::Instance(val) => write!(f, "{}", val),
+            Self::Char(val) => write!(f, "{}", val),
+            Self::Tuple(val) => write!(f, "{}", val),
             Self::Unit => write!(f, "<>"),
         }
     }
 }
+
