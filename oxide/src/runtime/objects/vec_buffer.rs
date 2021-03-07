@@ -1,16 +1,15 @@
 use std::{
-    marker::PhantomData,
-    mem::ManuallyDrop,
     ops::{Deref, DerefMut, Index, IndexMut},
     slice::SliceIndex,
 };
 
 use crate::gc::{Cell, GcObject, VecAllocator};
 
+#[repr(C)]
 #[derive(Debug, Clone)]
 pub struct VecBuffer<Ty> {
     cell: Cell,
-    buffer: ManuallyDrop<Vec<Ty, VecAllocator>>,
+    buffer: Vec<Ty, VecAllocator>,
 }
 
 // impl<Ty> Copy for VecBuffer<Ty> {}
@@ -19,7 +18,7 @@ impl<Ty> VecBuffer<Ty> {
     pub fn new(buffer: Vec<Ty, VecAllocator>) -> Self {
         Self {
             cell: Cell::new(crate::gc::ObjectKind::VecBuffer),
-            buffer: ManuallyDrop::new(buffer),
+            buffer,
         }
     }
 
@@ -28,7 +27,7 @@ impl<Ty> VecBuffer<Ty> {
     }
 }
 
-impl<Ty: Send + Sync + Clone> GcObject for VecBuffer<Ty> {
+impl<Ty: Send + Sync> GcObject for VecBuffer<Ty> {
     fn as_cell(&self) -> &Cell {
         &self.cell
     }

@@ -14,6 +14,10 @@ pub enum ObjectKind {
     Module,
     // tuple object
     Tuple,
+    // section object
+    Section,
+    // string object
+    String,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -34,7 +38,7 @@ impl Cell {
     }
 }
 
-pub trait GcObject: Send + Sync + Clone {
+pub trait GcObject: Send + Sync {
     fn as_cell(&self) -> &Cell;
     fn as_cell_mut(&mut self) -> &mut Cell;
 }

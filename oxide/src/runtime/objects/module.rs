@@ -1,30 +1,27 @@
-use std::{fmt::Display, mem::ManuallyDrop};
+use std::{fmt::Display, ops::{Deref, DerefMut}};
+use crate::{AttributeAccess, OxString, Value, VecBuffer, gc:: GcObject};
+use crate::gc::{Cell, ObjectKind};
 
-use crate::{AttributeAccess, OxString, Value, gc::{Allocator, Gc, GcObject}};
-use crate::{
-    gc::{Cell, ObjectKind},
-    OxFunction,
-};
-
+#[repr(C)]
 #[derive(Debug, Clone)]
 pub struct OxModule {
     /// gc info
     cell: Cell,
     /// name of module
-    name: OxString,
+    pub name: OxString,
     /// entry object index
     entry: Option<usize>,
     /// list of values
-    values: ManuallyDrop<Vec<Value, Allocator>>,
+    pub values: VecBuffer<Value>,
 }
 
 impl OxModule {
-    pub fn new(name: OxString, values: Vec<Value, Allocator>) -> Self {
+    pub fn new(name: OxString, values: VecBuffer<Value>) -> Self {
         Self {
             cell: Cell::new(ObjectKind::Module),
             name,
             entry: None,
-            values: ManuallyDrop::new(values),
+            values,
         }
     }
 
@@ -33,7 +30,7 @@ impl OxModule {
     }
 
     pub fn values(&self) -> &[Value] {
-        self.values.as_slice()
+        self.values.deref().as_slice()
     }
 
     pub fn set_entry(&mut self, entry: usize) {
@@ -44,21 +41,20 @@ impl OxModule {
         println!(
             "Module: {}, Values: {} Entry: {}",
             self.name,
-            self.values.len(),
+            self.values.deref().len(),
             self.entry.map_or("None".to_string(), |e| format!("{}", e))
         );
-        for (idx, object) in self.values.iter().enumerate() {
+        for (idx, object) in self.values.deref().iter().enumerate() {
             object.disassemble();
             println!();
         }
     }
 
-    pub fn get_entry(&self) -> Option<Gc<OxFunction>> {
+    pub fn get_entry(&self) -> Option<Value> {
         if let Some(idx) = self.entry {
-            match self.get_attr(idx) {
-                Value::Function(function) => Some(function.clone()),
-                _ => panic!("Compiler Error: entry for module '{}' is not a function", self.name),
-            }
+            let value = self.get_attr(idx);
+            debug_assert!(value.is_function(), "Compiler Error: entry for module '{}' is not a function", self.name);
+            Some(value.clone())
         }
         else { None }
     }
@@ -84,11 +80,11 @@ impl AttributeAccess for OxModule {
     type Output = Value;
 
     fn get_attr(&self, idx: usize) -> &<Self as AttributeAccess>::Output {
-        unsafe { self.values.get_unchecked(idx) }
+        unsafe { self.values.deref().get_unchecked(idx) }
     }
 
     fn get_attr_mut(&mut self, idx: usize) -> &mut <Self as AttributeAccess>::Output {
-        unsafe { self.values.get_unchecked_mut(idx) }
+        unsafe { self.values.deref_mut().get_unchecked_mut(idx) }
     }
 
 }

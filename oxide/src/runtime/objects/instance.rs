@@ -2,11 +2,12 @@ use std::fmt::Display;
 
 use crate::{AttributeAccess, OxString, OxStruct, Value, gc::{Cell, Gc, GcObject, ObjectKind}};
 
+#[repr(C)]
 #[derive(Debug, Clone)]
 pub struct OxInstance {
     cell: Cell,
-    object: Gc<OxStruct>,
-    fields: u16,
+    pub object: Gc<OxStruct>,
+    pub fields: u16,
 }
 
 impl OxInstance {

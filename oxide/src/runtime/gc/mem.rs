@@ -1,78 +1,41 @@
-use std::alloc::{AllocError, Layout};
+use std::{alloc::{AllocError, Layout}, collections::BTreeSet, sync::atomic::{AtomicUsize, Ordering}};
 use std::{
     ptr::NonNull,
     sync::{Arc, Mutex},
 };
+
+use itertools::Itertools;
+
 // pub static ALIGN_HEADER: usize = std::mem::align_of::<Header>();
 // pub static ALIGN_LIST_NODE: usize = std::mem::align_of::<FreeListNode>();
+static COLLECT_INITIAL: usize = 64; //1024 * 1024;
+static COLLECT_FACTOR: f64 = 1.5;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Header {
-    // pub id: usize,
+    pub id: usize,
     pub size: usize,
+    pub align: usize,
 }
 
-#[repr(C)]
-#[derive(Debug)]
-struct FreeListNode {
-    size: usize,
-    next: Option<&'static mut FreeListNode>,
-}
-
-impl FreeListNode {
-    fn end_ptr(&self) -> *const u8 {
-        unsafe {
-            (self as *const FreeListNode as *const u8)
-                .add(self.size + std::mem::size_of::<FreeListNode>())
+impl From<Layout> for Header {
+    fn from(other: Layout) -> Self {
+        static TOKEN: AtomicUsize = AtomicUsize::new(0);
+        Self {
+            id: TOKEN.fetch_add(1, Ordering::SeqCst),
+            size: other.size(),
+            align: other.align(),
         }
-    }
-
-    fn next_to(&self, right: &FreeListNode) -> bool {
-        let right_ptr = right as *const FreeListNode as *const u8;
-        self.end_ptr() == right_ptr
-    }
-}
-
-#[derive(Debug, Clone)]
-struct FreeList {
-    elements: *mut FreeListNode,
-}
-
-impl FreeList {
-    fn empty(buffer: *mut u8, size: usize) -> Self {
-        let node = unsafe {
-            let node = std::mem::transmute::<*mut u8, *mut FreeListNode>(buffer);
-            (*node).size = size;
-            (*node).next = None;
-            node
-        };
-
-        Self { elements: node }
-    }
-
-    unsafe fn insert(&mut self, node: *mut FreeListNode) {}
-
-    unsafe fn coalesce(&mut self) {
-        todo!()
-    }
-
-    unsafe fn search(&mut self, size: usize) -> (*mut FreeListNode, *mut FreeListNode) {
-        self.first_fit_search(size)
-    }
-
-    #[inline(always)]
-    unsafe fn first_fit_search(&mut self, size: usize) -> (*mut FreeListNode, *mut FreeListNode) {
-        todo!()
     }
 }
 
 #[derive(Debug)]
 pub struct Memory {
-    // buffer: *mut u8,
-    // end: *const u8,
     layout: Layout,
     size: usize,
-    // free_list: FreeList,
+    memory_usage: usize,
+    next_collect: usize,
+    allocations: BTreeSet<usize>,
 }
 
 impl Memory {
@@ -80,17 +43,30 @@ impl Memory {
         let layout = Layout::from_size_align(size, 1)
             .expect(format!("failed to allocate Arena({})", size).as_str());
 
-        // let buffer = unsafe { std::alloc::alloc(layout) };
-        // let free_list = FreeList::empty(buffer, size);
-
         Self {
-            // buffer,
-            // end: unsafe { buffer.add(size) },
             layout,
             size,
-            // free_list,
+            memory_usage: 0,
+            next_collect: COLLECT_INITIAL,
+            allocations: BTreeSet::new(),
         }
     }
+
+    pub fn memory_usage(&self) -> usize {
+        self.memory_usage
+    }
+
+    pub fn should_collect(&self) -> bool {
+        self.memory_usage >= self.next_collect
+    }
+
+    pub fn post_collect(&mut self) {
+        self.next_collect = (self.next_collect as f64 * COLLECT_FACTOR) as usize;
+    }
+
+    pub fn sweep(&mut self) {
+    }
+
 
     pub fn contains(&self, ptr: *const u8) -> bool {
         // self.buffer as *const _ <= ptr && ptr < self.end as *const _
@@ -107,20 +83,25 @@ impl Memory {
     pub fn alloc(&mut self, layout: Layout) -> Option<*mut u8> {
         self.alloc_inner(layout)
             .ok()
-            .map(|ptr| ptr.as_ptr() as *mut u8)
+            .map(|ptr| ptr.as_ptr() as *mut u8).and_then(|ptr| {
+                self.allocations.insert(ptr as _);
+                Some(ptr)
+            })
     }
 
     pub fn alloc_inner(&mut self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        // println!("allocating: {:?}", layout);
+        println!("allocating: {:?}", layout);
         if layout.size() == 0 {
             return Ok(NonNull::slice_from_raw_parts(NonNull::<u8>::dangling(), 0));
         }
 
         let layout = Layout::from_size_align(
             layout.size() + std::mem::size_of::<Header>(),
-            layout.align(),
+            layout.align().max(std::mem::align_of::<Header>()),
         )
         .expect("failed to layout header");
+
+        self.memory_usage += layout.size();
 
         let ptr = unsafe { std::alloc::alloc(layout) };
         if ptr.is_null() {
@@ -128,7 +109,7 @@ impl Memory {
         } else {
             unsafe {
                 let header = &mut *(ptr as *mut Header);
-                header.size = layout.size();
+                *header = Header::from(layout);
                 let ptr = ptr.add(std::mem::size_of::<Header>());
                 println!("IsValid Alignment {}", ptr as usize % layout.align() == 0);
                 let ptr = NonNull::new(ptr).ok_or(std::alloc::AllocError)?;
@@ -142,10 +123,10 @@ impl Memory {
         if ptr.is_null() {
             Err(std::alloc::AllocError)
         } else {
-            unsafe {
-                let ptr = NonNull::new(ptr).ok_or(std::alloc::AllocError)?;
-                Ok(NonNull::slice_from_raw_parts(ptr, layout.size()))
-            }
+            self.memory_usage += layout.size();
+            let nnptr = NonNull::new(ptr).ok_or(std::alloc::AllocError)?;
+            self.allocations.insert(ptr as _);
+            Ok(NonNull::slice_from_raw_parts(nnptr, layout.size()))
         }
     }
 
@@ -159,10 +140,14 @@ impl Memory {
                 panic!();
             }
         };
+        self.memory_usage -= header.size;
         unsafe { std::alloc::dealloc(header_ptr, layout) }
+
+        self.allocations.remove(&(ptr as _));
     }
 
     pub fn dealloc_vec(&mut self, ptr: *mut u8, layout: Layout) {
+        self.memory_usage -= layout.size();
         unsafe { std::alloc::dealloc(ptr, layout) }
     }
 
@@ -183,6 +168,13 @@ impl Memory {
         //     }
 
         // }
+    }
+
+    pub fn clean_up(&mut self) {
+        let allocations = self.allocations.iter().map(|x| *x).collect_vec();
+        for alloc in allocations.into_iter() {
+            self.dealloc(alloc as *mut u8);
+        }
     }
 }
 

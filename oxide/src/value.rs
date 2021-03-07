@@ -1,8 +1,4 @@
-use crate::{
-    gc::Gc,
-    runtime::{OxFunction, OxString, OxStruct, OxTuple},
-    OxInstance, OxModule,
-};
+use crate::{OxInstance, OxModule, gc::{Address, Gc}, runtime::{OxFunction, OxString, OxStruct, OxTuple}};
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone, Copy)]
@@ -29,6 +25,20 @@ pub enum Value {
 }
 
 impl Value {
+    pub fn addr(&self) -> Option<Address> {
+        let addr = match self {
+            Value::String(addr) => addr.ptr(),
+            Value::Function(addr) => addr.ptr(),
+            Value::Struct(addr) => addr.ptr(),
+            Value::Instance(addr) => addr.ptr(),
+            Value::Module(addr) => addr.ptr(),
+            Value::Tuple(addr) => addr.ptr(),
+            _ => return None,
+        };
+
+        Some(addr)
+    }
+
     pub fn ty(&self) -> &'static str {
         match self {
             Self::I8(_) => "i8",

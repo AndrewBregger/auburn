@@ -1,4 +1,3 @@
-mod buffer;
 mod function;
 mod instance;
 mod module;
@@ -7,7 +6,6 @@ mod structure;
 mod vec_buffer;
 mod tuple;
 
-pub use buffer::Buffer;
 pub use function::OxFunction;
 pub use instance::OxInstance;
 pub use module::OxModule;

@@ -3,10 +3,11 @@ use itertools::{self, Itertools};
 
 use crate::{AttributeAccess, OxString, Value, VecBuffer, gc::{Cell, GcObject, ObjectKind}};
 
+#[repr(C)]
 #[derive(Debug, Clone)]
 pub struct OxTuple {
     cell: Cell,
-    elements: VecBuffer<Value>,
+    pub elements: VecBuffer<Value>,
 }
 
 impl OxTuple {

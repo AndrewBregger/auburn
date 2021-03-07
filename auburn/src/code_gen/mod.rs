@@ -174,7 +174,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             .remove(&hir_file.id())
             .expect("unable to remove file context");
 
-        let mut values = Vec::with_capacity_in(context.values.len(), self.vm.allocator());
+        let mut values = self.vm.allocate_vec(context.values.len());
         values.extend(context.values.drain(..).into_iter());
         let mut module = self.vm.allocate_module(name, values);
 

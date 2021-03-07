@@ -1,4 +1,4 @@
-use crate::{gc::Gc, mem::read_to};
+use crate::{gc::{Cell, GcObject, ObjectKind}, mem::read_to};
 use crate::{
     vm::{Instruction, OpCode},
     VecBuffer,
@@ -29,21 +29,24 @@ impl Display for SectionId {
 }
 
 /// section of executable byte code.
+#[repr(C)]
 #[derive(Debug, Clone)]
 pub struct Section {
+    cell: Cell,
     // I am wondering if it would denifit from storing a reference to a array of
     // bytes instead of owning it. This would mean that the section is not able
     // to write to its data since it is owned outside of it.
-    data: VecBuffer<u8>,
-    id: SectionId,
-    constants: VecBuffer<Value>,
-    globals: VecBuffer<Value>,
+    pub data: VecBuffer<u8>,
+    pub id: SectionId,
+    pub constants: VecBuffer<Value>,
+    pub globals: VecBuffer<Value>,
 }
 
 impl Section {
     pub fn new(vm: &Vm) -> Self {
         let allocator = vm.allocator_vec();
         Self {
+            cell: Cell::new(ObjectKind::Section),
             data: VecBuffer::empty(allocator.clone()),
             id: SectionId::next(),
             constants: VecBuffer::empty(allocator.clone()),
@@ -304,5 +307,15 @@ impl Section {
         self.write_op(OpCode::Loop);
         let offset = (self.len() - start + 2) as u16;
         self.write_bytes(&offset.to_be_bytes());
+    }
+}
+
+impl GcObject for Section {
+    fn as_cell(&self) -> &Cell {
+        &self.cell
+    }
+
+    fn as_cell_mut(&mut self) -> &mut Cell {
+        &mut self.cell
     }
 }

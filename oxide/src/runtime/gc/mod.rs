@@ -5,8 +5,7 @@ mod mem;
 pub use mem::{Allocator, Header, Memory, VecAllocator};
 use std::{
     alloc::Layout,
-    collections::BTreeSet,
-    fmt::{write, Display},
+    fmt::Display,
     marker::PhantomData,
     ops::{Deref, DerefMut},
     sync::{Arc, Mutex},
@@ -14,6 +13,7 @@ use std::{
 
 pub use address::Address;
 pub use cell::{Cell, GcObject, ObjectKind};
+
 
 #[repr(transparent)]
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -83,7 +83,6 @@ pub enum GcError {}
 
 pub struct GcAlloc {
     memory: Arc<Mutex<Memory>>,
-    allocations: BTreeSet<Address>,
 }
 
 impl GcAlloc {
@@ -91,8 +90,23 @@ impl GcAlloc {
         let memory = Memory::new(size);
         Self {
             memory: Arc::new(Mutex::new(memory)),
-            allocations: BTreeSet::new(),
         }
+    }
+
+    pub fn sweep(&mut self) {
+        self.memory.lock().expect("failed to retreive memory lock").sweep();
+    }
+
+    pub fn memory_usage(&self) -> usize {
+        self.memory.lock().expect("failed to retreive memory lock").memory_usage()
+    }
+
+    pub fn should_collect(&self) -> bool {
+        self.memory.lock().expect("failed to retreive memory lock").should_collect()
+    }
+
+    pub fn post_collect(&mut self) {
+        self.memory.lock().expect("failed to retreive memory lock").post_collect();
     }
 
     pub fn allocator(&self) -> Allocator {
@@ -135,17 +149,10 @@ impl GcAlloc {
             .map(|ptr| Address::from_ptr(ptr.as_ptr() as *mut u8))
             .ok();
 
-        address.map(|a| self.allocations.insert(a));
-
         address
     }
 
     pub fn dealloc(&mut self, ptr: Address) {
-        assert!(
-            self.allocations.remove(&ptr),
-            "allocation ptr was not found"
-        );
-
         self.dealloc_inner(ptr)
     }
 
@@ -156,11 +163,8 @@ impl GcAlloc {
             .dealloc(ptr.as_ptr_mut())
     }
 
-    pub fn free_all_allocations(&mut self) {
-        println!("Remaining allocations: {}", self.allocations.len());
-        for allocation in self.allocations.clone().into_iter() {
-            self.dealloc_inner(allocation);
-        }
+    pub fn clean_up(&mut self) {
+        self.memory.lock().expect("failed to retreive memory lock").clean_up();
     }
 }
 

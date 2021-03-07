@@ -1,27 +1,26 @@
-use std::{
-    cmp::min,
-    fmt::{Display, Formatter},
-    ops::DerefMut,
-};
+use std::{cmp::min, fmt::{Display, Formatter}, ops::{Deref, DerefMut}};
 
-use crate::{
-    gc::{Address, Cell, Gc, GcObject},
-    VecBuffer,
-};
+use crate::{VecBuffer, gc::{Address, Cell, Gc, GcObject, ObjectKind}};
 
+#[repr(C)]
 #[derive(Debug, Clone)]
 pub struct OxString {
-    len: usize,
-    buffer: VecBuffer<char>,
+    cell: Cell,
+    pub buffer: VecBuffer<char>,
+    pub len: usize,
 }
 
 impl OxString {
     pub fn new(buffer: VecBuffer<char>, len: usize) -> Self {
-        Self { len, buffer }
+        Self { 
+            cell: Cell::new(ObjectKind::String),
+            len,
+            buffer 
+        }
     }
 
     pub fn chars(&self) -> &[char] {
-        self.buffer.as_slice()
+        self.buffer.deref().as_slice()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -48,10 +47,10 @@ impl Display for OxString {
 
 impl GcObject for OxString {
     fn as_cell(&self) -> &Cell {
-        self.buffer.as_cell()
+        &self.cell
     }
 
     fn as_cell_mut(&mut self) -> &mut Cell {
-        self.buffer.as_cell_mut()
+        &mut self.cell
     }
 }

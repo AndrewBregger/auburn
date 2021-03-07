@@ -4,12 +4,13 @@ use crate::{
 };
 use std::fmt::{Display, Formatter};
 
+#[repr(C)]
 #[derive(Debug, Clone)]
 pub struct OxFunction {
     cell: Cell,
-    name: OxString,
-    arity: u8,
-    section: Section,
+    pub name: OxString,
+    pub arity: u8,
+    pub section: Section,
 }
 
 impl OxFunction {

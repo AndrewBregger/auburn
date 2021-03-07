@@ -3,20 +3,23 @@ mod op_codes;
 
 use std::alloc::Layout;
 
-use crate::{AttributeAccess, gc::{Address, GcAlloc}, mem::read_to};
 use crate::{
-    gc::{Allocator, Gc, VecAllocator},
-    runtime::{self, Buffer},
+    AttributeAccess,
+    gc::{Allocator, Gc, VecAllocator, Address, Cell, GcAlloc, GcObject, ObjectKind},
+    runtime,
     OxInstance, OxModule, OxString, OxTuple, Section, Value, VecBuffer,
+    mem::read_to,
 };
 use call_frame::CallFrame;
-use itertools::{self, Itertools};
 pub use op_codes::{Instruction, OpCode};
 use ordered_float::OrderedFloat;
 use runtime::{OxFunction, OxStruct};
 
 static DEFAULT_MEM_SIZE: usize = 2056;
 static DEFAULT_STACK_SIZE: usize = 2056;
+static DEFAULT_GRAY_LIST_SIZE: usize = 32;
+
+type ObjectPtr = *mut Cell;
 
 macro_rules! binary_op {
     ($name:ident, $start_op:ident, $op:tt) => {
@@ -181,6 +184,10 @@ impl Vm {
         }
     }
 
+    pub fn memory_usage(&self) -> usize {
+        self.allocator.memory_usage()
+    }
+
     pub fn allocator(&self) -> Allocator {
         self.allocator.allocator()
     }
@@ -233,80 +240,56 @@ impl Vm {
         &mut self.call_stack[self.top_frame.saturating_sub(1)]
     }
 
-    pub fn call_value(&mut self) {
-        let value = {
-            let frame = self.frame_mut();
-            let arity = frame.section().read(frame.ip);
-            frame.ip += 1;
-            arity
-        };
-        let top = self.peek(value as usize);
-        match top {
+    fn call_value(&mut self, value: &Value, arity: u8) {
+        match value {
             Value::Function(funct) => {
-                if value != funct.arity() {
+                if arity != funct.arity() {
                     panic!(
                         "{} is not given the correct number of parameters, expected {}",
                         funct,
                         funct.arity()
                     );
                 }
-                let stack_start = self.top_stack - value as usize;
+                let stack_start = self.top_stack - arity as usize;
                 println!("calling {} start_stack: {}", funct.name(), stack_start);
                 self.print_stack();
                 let call_frame = CallFrame::new(*funct, stack_start);
                 self.push_frame(call_frame);
             }
             _ => {
-                panic!("Unable to call non function object: {}", top);
+                panic!("Unable to call non function object: {}", value);
             }
         }
     }
 
-    pub fn new_instance(&mut self, fields: u16) -> Gc<OxInstance> {
-        let instance_address = self.allocate_instance(fields);
-        let instance = unsafe {
-            let ptr = instance_address.as_ptr() as *mut OxInstance;
-            &mut *ptr
+    fn call(&mut self) {
+        let arity = {
+            let frame = self.frame_mut();
+            let arity = frame.section().read(frame.ip);
+            frame.ip += 1;
+            arity
         };
 
-        let fields_slice =
-            unsafe { std::slice::from_raw_parts_mut(instance.fields_ptr_mut(), fields as usize) };
-        (0..fields).rev().for_each(|idx| fields_slice[idx as usize] = self.pop());
-        let name = self.pop().clone().as_struct().clone();
-        *instance = OxInstance::new(name, fields);
-
-        Gc::<OxInstance>::new(instance_address)
-    }
-
-    pub fn new_tuple(&mut self, elements_count: u16) -> Gc<OxTuple> {
-        let instance_address = self.allocate_tuple();
-        let instance = unsafe {
-            let ptr = instance_address.as_ptr() as *mut OxTuple;
-            &mut *ptr
-        };
-
-        let mut elements = self.allocate_vec(elements_count as usize);
-        unsafe { elements.set_len(elements_count as usize) };
-        (0..elements_count).rev().for_each(|idx| elements[idx as usize] = self.pop());
-        *instance = OxTuple::new(elements);
-        Gc::<OxTuple>::new(instance_address)
+        let function = self.peek(arity as usize).clone();
+        self.call_value(&function, arity);
 
     }
 
     pub fn run_module(&mut self, module: Gc<OxModule>) -> Result<(), runtime::Error> {
+        self.push_stack(Value::from(module.clone()));
         if let Some(entry_function) = module.get_entry() {
-            self.run(entry_function)
+            self.push_stack(entry_function.clone());
+            self.call_value(&entry_function, 0);
+
+            self.run()
         }
         else {
             Err(runtime::Error::missing_module_entry(module.as_ref().name().clone()))
         }
     }
 
-    pub fn run(&mut self, function: Gc<OxFunction>) -> Result<(), runtime::Error> {
-        // + 1 to offset for the pushing of the fucntion onto the stack.
-        let call_frame = CallFrame::new(function, self.top_stack + 1);
-        self.push_stack(Value::Function(function));
-        self.push_frame(call_frame);
+    pub fn run(&mut self) -> Result<(), runtime::Error> {
+        //self.push_frame(call_frame);
 
         loop {
             // read the next op code and advance the instruction pointer.
@@ -614,7 +597,7 @@ impl Vm {
                 OpCode::Pop => {
                     self.pop();
                 }
-                OpCode::Call => self.call_value(),
+                OpCode::Call => self.call(),
                 OpCode::Echo => {
                     let value = self.pop();
                     println!("{}", value)
@@ -637,6 +620,7 @@ impl Vm {
         }
 
         println!("Section Complete");
+        println!("Memory Usage at end: {}", self.allocator.memory_usage());
         Ok(())
     }
 
@@ -648,19 +632,205 @@ impl Vm {
     conditional_binary_op!(perform_greater, GreaterI8, >);
     conditional_binary_op!(perform_lesseq, LessEqI8, <);
     conditional_binary_op!(perform_greatereq, GreaterEqI8, >);
+    
+    #[inline(always)]
+    fn mark_object(gray_list: &mut VecBuffer<ObjectPtr>, obj: ObjectPtr) {
+        let cell = unsafe { &mut (*obj) };
+        
+        // if already marked then return
+        if cell.marked {
+            println!("\tAlready Marked {:?}", obj);
+            return;
+        }
 
-    // allocation interface
-    pub fn collect(&mut self) {
-        self.mark();
-        self.sweep();
+        cell.mark(true);
+        gray_list.push(obj);
+        println!("--- Marking Object {:?} ---", obj);
     }
 
-    fn mark(&mut self) {}
+    #[inline(always)]
+    fn mark_value(gray_list: &mut VecBuffer<ObjectPtr>, value: &Value) {
+        match value.addr() {
+            Some(addr) => {
+                let b = addr.as_ptr_mut() as ObjectPtr;
+                Self::mark_object(gray_list, b);
+            }
+            None => {}
+        }
+    }
 
-    fn sweep(&mut self) {}
+    // allocation interface
+    pub fn collect<'a>(&'a mut self) {
+        return;
+        println!("--- Begin Gc pass ---");
+        let mut gray_list = VecBuffer::<ObjectPtr>::empty(self.allocator_vec());
+        gray_list.reserve_exact(DEFAULT_GRAY_LIST_SIZE);
+
+        self.mark_roots(&mut gray_list);
+
+        self.mark_references(&mut gray_list);
+
+        self.sweep();
+
+        println!("--- End Gc pass ---");
+    }
+
+    fn mark_roots<'a>(&'a mut self, gray_list: &mut VecBuffer<ObjectPtr>) {
+        println!("--- Begin Mark Roots ---");
+        for idx in 0..self.top_stack {
+            let value = &self.stack[idx];
+            Self::mark_value(gray_list, value);
+        }
+
+        // are there any compiler roots that need to be marked?
+        println!("--- Marked Roots Count: ");// {} ---", gray_list.len());
+    }
+
+    fn mark_references<'a>(&'a mut self, gray_list: &mut VecBuffer<ObjectPtr>) {
+        println!("--- Begin Mark references ---");
+
+        while !gray_list.is_empty() {
+            if let Some(value) = gray_list.pop() {
+                self.blacken_object(gray_list, value);
+            }
+            else { break };
+        }
+
+        println!("--- End Mark references ---");
+    }
+
+    fn blacken_object<'a>(&mut self, gray_list: &mut VecBuffer<ObjectPtr>, obj: ObjectPtr) {
+        println!("--- Begin Blacked Object {:?}---", obj);
+        let cell = unsafe { &*obj};
+        let kind = cell.kind.clone();
+
+        match kind {
+            ObjectKind::Function => {
+                println!("\tFunction");
+                let function = unsafe { &mut *(obj as *mut OxFunction) };
+                let name = function.name.as_cell_mut() as ObjectPtr;
+                Self::mark_object(gray_list, name);
+
+                let ptr = function.section.as_cell_mut() as ObjectPtr;
+                Self::mark_object(gray_list, ptr);
+            }
+            ObjectKind::String => {
+                println!("\tString");
+                let string = unsafe {&mut *(obj as *mut OxString) };
+                Self::mark_object(gray_list, string.buffer.as_cell_mut() as ObjectPtr);
+            }
+
+            ObjectKind::Struct => {
+                println!("\tStruct");
+                let structure = unsafe { &mut *(obj as *mut OxStruct) };
+                Self::mark_object(gray_list, structure.name.as_cell_mut() as ObjectPtr);
+                Self::mark_object(gray_list, structure.methods.as_cell_mut() as ObjectPtr);
+
+            }
+            ObjectKind::Instance => {
+                println!("\tInstance");
+                let instance = unsafe { &mut *(obj as *mut OxInstance) };
+                Self::mark_object(gray_list, instance.object.as_cell_mut() as ObjectPtr);
+                let fields = instance.fields_ptr_mut();
+                for idx in 0..instance.fields {
+                    let value = unsafe { &*fields.add(idx as usize) };
+                    Self::mark_value(gray_list, value);
+                }
+            }
+            ObjectKind::Module => {
+                println!("\tModule");
+                let module = unsafe { &mut *(obj as *mut OxModule) };
+                Self::mark_object(gray_list, module.name.as_cell_mut() as ObjectPtr);
+                for value in module.values.iter() {
+                    Self::mark_value(gray_list, value);
+                }
+            }
+            ObjectKind::Tuple => {
+                println!("\tTuple");
+                let tuple = unsafe { &mut *(obj as *mut OxTuple) };
+                for value in tuple.elements.iter() {
+                    Self::mark_value(gray_list, value);
+                }
+            }
+            ObjectKind::Section => {
+                println!("\tSection");
+                let section = unsafe { &mut *(obj as *mut Section) };
+                Self::mark_object(gray_list, section.data.as_cell_mut() as ObjectPtr);
+                Self::mark_object(gray_list, section.constants.as_cell_mut() as ObjectPtr);
+                Self::mark_object(gray_list, section.globals.as_cell_mut() as ObjectPtr);
+            }
+            
+            // no children
+            ObjectKind::VecBuffer => {
+                println!("\tVecBuffer");
+            }
+            ObjectKind::Buffer => {
+                println!("\tBuffer");
+            }
+        }
+        println!("--- End Blacked Object ---");
+    }
+
+    fn sweep<'a>(&'a mut self) {
+        self.allocator.sweep();
+    }
 
     pub fn free(&mut self) {
-        self.allocator.free_all_allocations();
+        self.allocator.clean_up();
+    }
+
+    fn allocate(&mut self, layout: Layout) -> Address {
+        if self.allocator.should_collect() {
+            self.collect();
+        }
+
+        match self.allocator.alloc(layout) {
+            Some(address) => address,
+            None => {
+                self.collect();
+                self.allocator.alloc(layout).unwrap()
+            }
+        }
+    }
+
+    fn allocate_from<Ty: GcObject>(&mut self) -> Address {
+        let layout = Layout::new::<Ty>();
+        self.allocate(layout)
+    }
+
+    pub fn deallocate(&mut self, address: Address) {
+        self.allocator.dealloc(address)
+    }
+    
+    pub fn new_instance(&mut self, fields: u16) -> Gc<OxInstance> {
+        let instance_address = self.allocate_instance(fields);
+        let instance = unsafe {
+            let ptr = instance_address.as_ptr() as *mut OxInstance;
+            &mut *ptr
+        };
+
+        let fields_slice =
+            unsafe { std::slice::from_raw_parts_mut(instance.fields_ptr_mut(), fields as usize) };
+        (0..fields).rev().for_each(|idx| fields_slice[idx as usize] = self.pop());
+        let name = self.pop().clone().as_struct().clone();
+        *instance = OxInstance::new(name, fields);
+
+        Gc::<OxInstance>::new(instance_address)
+    }
+
+    pub fn new_tuple(&mut self, elements_count: u16) -> Gc<OxTuple> {
+        let instance_address = self.allocate_tuple();
+        let instance = unsafe {
+            let ptr = instance_address.as_ptr() as *mut OxTuple;
+            &mut *ptr
+        };
+
+        let mut elements = self.allocate_vec(elements_count as usize);
+        unsafe { elements.set_len(elements_count as usize) };
+        (0..elements_count).rev().for_each(|idx| elements[idx as usize] = self.pop());
+        *instance = OxTuple::new(elements);
+        Gc::<OxTuple>::new(instance_address)
+
     }
 
     pub fn allocate_instance(&mut self, fields: u16) -> Address {
@@ -673,48 +843,14 @@ impl Vm {
     }
 
     pub fn allocate_tuple(&mut self) -> Address {
-        let size =
-            std::mem::size_of::<OxTuple>(); //+ fields as usize * std::mem::size_of::<Value>();
-        let layout = Layout::from_size_align(size, std::mem::align_of::<OxStruct>())
-            .expect("failed to layout memory for tuple");
-
-        self.allocate(layout)
+        self.allocate_from::<OxTuple>()
     }
 
-    fn allocate(&mut self, layout: Layout) -> Address {
-        match self.allocator.alloc(layout) {
-            Some(address) => address,
-            None => {
-                self.collect();
-                self.allocator.alloc(layout).unwrap()
-            }
-        }
-    }
-
-    pub fn deallocate(&mut self, address: Address) {
-        self.allocator.dealloc(address)
-    }
-
-    pub fn allocate_buffer(&mut self, size: usize) -> Gc<Buffer> {
-        // the size of the buffer header and the size of the actual buffer
-        let buffer_size = std::mem::size_of::<Buffer>() + size;
-        let layout = Layout::from_size_align(buffer_size, std::mem::align_of::<Buffer>())
-            .expect("memory layout of buffer is improper");
-        let buffer_address = self.allocate(layout);
-
-        unsafe {
-            let buffer = &mut *(buffer_address.as_ptr_mut() as *mut Buffer);
-            *buffer = Buffer::new(size);
-        }
-
-        Gc::<Buffer>::new(buffer_address)
-    }
-
-    pub fn allocate_vec_ptr<Ty: Sync + Send + Copy + Sized>(
+    pub fn allocate_vec_ptr<Ty: Sync + Send + Sized>(
         &mut self,
         count: usize,
     ) -> Gc<VecBuffer<Ty>> {
-        let address = self.allocate(Layout::new::<VecBuffer<Ty>>());
+        let address = self.allocate_from::<VecBuffer<Ty>>();
         unsafe {
             let buffer = address.as_ptr_mut() as *mut VecBuffer<Ty>;
             *buffer = self.allocate_vec::<Ty>(count);
@@ -722,7 +858,11 @@ impl Vm {
         Gc::<VecBuffer<Ty>>::new(address)
     }
 
-    pub fn allocate_vec<Ty: Sync + Send + Copy + Sized>(&mut self, count: usize) -> VecBuffer<Ty> {
+    pub fn allocate_vec<Ty: Sync + Send + Sized>(&mut self, count: usize) -> VecBuffer<Ty> {
+        if self.allocator.should_collect() {
+            self.collect();
+            self.allocator.post_collect();
+        }
         VecBuffer::<Ty>::new(Vec::with_capacity_in(count, self.allocator_vec()))
     }
 
@@ -734,8 +874,7 @@ impl Vm {
     }
 
     pub fn allocate_string_ptr(&mut self, value: &str) -> Gc<OxString> {
-        let layout = Layout::new::<OxString>();
-        let address = self.allocate(layout);
+        let address = self.allocate_from::<OxString>();
 
         unsafe {
             let buffer = address.as_ptr_mut() as *mut OxString;
@@ -751,8 +890,7 @@ impl Vm {
         arity: u8,
         section: Section,
     ) -> Gc<OxFunction> {
-        let layout = Layout::new::<OxFunction>();
-        let function_address = self.allocate(layout);
+        let function_address = self.allocate_from::<OxFunction>();
 
         unsafe {
             let buffer = &mut *(function_address.as_ptr_mut() as *mut OxFunction);
@@ -763,8 +901,7 @@ impl Vm {
     }
 
     pub fn allocate_struct(&mut self, name: OxString, methods: VecBuffer<Value>) -> Gc<OxStruct> {
-        let layout = Layout::new::<OxStruct>();
-        let struct_address = self.allocate(layout);
+        let struct_address = self.allocate_from::<OxStruct>();
 
         unsafe {
             let buffer = &mut *(struct_address.as_ptr_mut() as *mut OxStruct);
@@ -777,10 +914,9 @@ impl Vm {
     pub fn allocate_module(
         &mut self,
         name: OxString,
-        elements: Vec<Value, Allocator>,
+        elements: VecBuffer<Value>,
     ) -> Gc<OxModule> {
-        let layout = Layout::new::<OxModule>();
-        let module_address = self.allocate(layout);
+        let module_address = self.allocate_from::<OxModule>();
 
         unsafe {
             let buffer = &mut *(module_address.as_ptr_mut() as *mut OxModule);

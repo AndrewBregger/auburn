@@ -10,13 +10,14 @@ pub struct OxAttribute {
     // type_id: TypeId,
 }
 
+#[repr(C)]
 #[derive(Debug, Clone)]
 pub struct OxStruct {
     cell: Cell,
-    name: OxString,
+    pub name: OxString,
     // is this needed
     // attributes: VecBuffer<OxAttribute>,
-    methods: VecBuffer<Value>,
+    pub methods: VecBuffer<Value>,
 }
 
 impl OxStruct {
