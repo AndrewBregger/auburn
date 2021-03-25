@@ -141,6 +141,7 @@ define_opcodes!(
     "new_tuple" => NewTuple,
     "object_attr" => InstanceAttr,
     "tuple_attr" => TupleAttr,
+    "set_attr" => SetAttr,
 
     "jmp_if_true" => JmpTrue,
     "jmp_if_false" => JmpFalse,
@@ -215,7 +216,7 @@ impl Display for Instruction {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{:014x} {} {}",
+            "{:010x} {} {}",
             self.offset,
             self.op_code,
             self.args.map_or("".to_string(), |arg| arg.to_string())

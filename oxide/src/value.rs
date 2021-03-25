@@ -1,4 +1,8 @@
-use crate::{OxInstance, OxModule, gc::{Address, Gc}, runtime::{OxFunction, OxString, OxStruct, OxTuple}};
+use crate::{
+    gc::{Address, Gc},
+    runtime::{OxFunction, OxString, OxStruct, OxTuple},
+    OxInstance, OxModule,
+};
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone, Copy)]
@@ -217,54 +221,66 @@ impl Value {
     pub fn as_tuple(&self) -> &Gc<OxTuple> {
         if let Self::Tuple(val) = self {
             val
-        }
-        else {
-            panic!("Attempting to get a tuple from a value of type {}", self.ty());
+        } else {
+            panic!(
+                "Attempting to get a tuple from a value of type {}",
+                self.ty()
+            );
         }
     }
 
     pub fn as_tuple_mut(&mut self) -> &mut Gc<OxTuple> {
         if let Self::Tuple(val) = self {
             val
-        }
-        else {
-            panic!("Attempting to get a tuple from a value of type {}", self.ty());
+        } else {
+            panic!(
+                "Attempting to get a tuple from a value of type {}",
+                self.ty()
+            );
         }
     }
 
     pub fn as_struct(&self) -> &Gc<OxStruct> {
         if let Self::Struct(val) = self {
             val
-        }
-        else {
-            panic!("Attempting to get a struct from a value of type {}", self.ty());
+        } else {
+            panic!(
+                "Attempting to get a struct from a value of type {}",
+                self.ty()
+            );
         }
     }
 
     pub fn as_struct_mut(&mut self) -> &mut Gc<OxStruct> {
         if let Self::Struct(val) = self {
             val
-        }
-        else {
-            panic!("Attempting to get a struct from a value of type {}", self.ty());
+        } else {
+            panic!(
+                "Attempting to get a struct from a value of type {}",
+                self.ty()
+            );
         }
     }
 
     pub fn as_instance(&self) -> &Gc<OxInstance> {
         if let Self::Instance(val) = self {
             val
-        }
-        else {
-            panic!("Attempting to get a instance from a value of type {}", self.ty());
+        } else {
+            panic!(
+                "Attempting to get a instance from a value of type {}",
+                self.ty()
+            );
         }
     }
 
     pub fn as_instance_mut(&mut self) -> &mut Gc<OxInstance> {
         if let Self::Instance(val) = self {
             val
-        }
-        else {
-            panic!("Attempting to get a instance from a value of type {}", self.ty());
+        } else {
+            panic!(
+                "Attempting to get a instance from a value of type {}",
+                self.ty()
+            );
         }
     }
 
@@ -387,7 +403,6 @@ impl Value {
         }
     }
 
-
     pub fn disassemble(&self) {
         match self {
             Self::String(s) => println!("<string {}>", s),
@@ -436,6 +451,8 @@ value_from!(Struct, Gc<OxStruct>);
 value_from!(Function, Gc<OxFunction>);
 value_from!(Module, Gc<OxModule>);
 value_from!(String, Gc<OxString>);
+value_from!(Tuple, Gc<OxTuple>);
+value_from!(Instance, Gc<OxInstance>);
 
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -462,4 +479,3 @@ impl Display for Value {
         }
     }
 }
-

@@ -79,6 +79,7 @@ impl<'a> Typer<'a> {
         self.mode == LanguageMode::Default
     }
 
+    #[allow(dead_code)]
     fn is_script_mode(&self) -> bool {
         self.mode == LanguageMode::Script
     }
@@ -206,7 +207,7 @@ impl<'src> Typer<'src> {
                 _ => {}
             }
         }
-    
+
         let mut globals = vec![];
         for stmt in &parsed_file.stmts {
             let stmt = self.resolve_stmt_inner(stmt.as_ref(), true)?;

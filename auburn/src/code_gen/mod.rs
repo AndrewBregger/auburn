@@ -1,14 +1,30 @@
 mod file_context;
 mod type_helpers;
 
-use crate::{analysis::{self, Entity, EntityInfo, FunctionInfo, StructureInfo, VariableInfo}, ir::{self, ast::BinaryOp, hir::{Assignment, BlockExpr, FieldExpr, HirExpr, HirExprPtr, HirFile, HirItem, HirItemPtr, HirStmt, HirStmtKind, HirStmtPtr, IfExpr, IfExprBranch, MirNode, StructExpr, WhileExpr}}, system::{FileId, FileMap}, types::{Type, TypeKind}};
+use crate::{
+    analysis::{
+        Entity, EntityInfo, EntityRef, FunctionInfo, LocalInfo, StructureInfo, VariableInfo,
+    },
+    ir::{
+        self,
+        ast::NodeType,
+        hir::{
+            Assignment, BlockExpr, FieldExpr, HirExpr, HirFile, HirStmt, HirStmtKind, HirStmtPtr,
+            IfExpr, IfExprBranch, MirNode, StructExpr, WhileExpr,
+        },
+    },
+    system::{FileId, FileMap},
+    types::{Type, TypeKind},
+};
 use file_context::FileContext;
 use hir::HirExprKind;
 use ir::hir;
-use oxide::{OxFunction, OxModule, OxStruct, Section, Value, Vm, gc::{Allocator, Gc}, vm::OpCode};
+use oxide::{gc::Gc, vm::OpCode, OxFunction, OxModule, OxStruct, Section, Value, Vm};
 
 use ordered_float::OrderedFloat;
-use std::{cell::RefCell, collections::HashMap, convert::TryInto, ops::Deref, rc::Rc};
+use std::{
+    borrow::Borrow, cell::RefCell, collections::HashMap, convert::TryInto, ops::Deref, rc::Rc,
+};
 
 use self::file_context::GlobalInfo;
 
@@ -18,17 +34,20 @@ macro_rules! save_state {
         $field = $val;
         $op;
         $field = saved;
-    }
+    };
 }
-
 
 #[derive(thiserror::Error, Debug)]
 pub enum BuildError {
     #[error("{0}")]
     FeatureNotSupported(String),
+
+    #[error("attempting to add a not function as a method")]
+    SubEntityNotEntity,
 }
 
 pub struct CodeGen<'vm, 'ctx> {
+    #[allow(dead_code)]
     file_map: &'ctx FileMap,
     vm: &'vm mut Vm,
     file_stack: Vec<FileId>,
@@ -36,6 +55,7 @@ pub struct CodeGen<'vm, 'ctx> {
     scope_index: usize,
     handling_params: bool,
     result_used: bool,
+    #[allow(dead_code)]
     is_function_scope: bool,
 }
 
@@ -65,7 +85,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
 impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
     fn push_context(&mut self, file: &'ctx HirFile) {
         let file_id = file.id();
-        let context = FileContext::new(file, &self.vm);
+        let context = FileContext::new(file);
         self.file_context.insert(file_id, context);
     }
 
@@ -105,6 +125,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         (items, stmts)
     }
 
+    #[allow(dead_code)]
     fn get_file(&self, id: &FileId) -> &str {
         self.file_map
             .find(id)
@@ -112,6 +133,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             .expect("failed to find file")
     }
 
+    #[allow(dead_code)]
     fn get_stem(&self, id: &FileId) -> &str {
         self.file_map
             .find(id)
@@ -167,22 +189,24 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         self.build_file(hir_file)?;
 
         let stem = hir_file.stem();
-        let name = self.vm.allocate_string(stem);
+        let name = self.vm.new_string_from_str(stem);
 
         let mut context = self
             .file_context
             .remove(&hir_file.id())
             .expect("unable to remove file context");
 
-        let mut values = self.vm.allocate_vec(context.values.len());
-        values.extend(context.values.drain(..).into_iter());
-        let mut module = self.vm.allocate_module(name, values);
-
-
+        let mut objects = self.vm.vec_with_capacity(context.values.len());
+        objects.extend(context.values.drain(..).into_iter());
+        let mut module = self.vm.new_module(name, objects);
         if let Some(entry) = hir_file.get_entry() {
-            if let Some(global_info) = context.globals.get(entry.borrow().name()) {
+            let borrow = entry.deref().borrow();
+            let name = borrow.name();
+            if let Some(global_info) = context.globals.get(name) {
                 let module_mut = module.as_ref_mut();
                 module_mut.set_entry(global_info.object_idx);
+            } else {
+                println!("failed to find global entity");
             }
         }
 
@@ -190,6 +214,10 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             println!("Globals: {:#?}", funct.global_map);
             println!("Locals: {:#?}", funct.locals);
         }
+
+        context.globals.clear();
+        context.function_stack.clear();
+        context.values.clear();
 
         Ok(module)
     }
@@ -205,9 +233,8 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         let (items, stmts) = Self::split_stmts(hir_file.stmts());
 
         let context = self.current_context_mut();
-
         for (idx, item) in items.iter().enumerate() {
-            let entity_borrow = item.borrow();
+            let entity_borrow = item.deref().borrow();
             let name = entity_borrow.name();
             context
                 .globals
@@ -217,14 +244,13 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         std::mem::drop(context);
 
         for entity in items.into_iter() {
-            match self.handle_entity(&entity.borrow())? {
+            match self.handle_entity(&entity.deref().borrow())? {
                 Some(value) => {
                     let context = self.current_context_mut();
                     context.push_object(value);
                 }
                 None => {}
             }
-            
         }
 
         for stmt in stmts.into_iter() {
@@ -243,14 +269,13 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
     ) -> Result<Gc<OxFunction>, BuildError> {
         self.push_scope();
 
-        let name_string = self.vm.allocate_string(name);
-        let function = self.vm.allocate_function(
-            name_string,
-            mir_function.params.len() as u8,
-            Section::new(&self.vm),
-        );
+        let name_string = self.vm.new_string_from_str(name);
+        let section = self.vm.new_section();
+        let function = self
+            .vm
+            .new_function(name_string, mir_function.params.len() as u8, section);
         self.current_context_mut().push_function(function);
-        
+
         self.handle_function_params(mir_function)?;
 
         self.handle_expr_inner(mir_function.body.as_ref(), true)?;
@@ -261,15 +286,17 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         let context = self.current_context_mut();
         let function = if let Some(function_info) = context.current_function() {
             function_info.function.clone()
-        } else { panic!("failed to get the current function") };
+        } else {
+            panic!("failed to get the current function")
+        };
         Ok(function)
     }
 
-    fn handle_function_params(&mut self,  mir_function: &FunctionInfo) -> Result<(), BuildError> {
+    fn handle_function_params(&mut self, mir_function: &FunctionInfo) -> Result<(), BuildError> {
         self.handling_params = true;
-        
+
         for (_, param_entity) in mir_function.params.elements() {
-            self.handle_entity(&param_entity.borrow())?;
+            self.handle_entity(&param_entity.deref().borrow())?;
         }
 
         self.handling_params = false;
@@ -288,26 +315,24 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             if default.is_literal() {
                 let inner = default.inner();
                 let value = match inner.kind() {
-                    HirExprKind::Integer(val) => {
-                        match default.ty().kind() {
-                            TypeKind::U8 => Value::from(*val as u8),
-                            TypeKind::U16 => Value::from(*val as u16),
-                            TypeKind::U32 => Value::from(*val as u32),
-                            TypeKind::U64 => Value::from(*val as u64),
-                            TypeKind::I8 => Value::from(*val as i8),
-                            TypeKind::I16 => Value::from(*val as i16),
-                            TypeKind::Integer | TypeKind::I32 => Value::from(*val as i32),
-                            TypeKind::I64 => Value::from(*val),
-                            _ => unreachable!(),
-                        }
-                    }
+                    HirExprKind::Integer(val) => match default.ty().kind() {
+                        TypeKind::U8 => Value::from(*val as u8),
+                        TypeKind::U16 => Value::from(*val as u16),
+                        TypeKind::U32 => Value::from(*val as u32),
+                        TypeKind::U64 => Value::from(*val as u64),
+                        TypeKind::I8 => Value::from(*val as i8),
+                        TypeKind::I16 => Value::from(*val as i16),
+                        TypeKind::Integer | TypeKind::I32 => Value::from(*val as i32),
+                        TypeKind::I64 => Value::from(*val),
+                        _ => unreachable!(),
+                    },
                     HirExprKind::Float(val) => match default.ty().kind() {
                         TypeKind::Float | TypeKind::F32 => Value::from(val.into_inner() as f32),
                         TypeKind::F64 => Value::from(val.into_inner()),
                         _ => unreachable!(),
-                    }
+                    },
                     HirExprKind::String(val) => {
-                        let ox_string = self.vm.allocate_string_ptr(val.as_str());
+                        let ox_string = self.vm.new_gc_string_from_str(val.as_str());
                         Value::from(ox_string)
                     }
                     HirExprKind::Char(val) => Value::from(*val),
@@ -317,12 +342,10 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
 
                 let context = self.current_context_mut();
                 context.push_object(value);
-            }
-            else {
+            } else {
                 panic!("non literals for globals is not supported by the vm")
             }
-        }
-        else {
+        } else {
             match (variable_info.spec.as_ref(), variable_info.default.as_ref()) {
                 (Some(_spec), None) => {
                     todo!()
@@ -337,7 +360,10 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         Ok(())
     }
 
-    fn build_local(&mut self, name: &str /* _variable_info: &VariableInfo */) -> Result<(), BuildError> {
+    fn build_local(
+        &mut self,
+        name: &str, /* _variable_info: &VariableInfo */
+    ) -> Result<(), BuildError> {
         let scope_index = self.scope_index;
         let context = self.current_context_mut();
         context.push_local(name, scope_index);
@@ -347,25 +373,31 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         Ok(())
     }
 
-    
-    fn build_struct(&mut self, name: &str, struct_info: &StructureInfo) -> Result<Gc<OxStruct>, BuildError> {
-        let mut methods = self.vm.allocate_vec::<Value>(struct_info.methods.len());
+    fn build_struct(
+        &mut self,
+        name: &str,
+        struct_info: &StructureInfo,
+    ) -> Result<Gc<OxStruct>, BuildError> {
+        // let mut methods = self.vm.new_vec::<Value>(struct_info.methods.len());
+        let mut methods = self.vm.vec_with_capacity(struct_info.methods.len());
 
         for (_, element) in struct_info.methods.elements() {
-            debug_assert!(element.borrow().is_function());
-            match self.handle_entity(&element.borrow())? {
-                Some(value) => {
-                    methods.push(value);
-                }
+            debug_assert!(element.deref().borrow().is_function());
+            match self.handle_entity(&element.deref().borrow())? {
+                Some(value) => match value {
+                    Value::Function(inner) => {
+                        methods.push(inner);
+                    }
+                    _ => return Err(BuildError::SubEntityNotEntity),
+                },
                 None => {}
             }
         }
-        
-        let name = self.vm.allocate_string(name);
-        let structure = self.vm.allocate_struct(name, methods);
+
+        let name = self.vm.new_string_from_str(name);
+        let structure = self.vm.new_struct(name, methods);
         Ok(structure)
     }
-
 }
 
 //impl<'ctx> CodeGen<'ctx> {
@@ -392,16 +424,18 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
                 self.build_local(name)?;
                 Ok(None)
             }
-            EntityInfo::SelfParam { mutable } => {
+            EntityInfo::SelfParam { mutable: _ } => {
                 todo!()
             }
-            EntityInfo::Field(field_expr) => {
+            EntityInfo::Field(_field_expr) => {
                 todo!()
             }
             EntityInfo::Resolving => {
                 panic!("Attempting to generate an entity still being resolved")
             }
-            _ => { unreachable!() }
+            _ => {
+                unreachable!()
+            }
         }
     }
 
@@ -411,14 +445,16 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
     fn handle_stmt(&mut self, stmt: &HirStmt) -> Result<(), BuildError> {
         match stmt.inner() {
             HirStmtKind::Expr(expr) => self.handle_expr(expr.as_ref())?,
-            HirStmtKind::Item(entity) => {
-                match self.handle_entity(&entity.borrow())? {
-                    Some(_value) => {
-                        return Err(BuildError::FeatureNotSupported(format!("local {} not supported", entity.borrow().type_name())));
-                    }
-                    None => {}
+            HirStmtKind::Item(entity) => match self.handle_entity(&entity.deref().borrow())? {
+                Some(_value) => {
+                    let type_name = entity.deref().borrow().type_name();
+                    return Err(BuildError::FeatureNotSupported(format!(
+                        "local {} not supported",
+                        type_name
+                    )));
                 }
-            }
+                None => {}
+            },
             HirStmtKind::Assignment(assignment) => self.handle_assignment(assignment)?,
             HirStmtKind::Echo(expr) => {
                 self.handle_expr(expr.as_ref())?;
@@ -444,7 +480,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
                 self.load_float(ty, *val)?;
             }
             HirExprKind::String(val) => {
-                let ox_string = self.vm.allocate_string_ptr(val);
+                let ox_string = self.vm.new_gc_string_from_str(val);
                 let value = Value::String(ox_string);
                 let context = self.current_context_mut();
                 context.load_constant(OpCode::LoadStr, value);
@@ -462,14 +498,12 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
                 };
                 self.emit_op(op);
             }
-            HirExprKind::Name(val) => self.handle_name(&val.borrow())?,
+            HirExprKind::Name(val) => self.handle_name(&val.deref().borrow())?,
             HirExprKind::Binary(bin_expr) => {
-                save_state!(self.result_used, true, 
-                    {
-                        self.handle_expr(bin_expr.left.as_ref())?;
-                        self.handle_expr(bin_expr.right.as_ref())?;
-                    }
-                );
+                save_state!(self.result_used, true, {
+                    self.handle_expr(bin_expr.left.as_ref())?;
+                    self.handle_expr(bin_expr.right.as_ref())?;
+                });
 
                 let op = if bin_expr.op.is_cmp() {
                     type_helpers::binary_op_for_type(bin_expr.op, bin_expr.left.ty())
@@ -479,8 +513,8 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
 
                 self.emit_op(op);
             }
-            HirExprKind::Unary(un_expr) => {}
-            HirExprKind::Field(field_expr) =>  self.handle_field_expr(field_expr)?,
+            HirExprKind::Unary(_un_expr) => {}
+            HirExprKind::Field(field_expr) => self.handle_field_expr(field_expr)?,
             HirExprKind::Index(_) => {}
             HirExprKind::FieldAccess(_) => {}
             HirExprKind::Call(call_expr) => {
@@ -498,8 +532,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             HirExprKind::Block(block_expr) => {
                 if self.result_used {
                     self.handle_returning_block(block_expr, 2, is_scope)?;
-                }
-                else {
+                } else {
                     self.handle_block(block_expr, is_scope)?;
                 }
             }
@@ -517,17 +550,20 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
                 let index = tuple_index.field as u16;
                 self.emit_op_u16(OpCode::TupleAttr, index);
             }
-            HirExprKind::Loop(loop_expr) => {}
+            HirExprKind::Loop(_loop_expr) => {}
             HirExprKind::While(while_expr) => self.handle_while(while_expr)?,
-            HirExprKind::For(for_expr) => {}
+            HirExprKind::For(_for_expr) => {}
             HirExprKind::If(if_expr) => self.handle_if(if_expr)?,
             HirExprKind::StructExpr(struct_expr) => self.handle_struct_expr(struct_expr)?,
             HirExprKind::SelfLit => {}
             HirExprKind::Break => {}
             HirExprKind::Continue => {}
             HirExprKind::Return(return_expr) => {
-                save_state!(self.result_used, true,
-                self.handle_expr(return_expr.as_ref())?);
+                save_state!(
+                    self.result_used,
+                    true,
+                    self.handle_expr(return_expr.as_ref())?
+                );
                 self.emit_op(OpCode::Return);
             }
         }
@@ -541,8 +577,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             EntityInfo::Param(_) => false,
             _ => true,
         };
-        
-        println!("Variable Global: {} {}", name.name(), global);
+
         if global {
             let context = self.current_context_mut();
             let global_idx = context.load_global_in_function(name.name());
@@ -553,9 +588,12 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             let stack_idx = context
                 .current_function()
                 .and_then(|funct| funct.look_up_local(name.name()))
-                .expect("failed to find local info").stack_idx as u8;
+                .expect("failed to find local info")
+                .stack_idx as u8;
 
-            context.current_section_mut().write_arg(OpCode::LoadLocal, stack_idx);
+            context
+                .current_section_mut()
+                .write_arg(OpCode::LoadLocal, stack_idx);
         }
 
         Ok(())
@@ -566,8 +604,8 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         for stmt in block_expr.stmts.iter() {
             self.handle_stmt(stmt.as_ref())?;
         }
-    
-        // only output the scope cleanup if 
+
+        // only output the scope cleanup if
         if !is_scope {
             self.cleanup_top_scope();
         }
@@ -578,17 +616,62 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         Ok(())
     }
 
-    fn handle_returning_block(&mut self, block_expr: &BlockExpr, dst: usize, is_scope: bool) -> Result<(), BuildError> {
+    fn handle_returning_block(
+        &mut self,
+        _block_expr: &BlockExpr,
+        _dst: usize,
+        _is_scope: bool,
+    ) -> Result<(), BuildError> {
         todo!()
     }
 
-    fn handle_assignment(&mut self, assignment: &Assignment) -> Result<(), BuildError> {
-        save_state!(self.result_used, true,  self.handle_expr(assignment.rhs.as_ref())?);
-        let lvalue_borrow = assignment.lvalue.borrow();
-        if let EntityInfo::Variable(variable_info) = lvalue_borrow.kind() {
-            self.handle_variable(lvalue_borrow.name(), variable_info, true)?;
+    fn handle_lvalue(&mut self, lvalue: &HirExpr) -> Result<(), BuildError> {
+        let inner = lvalue.inner();
+        match inner.kind() {
+            HirExprKind::Name(entity) => self.handle_name(&entity.deref().borrow())?,
+            HirExprKind::Field(field_expr) => {
+                self.handle_expr(field_expr.operand.as_ref())?;
+            }
+            HirExprKind::Index(index) => {
+                self.handle_expr(index.operand.as_ref())?;
+                self.handle_expr(index.index.as_ref())?;
+            }
+            //HirExprKind::TupleIndex(tuple_index) => {}
+            _ => {
+                panic!(
+                    "Compiler Error: unexpected expression '{}' when handling expected lvalues",
+                    inner.name()
+                );
+            }
         }
+        Ok(())
+    }
 
+    fn handle_assignment(&mut self, assignment: &Assignment) -> Result<(), BuildError> {
+        save_state!(
+            self.result_used,
+            true,
+            self.handle_expr(assignment.rhs.as_ref())?
+        );
+        self.handle_lvalue(assignment.lvalue.as_ref())?;
+        self.handle_expr(assignment.rhs.as_ref())?;
+
+        match assignment.lvalue.inner().kind() {
+            HirExprKind::Name(entity) => match entity.deref().borrow().kind() {
+                EntityInfo::Variable(variable_info) => {
+                    self.handle_variable(entity.deref().borrow().name(), variable_info, true)?;
+                }
+                _ => {}
+            },
+            HirExprKind::Field(field_expr) => match field_expr.field.deref().borrow().kind() {
+                EntityInfo::Field(local_info) => {
+                    self.emit_op_u8(OpCode::SetAttr, local_info.index as u8);
+                }
+                _ => {}
+            },
+            HirExprKind::Index(index) => {}
+            _ => {}
+        }
         Ok(())
     }
 
@@ -624,20 +707,20 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         Ok(())
     }
 
-	fn handle_struct_expr(&mut self, struct_expr: &StructExpr) -> Result<(), BuildError> {
-		let struct_type = struct_expr.struct_type.clone();
-        println!("struct_type: {}", struct_type);
-		debug_assert!(struct_type.is_struct()); 
+    fn handle_struct_expr(&mut self, struct_expr: &StructExpr) -> Result<(), BuildError> {
+        let struct_type = struct_expr.struct_type.clone();
+        // println!("struct_type: {}", struct_type);
+        debug_assert!(struct_type.is_struct());
 
         if let TypeKind::Struct { entity } = struct_type.kind() {
-            let entity_borrow = entity.borrow();
+            let entity_borrow = entity.deref().borrow();
             let name = entity_borrow.name();
             let context = self.current_context_mut();
             let global_idx = context.load_global_in_function(name);
             self.emit_op_u8(OpCode::LoadGlobal, global_idx);
-        }
-        else { unreachable!() };
-        
+        } else {
+            unreachable!()
+        };
 
         for (_, field) in struct_expr.fields.iter() {
             self.handle_expr(field.as_ref())?;
@@ -645,16 +728,23 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
 
         self.emit_op_u16(OpCode::NewInstance, struct_expr.fields.len() as u16);
         Ok(())
-	}
+    }
 
     fn handle_field_expr(&mut self, field_expr: &FieldExpr) -> Result<(), BuildError> {
-        save_state!(self.result_used, true, self.handle_expr(field_expr.operand.as_ref())?);
-        let field_borrow = field_expr.field.borrow();
+        save_state!(
+            self.result_used,
+            true,
+            self.handle_expr(field_expr.operand.as_ref())?
+        );
+        let field_borrow = field_expr.field.deref().borrow();
         match field_borrow.kind() {
             EntityInfo::Field(local_info) => {
                 self.emit_op_u16(OpCode::InstanceAttr, local_info.index as u16);
             }
-            _ => panic!("field access of invalid entity type: {}", field_borrow.type_name()),
+            _ => panic!(
+                "field access of invalid entity type: {}",
+                field_borrow.type_name()
+            ),
         }
         Ok(())
     }
@@ -735,8 +825,14 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
                 OpCode::LoadLocal
             };
             let stack_idx = {
-                let function = self.current_context_mut().current_function_mut().expect("failed to get current function");
-                function.look_up_local(name).expect("failed to find local").stack_idx as u8
+                let function = self
+                    .current_context_mut()
+                    .current_function_mut()
+                    .expect("failed to get current function");
+                function
+                    .look_up_local(name)
+                    .expect("failed to find local")
+                    .stack_idx as u8
             };
 
             self.current_section_mut().write_arg(op, stack_idx);
@@ -747,7 +843,12 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
 
     fn cleanup_top_scope(&mut self) {
         let current_level = self.scope_index;
-        let locals = self.current_context().current_function().expect("invalid current function").locals.as_slice();
+        let locals = self
+            .current_context()
+            .current_function()
+            .expect("invalid current function")
+            .locals
+            .as_slice();
         let mut lost_locals = 0;
         for local in locals.iter().rev() {
             if local.scope_level < current_level {
@@ -759,7 +860,10 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
 
         (0..lost_locals).for_each(|_| self.emit_op(OpCode::Pop));
 
-        let function = self.current_context_mut().current_function_mut().expect("invalid current function");
+        let function = self
+            .current_context_mut()
+            .current_function_mut()
+            .expect("invalid current function");
         let len = function.locals.len();
         let start = len - lost_locals;
         function.locals.drain(start..len);

@@ -1,4 +1,3 @@
-use crate::{analysis::entity::StructureInfo, ir::hir::TupleIndex};
 use crate::analysis::typer::{
     Typer, ALLOW_CONTROL_FLOW_EXPRESSIONS, ASSOCIATIVE_FUNCTION, BLOCK, EXPR_RESULT_USED, FUNCTION,
     FUNCTION_BODY, SELF_PARAM_IDENT,
@@ -15,6 +14,7 @@ use crate::ir::hir::{
 };
 use crate::syntax::Position;
 use crate::types::{Type, TypeKind};
+use crate::{analysis::entity::StructureInfo, ir::hir::TupleIndex};
 use crate::{analysis::scope::ScopeKind, ir::ast::Stmt};
 
 use itertools::Itertools;
@@ -302,9 +302,16 @@ impl<'src> Typer<'src> {
                 body,
             } => {}
             */
-            
-            ExprKind::For { element, expr, body } => { todo!() }
-            ExprKind::SelfType => { todo!() }
+            ExprKind::For {
+                element: _,
+                expr: _,
+                body: _,
+            } => {
+                todo!()
+            }
+            ExprKind::SelfType => {
+                todo!()
+            }
         };
 
         if let Some(expected_type) = &expected_type {
@@ -600,7 +607,7 @@ impl<'src> Typer<'src> {
                         match field_borrow.visibility() {
                             Visibility::Private => {
                                 let err = Error::inaccessible_subentity(
-                                    entity.borrow().type_name(),            
+                                    entity.borrow().type_name(),
                                     operand_type.as_ref(),
                                     field.kind().value.clone(),
                                 )
@@ -646,7 +653,7 @@ impl<'src> Typer<'src> {
                     }
                 } else {
                     let err = Error::unknown_subfield(
-                        entity.borrow().type_name(),            
+                        entity.borrow().type_name(),
                         operand_type.as_ref(),
                         field.kind().value.clone(),
                     )
@@ -928,14 +935,19 @@ impl<'src> Typer<'src> {
                         if let EntityInfo::Field(local_info) = field.deref().borrow().kind() {
                             if inited_fields[local_info.index] {
                                 // duplicate initializations of field
-                                let err = Error::duplicate_field_initialization(field_name.to_owned());
+                                let err =
+                                    Error::duplicate_field_initialization(field_name.to_owned());
                                 return Err(err.with_position(name.position()));
                             }
 
                             inited_fields[local_info.index] = true;
                             mir_fields.push((local_info.index, mir_field));
                         } else {
-                            panic!("Compiler Error: Invalid entity for struct field: {}: {}", field.borrow().type_name(), field.borrow().name());
+                            panic!(
+                                "Compiler Error: Invalid entity for struct field: {}: {}",
+                                field.borrow().type_name(),
+                                field.borrow().name()
+                            );
                         }
                     } else {
                         let err = Error::undeclared_field_in_struct_binding(
@@ -954,7 +966,9 @@ impl<'src> Typer<'src> {
                             if let EntityInfo::Field(local_info) = field.deref().borrow().kind() {
                                 if inited_fields[local_info.index] {
                                     // duplicate initializations of field
-                                    let err = Error::duplicate_field_initialization(field_name.to_owned());
+                                    let err = Error::duplicate_field_initialization(
+                                        field_name.to_owned(),
+                                    );
                                     return Err(err.with_position(name.position()));
                                 }
                                 inited_fields[local_info.index] = true;
@@ -977,14 +991,22 @@ impl<'src> Typer<'src> {
 
         let fully_inited = inited_fields.iter().fold(true, |acc, x| acc && *x);
         if !fully_inited {
-            let mut fields_list = elements.iter().map(|(_, field)| (field.borrow().name().to_owned(), field.borrow().as_local().clone())).collect_vec();
+            let mut fields_list = elements
+                .iter()
+                .map(|(_, field)| {
+                    (
+                        field.borrow().name().to_owned(),
+                        field.borrow().as_local().clone(),
+                    )
+                })
+                .collect_vec();
             fields_list.sort_by(|a, b| a.1.index.cmp(&b.1.index));
             for (idx, inited) in inited_fields.into_iter().enumerate() {
                 if inited {
-                    continue
+                    continue;
                 }
-                let field = &fields_list[idx]; 
-                
+                let field = &fields_list[idx];
+
                 match field.1.default.as_ref() {
                     Some(default) => {
                         mir_fields.push((idx, default.clone()));

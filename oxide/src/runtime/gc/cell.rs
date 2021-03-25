@@ -1,26 +1,6 @@
-#[derive(Debug, Clone, Copy)]
-pub enum ObjectKind {
-    /// manually managed buffer,
-    Buffer,
-    /// vec managed buffer (dynmaic buffer using vecs implementation)
-    VecBuffer,
-    /// function object
-    Function,
-    /// structure instance object
-    Instance,
-    // structure object
-    Struct,
-    /// module object
-    Module,
-    // tuple object
-    Tuple,
-    // section object
-    Section,
-    // string object
-    String,
-}
+use super::ObjectKind;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Cell {
     pub kind: ObjectKind,
     pub marked: bool,
@@ -33,12 +13,8 @@ impl Cell {
             marked: false,
         }
     }
+
     pub fn mark(&mut self, val: bool) {
         self.marked = val;
     }
-}
-
-pub trait GcObject: Send + Sync {
-    fn as_cell(&self) -> &Cell;
-    fn as_cell_mut(&mut self) -> &mut Cell;
 }
