@@ -125,20 +125,23 @@ impl GcAlloc {
     }
 
     #[inline(always)]
-    pub fn allocate<T: Object + Sized>(&mut self) -> Option<Address> {
+    pub fn allocate<T: Object + Sized>(&mut self) -> Result<Address, std::alloc::AllocError> {
         let layout = Layout::new::<T>();
         self.alloc(T::object_kind(), layout)
     }
 
     #[inline(always)]
-    pub fn alloc(&mut self, kind: ObjectKind, layout: Layout) -> Option<Address> {
+    pub fn alloc(
+        &mut self,
+        kind: ObjectKind,
+        layout: Layout,
+    ) -> Result<Address, std::alloc::AllocError> {
         let address = self
             .memory
             .lock()
             .expect("failed to retrieve memory lock")
             .alloc_inner(kind, layout)
-            .map(|ptr| Address::from_ptr(ptr.as_ptr() as *mut u8))
-            .ok();
+            .map(|ptr| Address::from_ptr(ptr.as_ptr() as *mut u8));
 
         address
     }
@@ -181,4 +184,13 @@ impl GcAlloc {
             .dump_mem_stats();
         println!("Sum: {}", self.memory_usage());
     }
+
+    pub fn sweep(&self) {
+        self.memory
+            .lock()
+            .expect("failed to retreive memory lock")
+            .sweep();
+    }
 }
+
+impl GcAlloc {}

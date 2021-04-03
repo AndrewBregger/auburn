@@ -2,9 +2,7 @@ mod file_context;
 mod type_helpers;
 
 use crate::{
-    analysis::{
-        Entity, EntityInfo, EntityRef, FunctionInfo, LocalInfo, StructureInfo, VariableInfo,
-    },
+    analysis::{Entity, EntityInfo, FunctionInfo, StructureInfo, VariableInfo},
     ir::{
         self,
         ast::NodeType,
@@ -22,9 +20,7 @@ use ir::hir;
 use oxide::{gc::Gc, vm::OpCode, OxFunction, OxModule, OxStruct, Section, Value, Vm};
 
 use ordered_float::OrderedFloat;
-use std::{
-    borrow::Borrow, cell::RefCell, collections::HashMap, convert::TryInto, ops::Deref, rc::Rc,
-};
+use std::{cell::RefCell, collections::HashMap, convert::TryInto, ops::Deref, rc::Rc};
 
 use self::file_context::GlobalInfo;
 
@@ -44,6 +40,9 @@ pub enum BuildError {
 
     #[error("attempting to add a not function as a method")]
     SubEntityNotEntity,
+
+    #[error("entry function for module not found")]
+    ModuleEntryNotFound,
 }
 
 pub struct CodeGen<'vm, 'ctx> {
@@ -85,7 +84,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
 impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
     fn push_context(&mut self, file: &'ctx HirFile) {
         let file_id = file.id();
-        let context = FileContext::new(file);
+        let context = FileContext::new(file, &mut self.vm);
         self.file_context.insert(file_id, context);
     }
 
@@ -189,37 +188,36 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         self.build_file(hir_file)?;
 
         let stem = hir_file.stem();
-        let name = self.vm.new_string_from_str(stem);
+        let name_obj = self.vm.new_string_from_str(stem);
 
-        let mut context = self
+        let context = self
             .file_context
             .remove(&hir_file.id())
             .expect("unable to remove file context");
 
-        let mut objects = self.vm.vec_with_capacity(context.values.len());
-        objects.extend(context.values.drain(..).into_iter());
-        let mut module = self.vm.new_module(name, objects);
+        // // book keeping for the next allocation. This makes sure that if there is a collection,
+        // // the list of objects and name will not be collected.
+        // self.vm.compiler_address.push(name_obj.buffer().ptr());
+        // self.vm.compiler_address.push(context.values.ptr());
+
         if let Some(entry) = hir_file.get_entry() {
             let borrow = entry.deref().borrow();
             let name = borrow.name();
             if let Some(global_info) = context.globals.get(name) {
-                let module_mut = module.as_ref_mut();
-                module_mut.set_entry(global_info.object_idx);
+                println!("building new module");
+                self.vm.force_no_collection(true);
+                let module =
+                    self.vm
+                        .new_entry_module(name_obj, global_info.object_idx, context.values);
+                self.vm.force_no_collection(false);
+                Ok(module)
             } else {
                 println!("failed to find global entity");
+                Err(BuildError::ModuleEntryNotFound)
             }
+        } else {
+            Err(BuildError::ModuleEntryNotFound)
         }
-
-        for funct in context.function_stack.iter() {
-            println!("Globals: {:#?}", funct.global_map);
-            println!("Locals: {:#?}", funct.locals);
-        }
-
-        context.globals.clear();
-        context.function_stack.clear();
-        context.values.clear();
-
-        Ok(module)
     }
 
     fn build_file(&mut self, hir_file: &HirFile) -> Result<(), BuildError> {
@@ -669,7 +667,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
                 }
                 _ => {}
             },
-            HirExprKind::Index(index) => {}
+            HirExprKind::Index(_index) => {}
             _ => {}
         }
         Ok(())

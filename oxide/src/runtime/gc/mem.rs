@@ -14,7 +14,7 @@ use super::{Cell, ObjectKind};
 
 // pub static ALIGN_HEADER: usize = std::mem::align_of::<Header>();
 // pub static ALIGN_LIST_NODE: usize = std::mem::align_of::<FreeListNode>();
-static COLLECT_INITIAL: usize = 64; //1024 * 1024;
+static COLLECT_INITIAL: usize = 256; //1024 * 1024;
 static COLLECT_FACTOR: f64 = 1.5;
 static DEFAULT_POOL_SIZE: usize = 1024;
 
@@ -89,7 +89,7 @@ impl Pool {
     pub fn alloc(&mut self) -> Result<NonNull<[u8]>, std::alloc::AllocError> {
         if let Some(index) = self.bitmap.first_zero() {
             self.bitmap.set(index, true);
-            let ptr = unsafe { self.buffer.add(index * self.element_size) };
+            let ptr = self.ptr(index);
             let ptr = unsafe { NonNull::new_unchecked(ptr) };
             Ok(NonNull::slice_from_raw_parts(ptr, self.element_size))
         } else {
@@ -105,6 +105,35 @@ impl Pool {
 
             let slot = diff / self.element_size;
             self.bitmap.set(slot, false);
+        }
+    }
+
+    pub fn ptr(&self, idx: usize) -> *mut u8 {
+        unsafe { self.buffer.add(idx * self.element_size) }
+    }
+
+    pub fn dealloc_unmarked(&mut self) {
+        // for each allocated slot check if it has been marked.
+        for (idx, byte) in self.bitmap.clone().iter().enumerate() {
+            for i in 0..8 {
+                if (*byte >> i) & 0x1 == 1 {
+                    let index = idx * 8 + i;
+                    let ptr = self.ptr(index);
+                    let header = unsafe { &mut *(ptr as *mut Header) };
+                    // let kind = cell.kind.clone();
+                    if header.cell.marked {
+                        header.cell.mark(false);
+                    } else {
+                        println!(
+                            "Deallocating: {:p} {:p} {:?}",
+                            ptr,
+                            unsafe { ptr.add(std::mem::size_of::<Header>()) },
+                            header.cell.kind
+                        );
+                        self.dealloc(ptr);
+                    }
+                }
+            }
         }
     }
 }
@@ -140,6 +169,7 @@ impl Arena {
         }
     }
 
+    #[allow(dead_code)]
     fn init(&mut self) {
         let layout;
         let buffer;
@@ -308,6 +338,10 @@ impl Arena {
             curr = unsafe { (*curr).next };
         }
     }
+
+    fn dealloc_unmarked(&mut self) {
+        // todo!()
+    }
 }
 
 #[repr(packed)]
@@ -389,7 +423,6 @@ impl Display for AllocationRecord {
 
 #[derive(Debug, Clone)]
 pub struct Memory {
-    memory_usage: usize,
     next_collect: usize,
     allocations: BTreeSet<usize>,
     pools: Vec<Pool>,
@@ -403,7 +436,6 @@ pub struct Memory {
 impl Memory {
     pub fn new() -> Self {
         let mut mem = Self {
-            memory_usage: 0,
             next_collect: COLLECT_INITIAL,
             allocations: BTreeSet::new(),
             pools: vec![],
@@ -425,7 +457,7 @@ impl Memory {
 
     #[inline(always)]
     pub fn should_collect(&self) -> bool {
-        self.memory_usage >= self.next_collect
+        self.memory_usage() >= self.next_collect
     }
 
     pub fn update_next_collection(&mut self) {
@@ -462,6 +494,7 @@ impl Memory {
         let ptr = self.alloc_base(size)?;
 
         let header = ptr.as_ptr() as *mut u8 as *mut Header;
+        println!("Allocating: {:p} {:?}", header, kind);
         unsafe { *header = Header::new(kind, layout) };
         let ptr = unsafe { (header as *mut u8).add(std::mem::size_of::<Header>()) };
         let ptr = unsafe { NonNull::new_unchecked(ptr) };
@@ -471,6 +504,8 @@ impl Memory {
             self.push_allocation_record(ptr, layout);
             // println!("{}", self.last_record().unwrap());
         }
+
+        // println!("{}", std::backtrace::Backtrace::force_capture());
 
         Ok(ptr)
     }
@@ -556,6 +591,13 @@ impl Memory {
         }
 
         println!("Arena: not implemented");
+    }
+
+    pub fn sweep(&mut self) {
+        for pool in self.pools.iter_mut() {
+            pool.dealloc_unmarked();
+        }
+        self.arena.dealloc_unmarked();
     }
 }
 

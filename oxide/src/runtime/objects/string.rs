@@ -25,6 +25,10 @@ impl OxString {
         self.buffer.len()
     }
 
+    pub fn buffer(&self) -> &OxVec<u8> {
+        &self.buffer
+    }
+
     pub fn capacity(&self) -> usize {
         self.buffer.capacity()
     }
@@ -43,8 +47,12 @@ impl OxString {
         self.buffer.extend_from_slice(value)
     }
 
-    pub fn disassemble(&self) {
-        println!("<string {}>", self);
+    pub fn disassemble(&self, indent: usize) {
+        println!(
+            "{}<string {}>",
+            (0..indent).map(|_| '\t').collect::<String>(),
+            self
+        );
     }
 }
 

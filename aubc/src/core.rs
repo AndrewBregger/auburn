@@ -205,8 +205,8 @@ impl Core {
                     .map_err(|err| CoreError::IoError(err, input))?;
 
                 let ox_module = self.build(file, options)?;
-                ox_module.disassemble();
-
+                // ox_module.disassemble();
+                println!("Running module");
                 match self.vm.run_module(ox_module) {
                     Ok(_) => {
                         self.vm.print_stack();
@@ -219,7 +219,7 @@ impl Core {
             Command::Build { input } => {
                 let file = self.open(input.as_str())?;
                 let module = self.build(file, options)?;
-                module.disassemble();
+                module.disassemble(0);
             }
         }
         Ok(())
@@ -238,8 +238,10 @@ impl Core {
             .resolve_root(parsed_file, options.mode)
             .map_err(Into::<CoreError>::into)?;
 
+        self.vm.set_code_gen(true);
         let module = CodeGen::build(&self.file_map, &hir_file, &mut self.vm)
             .map_err(|e| CoreError::from(e))?;
+        self.vm.set_code_gen(false);
 
         Ok(module)
     }

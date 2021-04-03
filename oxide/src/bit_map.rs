@@ -59,6 +59,10 @@ impl BitMap {
     pub fn count_ones(&self) -> usize {
         self.buffer.iter().map(|x| x.count_ones()).sum::<u32>() as usize
     }
+
+    pub fn iter(&self) -> std::slice::Iter<'_, u8> {
+        self.buffer.iter()
+    }
 }
 
 impl Display for BitMap {

@@ -2,17 +2,17 @@ use std::fmt::Display;
 
 use crate::{
     gc::{Gc, Object, ObjectKind},
-    AttributeAccess, OxString, OxStruct, Value,
+    AttributeAccess, OxString, OxStruct, OxVec, Value,
 };
 
 #[derive(Debug, Clone)]
 pub struct OxInstance {
     object: Gc<OxStruct>,
-    fields: u8,
+    fields: OxVec<Value>,
 }
 
 impl OxInstance {
-    pub fn new(object: Gc<OxStruct>, fields: u8) -> Self {
+    pub fn new(object: Gc<OxStruct>, fields: OxVec<Value>) -> Self {
         Self { object, fields }
     }
 
@@ -20,22 +20,20 @@ impl OxInstance {
         self.object.name()
     }
 
-    pub fn fields(&self) -> &[Value] {
-        let fields = self.fields;
-        let ptr = self as *const Self as *const u8;
-        let ptr = unsafe { ptr.add(std::mem::size_of::<Self>()) };
-        unsafe { std::slice::from_raw_parts(ptr as *const Value, fields as usize) }
+    pub fn object(&self) -> &OxStruct {
+        self.object.as_ref()
     }
 
-    pub fn fields_mut(&mut self) -> &mut [Value] {
-        let fields = self.fields;
-        let ptr = self as *mut Self as *mut u8;
-        let ptr = unsafe { ptr.add(std::mem::size_of::<Self>()) };
-        unsafe { std::slice::from_raw_parts_mut(ptr as *mut Value, fields as usize) }
+    pub fn fields(&self) -> &OxVec<Value> {
+        &self.fields
     }
 
-    pub fn disassemble(&self) {
-        println!("{}", self);
+    pub fn fields_mut(&mut self) -> &mut OxVec<Value> {
+        &mut self.fields
+    }
+
+    pub fn disassemble(&self, indent: usize) {
+        println!("{}{}", (0..indent).map(|_| '\t').collect::<String>(), self);
     }
 }
 
@@ -55,10 +53,10 @@ impl AttributeAccess for OxInstance {
     type Output = Value;
 
     fn get_attr(&self, idx: usize) -> &<Self as AttributeAccess>::Output {
-        &self.fields()[idx]
+        &self.fields[idx]
     }
 
     fn get_attr_mut(&mut self, idx: usize) -> &mut <Self as AttributeAccess>::Output {
-        &mut self.fields_mut()[idx]
+        &mut self.fields[idx]
     }
 }

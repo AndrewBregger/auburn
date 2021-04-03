@@ -29,11 +29,19 @@ impl OxModule {
         &self.name
     }
 
-    pub fn disassemble(&self) {
-        println!("disassemble {}:", self.name);
+    pub fn disassemble(&self, indent: usize) {
+        println!(
+            "{}disassemble {}:",
+            (0..indent).map(|_| '\t').collect::<String>(),
+            self.name
+        );
         for obj in self.objects.iter() {
-            obj.disassemble();
+            obj.disassemble(indent + 1);
         }
+    }
+
+    pub fn objects(&self) -> &OxVec<Value> {
+        &self.objects
     }
 
     pub fn entry(&self) -> Option<&Value> {

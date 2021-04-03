@@ -20,8 +20,16 @@ impl OxStruct {
         &self.name
     }
 
-    pub fn disassemble(&self) {
-        println!("<struct {}>", self.name);
+    pub fn methods(&self) -> &OxVec<Gc<OxFunction>> {
+        &self.methods
+    }
+
+    pub fn disassemble(&self, indent: usize) {
+        println!(
+            "{}<struct {}>",
+            (0..indent).map(|_| '\t').collect::<String>(),
+            self.name
+        );
     }
 }
 

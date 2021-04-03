@@ -41,6 +41,10 @@ impl Address {
             unsafe { &mut *(self.as_ptr_mut().sub(std::mem::size_of::<Header>()) as *mut Header) };
         header.cell_mut()
     }
+
+    pub fn mark(&mut self, val: bool) {
+        self.cell_mut().mark(val)
+    }
 }
 
 impl Into<Value> for Address {

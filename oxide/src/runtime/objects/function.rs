@@ -37,10 +37,18 @@ impl OxFunction {
         self.arity
     }
 
-    pub fn disassemble(&self) {
-        println!("disassembly {}:", self.name);
+    pub fn disassemble(&self, indent: usize) {
+        println!(
+            "{}disassembly {}:",
+            (0..indent).map(|_| '\t').collect::<String>(),
+            self.name
+        );
         for inst in self.section.disassemble() {
-            println!("{}", inst);
+            println!(
+                "{}{}",
+                (0..indent + 1).map(|_| '\t').collect::<String>(),
+                inst
+            );
         }
     }
 }
@@ -53,6 +61,6 @@ impl Display for OxFunction {
 
 impl Object for OxFunction {
     fn object_kind() -> ObjectKind {
-        ObjectKind::String
+        ObjectKind::Function
     }
 }

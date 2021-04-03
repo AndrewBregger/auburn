@@ -17,8 +17,16 @@ impl OxTuple {
         Self { elements }
     }
 
-    pub fn disassemble(&self) {
-        println!("<tuple {}>", self);
+    pub fn elements(&self) -> &OxVec<Value> {
+        &self.elements
+    }
+
+    pub fn disassemble(&self, indent: usize) {
+        println!(
+            "{}<tuple {}>",
+            (0..indent).map(|_| '\t').collect::<String>(),
+            self
+        );
     }
 }
 

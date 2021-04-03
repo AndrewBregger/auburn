@@ -403,21 +403,34 @@ impl Value {
         }
     }
 
-    pub fn disassemble(&self) {
+    pub fn disassemble(&self, indent: usize) {
         match self {
-            Self::String(s) => println!("<string {}>", s),
+            Self::String(s) => println!(
+                "{}<string {}>",
+                (0..indent).map(|_| '\t').collect::<String>(),
+                s
+            ),
             Self::Function(f) => {
-                f.disassemble();
+                f.disassemble(indent);
             }
             Self::Struct(s) => {
-                s.disassemble();
+                s.disassemble(indent);
             }
             Self::Instance(inst) => {
-                println!("<instance {}>", inst);
+                println!(
+                    "{}<instance {}>",
+                    (0..indent).map(|_| '\t').collect::<String>(),
+                    inst
+                );
             }
-            Self::Module(module) => module.disassemble(),
-            Self::Tuple(tuple) => tuple.disassemble(),
-            _ => println!("<{} {}>", self.ty(), self),
+            Self::Module(module) => module.disassemble(indent),
+            Self::Tuple(tuple) => tuple.disassemble(indent),
+            _ => println!(
+                "{}<{} {}>",
+                (0..indent).map(|_| '\t').collect::<String>(),
+                self.ty(),
+                self
+            ),
         }
     }
 }

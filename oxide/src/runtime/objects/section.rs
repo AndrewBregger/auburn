@@ -1,6 +1,6 @@
 use crate::{
     disassembler::Disassembler,
-    gc::{Object, ObjectKind, VecAllocator},
+    gc::{Object, ObjectKind},
     vm::{Instruction, OpCode},
     OxVec, Value, Vm,
 };
@@ -60,16 +60,12 @@ impl Section {
     // }
 
     // #[cfg(not(debug_assertions))]
-    pub fn new(allocator: VecAllocator, _: &Vm) -> Self {
-        let constants = OxVec::new(allocator.clone());
-        let globals = OxVec::new(allocator.clone());
-        let data = OxVec::new(allocator.clone());
-
+    pub fn new(vm: &mut Vm) -> Self {
         Self {
             id: SectionId::next(),
-            constants,
-            globals,
-            data,
+            constants: vm.new_vec(),
+            globals: vm.new_vec(),
+            data: vm.new_vec(),
         }
     }
 
@@ -97,10 +93,6 @@ impl Section {
         self.data[index]
     }
 
-    pub fn data(&self) -> &[u8] {
-        self.data.as_slice()
-    }
-
     pub fn debug_print(&self) {
         // println!("{:#?}", self.data);
     }
@@ -109,12 +101,28 @@ impl Section {
         Disassembler::disassemble_section(self)
     }
 
+    pub fn data(&self) -> &[u8] {
+        self.data.as_slice()
+    }
+
     pub fn globals(&self) -> &[Value] {
         self.globals.as_slice()
     }
 
     pub fn constants(&self) -> &[Value] {
         self.constants.as_slice()
+    }
+
+    pub fn data_ref(&self) -> &OxVec<u8> {
+        &self.data
+    }
+
+    pub fn globals_ref(&self) -> &OxVec<Value> {
+        &self.globals
+    }
+
+    pub fn constants_ref(&self) -> &OxVec<Value> {
+        &self.constants
     }
 }
 
@@ -158,7 +166,6 @@ impl Section {
     }
 
     pub fn patch_jmp(&mut self, offset: usize) {
-        dbg!("patch_jmp: {} {}", self.len(), offset);
         let jump: u16 = (self.len() - offset - 2) as _;
         self.data[offset] = ((jump >> 8) & 0xff) as u8;
         self.data[offset + 1] = (jump & 0xff) as u8;

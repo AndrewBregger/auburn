@@ -4,7 +4,7 @@ use std::{
 };
 type VecInner<Ty> = VecInnerImpl<Ty, VecAllocator>;
 
-use crate::gc::{Object, ObjectKind, VecAllocator};
+use crate::gc::{Address, Object, ObjectKind, VecAllocator};
 
 #[derive(Debug, Clone)]
 pub struct OxVec<Ty> {
@@ -22,6 +22,10 @@ impl<Ty> OxVec<Ty> {
         Self {
             inner: VecInner::with_capacity_in(len, allocator),
         }
+    }
+
+    pub fn ptr(&self) -> Address {
+        Address::from_ptr(self.inner.as_ptr() as *const u8)
     }
 }
 

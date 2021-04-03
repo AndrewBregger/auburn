@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use oxide::{gc::Gc, vm::OpCode, OxFunction, Section, Value};
+use oxide::{gc::Gc, vm::OpCode, OxFunction, OxVec, Section, Value, Vm};
 
 use crate::ir::hir::HirFile;
 
@@ -67,17 +67,17 @@ pub(crate) struct FileContext<'ctx> {
     /// stack of function sections that are being generated
     pub(crate) function_stack: Vec<FunctionInfo>,
     /// list of objects for this file.
-    pub(crate) values: Vec<Value>,
+    pub(crate) values: OxVec<Value>,
 }
 
 impl<'ctx> FileContext<'ctx> {
-    pub fn new(file: &'ctx HirFile) -> Self {
+    pub fn new(file: &'ctx HirFile, vm: &mut Vm) -> Self {
         Self {
             file,
             globals: HashMap::new(),
             current_function: None,
             function_stack: vec![],
-            values: vec![],
+            values: vm.new_vec(),
         }
     }
 
