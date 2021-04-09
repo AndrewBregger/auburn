@@ -43,6 +43,9 @@ pub enum BuildError {
 
     #[error("entry function for module not found")]
     ModuleEntryNotFound,
+
+    #[error("unable to cast literal of type '{0}' to value")]
+    InvalidLiteralCast(Rc<Type>),
 }
 
 pub struct CodeGen<'vm, 'ctx> {
@@ -200,15 +203,18 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         // self.vm.compiler_address.push(name_obj.buffer().ptr());
         // self.vm.compiler_address.push(context.values.ptr());
 
+        let mut objects = self.vm.vec_with_capacity::<Value>(context.values.len());
+        objects.extend_from_slice(context.values.as_slice());
+
         if let Some(entry) = hir_file.get_entry() {
             let borrow = entry.deref().borrow();
             let name = borrow.name();
             if let Some(global_info) = context.globals.get(name) {
                 println!("building new module");
                 self.vm.force_no_collection(true);
-                let module =
-                    self.vm
-                        .new_entry_module(name_obj, global_info.object_idx, context.values);
+                let module = self
+                    .vm
+                    .new_entry_module(name_obj, global_info.object_idx, objects);
                 self.vm.force_no_collection(false);
                 Ok(module)
             } else {
@@ -311,35 +317,8 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             // @todo: handle function calls for globals.
             let default = variable_info.default.as_ref().unwrap();
             if default.is_literal() {
-                let inner = default.inner();
-                let value = match inner.kind() {
-                    HirExprKind::Integer(val) => match default.ty().kind() {
-                        TypeKind::U8 => Value::from(*val as u8),
-                        TypeKind::U16 => Value::from(*val as u16),
-                        TypeKind::U32 => Value::from(*val as u32),
-                        TypeKind::U64 => Value::from(*val as u64),
-                        TypeKind::I8 => Value::from(*val as i8),
-                        TypeKind::I16 => Value::from(*val as i16),
-                        TypeKind::Integer | TypeKind::I32 => Value::from(*val as i32),
-                        TypeKind::I64 => Value::from(*val),
-                        _ => unreachable!(),
-                    },
-                    HirExprKind::Float(val) => match default.ty().kind() {
-                        TypeKind::Float | TypeKind::F32 => Value::from(val.into_inner() as f32),
-                        TypeKind::F64 => Value::from(val.into_inner()),
-                        _ => unreachable!(),
-                    },
-                    HirExprKind::String(val) => {
-                        let ox_string = self.vm.new_gc_string_from_str(val.as_str());
-                        Value::from(ox_string)
-                    }
-                    HirExprKind::Char(val) => Value::from(*val),
-                    HirExprKind::Bool(val) => Value::from(*val),
-                    _ => unreachable!(),
-                };
-
-                let context = self.current_context_mut();
-                context.push_object(value);
+                let value = self.literal_expr_to_value(default)?;
+                self.current_context_mut().push_object(value);
             } else {
                 panic!("non literals for globals is not supported by the vm")
             }
@@ -837,6 +816,36 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         }
 
         Ok(())
+    }
+
+    fn literal_expr_to_value(&mut self, expr: &HirExpr) -> Result<Value, BuildError> {
+        let inner = expr.inner();
+
+        match inner.kind() {
+            HirExprKind::Integer(val) => match expr.ty().kind() {
+                TypeKind::U8 => Ok(Value::from(*val as u8)),
+                TypeKind::U16 => Ok(Value::from(*val as u16)),
+                TypeKind::U32 => Ok(Value::from(*val as u32)),
+                TypeKind::U64 => Ok(Value::from(*val as u64)),
+                TypeKind::I8 => Ok(Value::from(*val as i8)),
+                TypeKind::I16 => Ok(Value::from(*val as i16)),
+                TypeKind::Integer | TypeKind::I32 => Ok(Value::from(*val as i32)),
+                TypeKind::I64 => Ok(Value::from(*val)),
+                _ => Err(BuildError::InvalidLiteralCast(expr.ty())),
+            },
+            HirExprKind::Float(val) => match expr.ty().kind() {
+                TypeKind::Float | TypeKind::F32 => Ok(Value::from(val.into_inner() as f32)),
+                TypeKind::F64 => Ok(Value::from(val.into_inner())),
+                _ => Err(BuildError::InvalidLiteralCast(expr.ty())),
+            },
+            HirExprKind::String(val) => {
+                let ox_string = self.vm.new_gc_string_from_str(val.as_str());
+                Ok(Value::from(ox_string))
+            }
+            HirExprKind::Char(val) => Ok(Value::from(*val)),
+            HirExprKind::Bool(val) => Ok(Value::from(*val)),
+            _ => Err(BuildError::InvalidLiteralCast(expr.ty())),
+        }
     }
 
     fn cleanup_top_scope(&mut self) {

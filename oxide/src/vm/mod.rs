@@ -504,6 +504,7 @@ impl Vm {
                     let count = read_to::<u16>(frame.section().data(), &mut ip);
                     frame.ip = ip;
 
+                    self.print_stack();
                     let value = self.pop();
                     let s = value.as_instance().clone();
                     self.push_stack(s.get_attr(count as usize).clone())

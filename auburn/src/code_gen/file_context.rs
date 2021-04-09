@@ -67,7 +67,7 @@ pub(crate) struct FileContext<'ctx> {
     /// stack of function sections that are being generated
     pub(crate) function_stack: Vec<FunctionInfo>,
     /// list of objects for this file.
-    pub(crate) values: OxVec<Value>,
+    pub(crate) values: Vec<Value>,
 }
 
 impl<'ctx> FileContext<'ctx> {
@@ -77,7 +77,7 @@ impl<'ctx> FileContext<'ctx> {
             globals: HashMap::new(),
             current_function: None,
             function_stack: vec![],
-            values: vm.new_vec(),
+            values: vec![], //vm.new_vec(),
         }
     }
 
