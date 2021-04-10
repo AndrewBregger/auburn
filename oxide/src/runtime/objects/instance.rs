@@ -45,7 +45,7 @@ impl Display for OxInstance {
 
 impl Object for OxInstance {
     fn object_kind() -> ObjectKind {
-        ObjectKind::String
+        ObjectKind::Instance
     }
 }
 

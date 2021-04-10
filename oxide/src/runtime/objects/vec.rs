@@ -29,6 +29,14 @@ impl<Ty> OxVec<Ty> {
     }
 }
 
+impl<Ty: Clone> OxVec<Ty> {
+    pub fn fill_with_capacity(allocator: VecAllocator, len: usize, value: Ty) -> Self {
+        let mut vec = Self::with_capacity(allocator, len);
+        vec.inner.resize(len, value);
+        vec
+    }
+}
+
 impl<Ty> Deref for OxVec<Ty> {
     type Target = VecInner<Ty>;
 

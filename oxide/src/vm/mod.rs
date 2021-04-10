@@ -476,13 +476,22 @@ impl Vm {
                     let count = read_to::<u16>(frame.section().data(), &mut ip);
                     frame.ip = ip;
 
-                    let mut fields = OxVec::with_capacity(self.allocator_vec(), count as usize);
-                    (0..count).rev().for_each(|_| fields.push(self.pop()));
+                    let mut fields = self.vec_fill_with_capacity(count as usize, Value::Unit);
+
+                    (0..count)
+                        .rev()
+                        .for_each(|idx| fields[idx as usize] = self.pop());
                     println!("{:#?}", fields);
                     // println!("Struct: {}", self.top());
                     let object = self.pop().as_struct().clone();
                     println!("struct {}", object.as_ref());
+
+                    // since fields is a local varaible, it will not be found the garbage collection
+                    // if a collection pass happens here. This is a hack until a better solution is found.
+                    self.force_no_collection(true);
                     let instance = self.new_instance(object, fields);
+                    self.force_no_collection(false);
+
                     self.push_stack(Value::from(instance));
                 }
                 OpCode::NewTuple => {
@@ -491,8 +500,10 @@ impl Vm {
                     let count = read_to::<u16>(frame.section().data(), &mut ip);
                     // println!("elements: {}", count);
                     frame.ip = ip;
-                    let mut elements = OxVec::with_capacity(self.allocator_vec(), count as usize);
-                    (0..count).rev().for_each(|_| elements.push(self.pop()));
+                    let mut elements = self.vec_fill_with_capacity(count as usize, Value::Unit);
+                    (0..count)
+                        .rev()
+                        .for_each(|idx| elements[idx as usize] = self.pop());
 
                     let tuple = self.new_tuple(elements);
 
@@ -507,7 +518,9 @@ impl Vm {
                     self.print_stack();
                     let value = self.pop();
                     let s = value.as_instance().clone();
-                    self.push_stack(s.get_attr(count as usize).clone())
+                    let value = s.get_attr(count as usize).clone();
+                    println!("Push instance field: {} {}", count, value);
+                    self.push_stack(value)
                 }
                 OpCode::TupleAttr => {
                     let frame = self.frame_mut();
@@ -729,6 +742,17 @@ impl Vm {
 
     pub fn vec_with_capacity<Ty>(&mut self, len: usize) -> OxVec<Ty> {
         let x = OxVec::with_capacity(self.allocator_vec(), len);
+        if cfg!(debug_assertions) {
+            println!(
+                "vec_with_capacity {}",
+                self.allocator.last_record().unwrap()
+            );
+        }
+        x
+    }
+
+    pub fn vec_fill_with_capacity<Ty: Clone>(&mut self, len: usize, fill: Ty) -> OxVec<Ty> {
+        let x = OxVec::fill_with_capacity(self.allocator_vec(), len, fill);
         if cfg!(debug_assertions) {
             println!(
                 "vec_with_capacity {}",

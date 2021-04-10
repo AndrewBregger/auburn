@@ -68,6 +68,9 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         // hir_module: &HirModule, // not implemented yet
         vm: &mut Vm,
     ) -> Result<Gc<OxModule>, BuildError> {
+        // all gc objects that are allocated during code generation should never be deallocated.
+        // Yes, this is a hack. Once a better solution is found this will be how it works.
+        vm.force_no_collection(true);
         let mut code_gen = CodeGen {
             file_map,
             vm,
@@ -79,7 +82,10 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             is_function_scope: false,
         };
 
-        code_gen.build_module(hir_file)
+        let module = code_gen.build_module(hir_file);
+        vm.force_no_collection(false);
+
+        module
     }
 }
 
@@ -211,11 +217,11 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             let name = borrow.name();
             if let Some(global_info) = context.globals.get(name) {
                 println!("building new module");
-                self.vm.force_no_collection(true);
+                // self.vm.force_no_collection(true);
                 let module = self
                     .vm
                     .new_entry_module(name_obj, global_info.object_idx, objects);
-                self.vm.force_no_collection(false);
+                // self.vm.force_no_collection(false);
                 Ok(module)
             } else {
                 println!("failed to find global entity");
