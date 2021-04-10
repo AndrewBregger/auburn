@@ -1,24 +1,20 @@
 extern crate clap;
 
+use std::path::Path;
 use std::rc::Rc;
-use std::{
-    fmt,
-    path::Path,
-};
 
 use auburn::{
     analysis::Analysis,
     code_gen::{BuildError, CodeGen},
     error::Error,
     ir::hir::HirFile,
-    oxide::{gc::Gc, OxFunction, OxModule, Vm},
+    oxide::{gc::Gc, OxModule, Vm},
     syntax::{ParsedFile, Parser, Position},
     system::{File, FileMap},
     utils::MirPrinter,
     Executor, LanguageMode,
 };
 use clap::Clap;
-use fmt::Formatter;
 
 #[derive(Clap, Debug)]
 enum Command {
@@ -127,7 +123,9 @@ impl Core {
                 err
             );
 
-            if start_coord.line() == 0 && start_coord.column() == 0 || start_coord.line() != pos.end().line() {
+            if start_coord.line() == 0 && start_coord.column() == 0
+                || start_coord.line() != pos.end().line()
+            {
                 return;
             }
 
@@ -164,7 +162,7 @@ impl Core {
             .expect("cursor string is not valid utf8??");
         println!(" \t{}{}", offset, cursor);
     }
-    
+
     fn print_build_error(&self, err: &BuildError) {
         println!("{}", err);
     }
@@ -206,12 +204,13 @@ impl Core {
                     .open_file(input.as_str())
                     .map_err(|err| CoreError::IoError(err, input))?;
 
-                let ox_function = self.build(file, options)?;
-                ox_function.disassemble();
-
-                match self.vm.run_module(ox_function) {
+                let ox_module = self.build(file, options)?;
+                // ox_module.disassemble();
+                println!("Running module");
+                match self.vm.run_module(ox_module) {
                     Ok(_) => {
                         self.vm.print_stack();
+                        self.vm.dump_mem_stats();
                     }
                     Err(err) => println!("{}", err),
                 }
@@ -220,8 +219,7 @@ impl Core {
             Command::Build { input } => {
                 let file = self.open(input.as_str())?;
                 let module = self.build(file, options)?;
-                module.disassemble();
-                self.vm.free();
+                module.disassemble(0);
             }
         }
         Ok(())
@@ -240,8 +238,10 @@ impl Core {
             .resolve_root(parsed_file, options.mode)
             .map_err(Into::<CoreError>::into)?;
 
+        self.vm.set_code_gen(true);
         let module = CodeGen::build(&self.file_map, &hir_file, &mut self.vm)
             .map_err(|e| CoreError::from(e))?;
+        self.vm.set_code_gen(false);
 
         Ok(module)
     }

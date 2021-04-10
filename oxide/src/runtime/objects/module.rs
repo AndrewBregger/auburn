@@ -1,72 +1,55 @@
-use std::{fmt::Display, ops::{Deref, DerefMut}};
-use crate::{AttributeAccess, OxString, Value, VecBuffer, gc:: GcObject};
-use crate::gc::{Cell, ObjectKind};
+use std::fmt::Display;
 
-#[repr(C)]
+use crate::{
+    gc::{Object, ObjectKind, VecAllocator},
+    OxString, OxVec, Value,
+};
+
 #[derive(Debug, Clone)]
 pub struct OxModule {
-    /// gc info
-    cell: Cell,
-    /// name of module
-    pub name: OxString,
-    /// entry object index
+    name: OxString,
     entry: Option<usize>,
-    /// list of values
-    pub values: VecBuffer<Value>,
+    objects: OxVec<Value>,
 }
 
 impl OxModule {
-    pub fn new(name: OxString, values: VecBuffer<Value>) -> Self {
+    pub fn new(name: OxString, entry: Option<usize>, objects: OxVec<Value>) -> Self {
         Self {
-            cell: Cell::new(ObjectKind::Module),
             name,
-            entry: None,
-            values,
+            entry,
+            objects,
         }
     }
 
-    pub fn name(&self) -> &OxString {
-        &self.name 
+    pub fn empty(name: OxString, allocator: VecAllocator) -> Self {
+        Self::new(name, None, OxVec::new(allocator))
     }
 
-    pub fn values(&self) -> &[Value] {
-        self.values.deref().as_slice()
+    pub fn name(&self) -> &OxString {
+        &self.name
+    }
+
+    pub fn disassemble(&self, indent: usize) {
+        println!(
+            "{}disassemble {}:",
+            (0..indent).map(|_| '\t').collect::<String>(),
+            self.name
+        );
+        for obj in self.objects.iter() {
+            obj.disassemble(indent + 1);
+        }
+    }
+
+    pub fn objects(&self) -> &OxVec<Value> {
+        &self.objects
+    }
+
+    pub fn entry(&self) -> Option<&Value> {
+        self.entry.map(|idx| self.objects.get(idx)).flatten()
     }
 
     pub fn set_entry(&mut self, entry: usize) {
         self.entry = Some(entry);
-    }
-
-    pub fn disassemble(&self) {
-        println!(
-            "Module: {}, Values: {} Entry: {}",
-            self.name,
-            self.values.deref().len(),
-            self.entry.map_or("None".to_string(), |e| format!("{}", e))
-        );
-        for (idx, object) in self.values.deref().iter().enumerate() {
-            object.disassemble();
-            println!();
-        }
-    }
-
-    pub fn get_entry(&self) -> Option<Value> {
-        if let Some(idx) = self.entry {
-            let value = self.get_attr(idx);
-            debug_assert!(value.is_function(), "Compiler Error: entry for module '{}' is not a function", self.name);
-            Some(value.clone())
-        }
-        else { None }
-    }
-}
-
-impl GcObject for OxModule {
-    fn as_cell(&self) -> &Cell {
-        &self.cell
-    }
-
-    fn as_cell_mut(&mut self) -> &mut Cell {
-        &mut self.cell
     }
 }
 
@@ -76,16 +59,8 @@ impl Display for OxModule {
     }
 }
 
-impl AttributeAccess for OxModule {
-    type Output = Value;
-
-    fn get_attr(&self, idx: usize) -> &<Self as AttributeAccess>::Output {
-        unsafe { self.values.deref().get_unchecked(idx) }
+impl Object for OxModule {
+    fn object_kind() -> ObjectKind {
+        ObjectKind::String
     }
-
-    fn get_attr_mut(&mut self, idx: usize) -> &mut <Self as AttributeAccess>::Output {
-        unsafe { self.values.deref_mut().get_unchecked_mut(idx) }
-    }
-
 }
-

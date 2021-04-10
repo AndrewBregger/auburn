@@ -1,4 +1,6 @@
-use crate::analysis::typer::Typer; use crate::analysis::typer::EXPR_RESULT_USED; use crate::error::Error;
+use crate::analysis::typer::Typer;
+use crate::analysis::typer::EXPR_RESULT_USED;
+use crate::error::Error;
 use crate::ir::ast::{AssignmentOp, Node, Stmt, StmtKind};
 use crate::ir::hir::{Assignment, HirStmt, HirStmtKind, MirNode};
 use std::ops::Deref;
@@ -76,7 +78,7 @@ impl<'src> Typer<'src> {
                         let rhs = self.resolve_expr(rhs.as_ref(), Some(lvalue_type))?;
                         let assignment = Assignment {
                             op: *op,
-                            lvalue: entity,
+                            lvalue: mir_lvalue,
                             rhs,
                         };
 

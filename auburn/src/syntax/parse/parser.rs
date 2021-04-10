@@ -1,4 +1,4 @@
-use std::{convert::{TryFrom, TryInto}, ops::Deref};
+use std::convert::TryFrom;
 
 use itertools::Itertools;
 
@@ -533,7 +533,10 @@ impl<'src> Parser<'src> {
                         Control::Bracket,
                     )?;
 
-                    let stmts = stmts.into_iter().filter(|stmt| -> bool { !stmt.kind().is_empty() }).collect_vec();
+                    let stmts = stmts
+                        .into_iter()
+                        .filter(|stmt| -> bool { !stmt.kind().is_empty() })
+                        .collect_vec();
 
                     let end = self.expect(Token::ControlPair(Control::Bracket, PairKind::Close))?;
                     let position = position.extended_to_token(end);
@@ -554,7 +557,6 @@ impl<'src> Parser<'src> {
 
                 let expr = self.parse_expr()?;
 
-
                 if self.check_for(Token::Op(Operator::Comma)) {
                     self.consume()?;
                     let mut elements = vec![expr];
@@ -574,8 +576,7 @@ impl<'src> Parser<'src> {
 
                     let kind = ExprKind::Tuple(elements);
                     Ok(Box::new(Expr::new_with_position(kind, position)))
-                }
-                else {
+                } else {
                     self.expect(Token::ControlPair(Control::Paren, PairKind::Close))?;
                     Ok(expr)
                 }

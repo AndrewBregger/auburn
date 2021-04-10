@@ -1,30 +1,28 @@
-use crate::{
-    gc::{Cell, Gc, GcObject, ObjectKind},
-    OxString, Section,
-};
 use std::fmt::{Display, Formatter};
 
-#[repr(C)]
+use crate::{
+    gc::{Object, ObjectKind},
+    OxString, Section,
+};
+
 #[derive(Debug, Clone)]
 pub struct OxFunction {
-    cell: Cell,
-    pub name: OxString,
-    pub arity: u8,
-    pub section: Section,
+    name: OxString,
+    section: Section,
+    arity: u8,
 }
 
 impl OxFunction {
-    pub fn new(name: OxString, arity: u8, section: Section) -> Self {
+    pub fn new(name: OxString, section: Section, arity: u8) -> Self {
         Self {
-            cell: Cell::new(ObjectKind::Function),
             name,
-            arity,
             section,
+            arity,
         }
     }
 
-    pub fn is_script(&self) -> bool {
-        self.name.is_empty()
+    pub fn name(&self) -> &OxString {
+        &self.name
     }
 
     pub fn section(&self) -> &Section {
@@ -39,41 +37,30 @@ impl OxFunction {
         self.arity
     }
 
-    pub fn name(&self) -> &OxString {
-        &self.name
-    }
-
-    pub fn disassemble(&self) {
-        let section = self.section();
-        for value in section.globals().iter() {
-            if value.is_function() {
-                let fnct = value.as_function();
-                fnct.disassemble();
-            }
-        }
-        println!("disassembly for {}", self.name);
-        for instruction in section.disassemble() {
-            println!("\t{}", instruction);
+    pub fn disassemble(&self, indent: usize) {
+        println!(
+            "{}disassembly {}:",
+            (0..indent).map(|_| '\t').collect::<String>(),
+            self.name
+        );
+        for inst in self.section.disassemble() {
+            println!(
+                "{}{}",
+                (0..indent + 1).map(|_| '\t').collect::<String>(),
+                inst
+            );
         }
     }
 }
 
 impl Display for OxFunction {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        if self.is_script() {
-            write!(f, "<script>")
-        } else {
-            write!(f, "<fn {}>", self.name)
-        }
+        write!(f, "<fn {}>", self.name)
     }
 }
 
-impl GcObject for OxFunction {
-    fn as_cell(&self) -> &Cell {
-        &self.cell
-    }
-
-    fn as_cell_mut(&mut self) -> &mut Cell {
-        &mut self.cell
+impl Object for OxFunction {
+    fn object_kind() -> ObjectKind {
+        ObjectKind::Function
     }
 }

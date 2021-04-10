@@ -1,56 +1,69 @@
-use std::{cmp::min, fmt::{Display, Formatter}, ops::{Deref, DerefMut}};
+use std::fmt::Display;
 
-use crate::{VecBuffer, gc::{Address, Cell, Gc, GcObject, ObjectKind}};
+use crate::{
+    gc::{Object, ObjectKind, VecAllocator},
+    OxVec,
+};
 
-#[repr(C)]
 #[derive(Debug, Clone)]
 pub struct OxString {
-    cell: Cell,
-    pub buffer: VecBuffer<char>,
-    pub len: usize,
+    buffer: OxVec<u8>,
 }
 
 impl OxString {
-    pub fn new(buffer: VecBuffer<char>, len: usize) -> Self {
-        Self { 
-            cell: Cell::new(ObjectKind::String),
-            len,
-            buffer 
+    pub fn new(allocator: VecAllocator) -> Self {
+        Self {
+            buffer: OxVec::new(allocator),
         }
     }
 
-    pub fn chars(&self) -> &[char] {
-        self.buffer.deref().as_slice()
+    pub fn as_str(&self) -> &str {
+        unsafe { std::str::from_utf8_unchecked(self.buffer.as_slice()) }
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.len == 0
+    pub fn len(&self) -> usize {
+        self.buffer.len()
     }
 
-    // naive, only store what it can in the buffer.
-    pub fn set_from_str(&mut self, value: &str) {
-        for value in value.chars() {
-            self.buffer.push(value);
-        }
+    pub fn buffer(&self) -> &OxVec<u8> {
+        &self.buffer
+    }
+
+    pub fn capacity(&self) -> usize {
+        self.buffer.capacity()
+    }
+
+    pub fn with_value(allocator: VecAllocator, value: &str) -> Self {
+        let mut val = Self {
+            buffer: OxVec::new(allocator),
+        };
+
+        val.push_bytes(value.as_bytes());
+
+        val
+    }
+
+    pub fn push_bytes(&mut self, value: &[u8]) {
+        self.buffer.extend_from_slice(value)
+    }
+
+    pub fn disassemble(&self, indent: usize) {
+        println!(
+            "{}<string {}>",
+            (0..indent).map(|_| '\t').collect::<String>(),
+            self
+        );
     }
 }
 
 impl Display for OxString {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        // @TODO(): fix display to properly display a oxide string([char])
-        for char in self.chars() {
-            write!(f, "{}", *char)?;
-        }
-        Ok(())
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
     }
 }
 
-impl GcObject for OxString {
-    fn as_cell(&self) -> &Cell {
-        &self.cell
-    }
-
-    fn as_cell_mut(&mut self) -> &mut Cell {
-        &mut self.cell
+impl Object for OxString {
+    fn object_kind() -> ObjectKind {
+        ObjectKind::String
     }
 }

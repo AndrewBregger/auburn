@@ -11,8 +11,6 @@ use crate::syntax::Position;
 use crate::system::FileId;
 use crate::types::Type;
 
-use super::ast::StmtKind;
-
 #[derive(Debug, Clone)]
 pub struct BinaryExpr {
     pub op: BinaryOp,
@@ -351,7 +349,8 @@ impl NodeType for HirSpecKind {
 #[derive(Debug, Clone)]
 pub struct Assignment {
     pub op: AssignmentOp,
-    pub lvalue: EntityRef,
+    // pub lvalue: EntityRef,
+    pub lvalue: Rc<HirExpr>,
     pub rhs: Rc<HirExpr>,
 }
 
