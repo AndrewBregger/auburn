@@ -2,26 +2,22 @@ use std::fmt::Display;
 
 use crate::{
     gc::{Gc, Object, ObjectKind},
-    AttributeAccess, OxString, OxStruct, OxVec, Value,
+    AttributeAccess, OxString, OxVec, Value,
 };
 
 #[derive(Debug, Clone)]
 pub struct OxInstance {
-    object: Gc<OxStruct>,
+    name: Gc<OxString>,
     fields: OxVec<Value>,
 }
 
 impl OxInstance {
-    pub fn new(object: Gc<OxStruct>, fields: OxVec<Value>) -> Self {
-        Self { object, fields }
+    pub fn new(name: Gc<OxString>, fields: OxVec<Value>) -> Self {
+        Self { name, fields }
     }
 
     pub fn name(&self) -> &OxString {
-        self.object.name()
-    }
-
-    pub fn object(&self) -> &OxStruct {
-        self.object.as_ref()
+        &self.name
     }
 
     pub fn fields(&self) -> &OxVec<Value> {

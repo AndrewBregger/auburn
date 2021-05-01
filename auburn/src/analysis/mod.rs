@@ -5,3 +5,4 @@ mod typer;
 
 pub use analysis::Analysis;
 pub use entity::*;
+pub use scope::Scope;

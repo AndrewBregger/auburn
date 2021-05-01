@@ -40,6 +40,19 @@ impl OxModule {
         }
     }
 
+    pub fn add_object(&mut self, value: Value) -> usize {
+        self.objects.push(value);
+        self.objects.len() - 1
+    }
+
+    pub fn num_objects(&self) -> usize {
+        self.objects.len()
+    }
+
+    pub fn get(&self, idx: usize) -> Option<&Value> {
+        self.objects.get(idx)
+    }
+
     pub fn objects(&self) -> &OxVec<Value> {
         &self.objects
     }

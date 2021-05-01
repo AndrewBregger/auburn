@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 
-use oxide::{gc::Gc, vm::OpCode, OxFunction, OxVec, Section, Value, Vm};
+use oxide::{gc::Gc, vm::OpCode, OxFunction, OxModule, OxStruct, Section, Value};
 
 use crate::ir::hir::HirFile;
+
+pub static SELF_GLOBAL_IDX: u8 = 0;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct GlobalInfo {
@@ -66,18 +68,23 @@ pub(crate) struct FileContext<'ctx> {
     pub(crate) current_function: Option<usize>,
     /// stack of function sections that are being generated
     pub(crate) function_stack: Vec<FunctionInfo>,
-    /// list of objects for this file.
-    pub(crate) values: Vec<Value>,
+    /// module object for this file.
+    pub(crate) module: Gc<OxModule>,
+    /// structure currently being processed.
+    /// None when processing a function
+    /// Some when processing an associated function
+    pub(crate) structure: Option<Gc<OxStruct>>,
 }
 
 impl<'ctx> FileContext<'ctx> {
-    pub fn new(file: &'ctx HirFile, vm: &mut Vm) -> Self {
+    pub fn new(file: &'ctx HirFile, module: Gc<OxModule>) -> Self {
         Self {
             file,
             globals: HashMap::new(),
             current_function: None,
             function_stack: vec![],
-            values: vec![], //vm.new_vec(),
+            module,
+            structure: None,
         }
     }
 
@@ -92,8 +99,7 @@ impl<'ctx> FileContext<'ctx> {
     }
 
     pub fn push_object(&mut self, value: Value) -> usize {
-        self.values.push(value);
-        self.values.len() - 1
+        self.module.add_object(value)
     }
 
     pub fn current_section(&self) -> &Section {
@@ -142,23 +148,39 @@ impl<'ctx> FileContext<'ctx> {
             ),
         };
 
-        if self.values.len() <= global_idx {
-            panic!(
-                "{}: {} global value not found {}",
-                name,
-                global_idx,
-                self.values.len()
-            );
-        }
+        // if self.values.len() <= global_idx {
+        //     panic!(
+        //         "{}: {} global value not found {}",
+        //         name,
+        //         global_idx,
+        //         self.values.len()
+        //     );
+        // }
 
-        let value = self.values[global_idx].clone();
+        let value = self
+            .module
+            .get(global_idx)
+            .expect(
+                format!(
+                    "{}: {} is out of bounds for module of with objects {}",
+                    name,
+                    global_idx,
+                    self.module.num_objects()
+                )
+                .as_str(),
+            )
+            .clone();
+
+        // let value = self.values[global_idx].clone();
         if let Some(function) = self.current_function_mut() {
             if function.global_map.contains_key(&global_idx) {
                 function.global_map[&global_idx]
             } else {
                 let idx = function.section_mut().add_global();
                 function.global_map.insert(global_idx, idx);
-                function.section_mut().set_global(idx as usize, value);
+                function
+                    .section_mut()
+                    .set_global(idx as usize, value.clone());
                 idx
             }
         } else {
@@ -181,5 +203,22 @@ impl<'ctx> FileContext<'ctx> {
         function.locals.push(local_info);
 
         local_idx as u8
+    }
+
+    pub fn set_self_global(&mut self, value: Value) {
+        assert!(
+            self.globals.is_empty(),
+            "there shouldn't be any globals loaded at this point"
+        );
+
+        self.globals.insert(
+            "__SELF__".to_string(),
+            GlobalInfo::new("self".to_string(), SELF_GLOBAL_IDX as usize),
+        );
+
+        let section = self.current_section_mut();
+        let idx = section.add_global();
+        assert_eq!(idx, SELF_GLOBAL_IDX);
+        section.set_global(idx as usize, value);
     }
 }

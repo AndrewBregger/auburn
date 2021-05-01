@@ -264,7 +264,6 @@ impl Vm {
     }
 
     fn call_value(&mut self, value: &Value, arity: u8) -> Result<(), runtime::Error> {
-        println!("call value: {}", value);
         match value {
             Value::Function(funct) => {
                 if arity != funct.arity() {
@@ -275,7 +274,6 @@ impl Vm {
                     );
                 }
                 let stack_start = self.top_stack - arity as usize;
-                println!("calling {} start_stack: {}", funct.name(), stack_start);
                 // self.print_stack();
                 let call_frame = CallFrame::new(*funct, stack_start);
                 self.push_frame(call_frame);
@@ -298,13 +296,9 @@ impl Vm {
     }
 
     pub fn run_module(&mut self, module: Gc<OxModule>) -> Result<(), runtime::Error> {
-        println!("pushing module to stack");
         self.push_stack(Value::from(module.clone()));
-        println!("Entry lookup");
         if let Some(entry_function) = module.entry() {
-            println!("found entry");
             self.push_stack(entry_function.clone());
-            println!("calling value");
             self.call_value(&entry_function, 0)?;
 
             self.run()
@@ -329,7 +323,7 @@ impl Vm {
             };
 
             let op_code = OpCode::from_u8(op_code_raw).unwrap();
-            println!("OpCode {:014x} {}", self.frame().ip - 1, op_code);
+            // println!("OpCode {:014x} {}", self.frame().ip - 1, op_code);
             match op_code {
                 OpCode::LoadI8 => {
                     load_constant!(is_i8, "i8", self);
@@ -481,15 +475,13 @@ impl Vm {
                     (0..count)
                         .rev()
                         .for_each(|idx| fields[idx as usize] = self.pop());
-                    println!("{:#?}", fields);
                     // println!("Struct: {}", self.top());
-                    let object = self.pop().as_struct().clone();
-                    println!("struct {}", object.as_ref());
+                    let name = self.pop().as_string().clone();
 
                     // since fields is a local varaible, it will not be found the garbage collection
                     // if a collection pass happens here. This is a hack until a better solution is found.
                     self.force_no_collection(true);
-                    let instance = self.new_instance(object, fields);
+                    let instance = self.new_instance(name, fields);
                     self.force_no_collection(false);
 
                     self.push_stack(Value::from(instance));
@@ -515,11 +507,9 @@ impl Vm {
                     let count = read_to::<u16>(frame.section().data(), &mut ip);
                     frame.ip = ip;
 
-                    self.print_stack();
                     let value = self.pop();
                     let s = value.as_instance().clone();
                     let value = s.get_attr(count as usize).clone();
-                    println!("Push instance field: {} {}", count, value);
                     self.push_stack(value)
                 }
                 OpCode::TupleAttr => {
@@ -539,6 +529,14 @@ impl Vm {
                     let value = self.pop();
                     let mut obj = self.pop();
                     *obj.as_instance_mut().get_attr_mut(idx as usize) = value;
+                }
+                OpCode::LoadAssoc => {
+                    let frame = self.frame_mut();
+                    let idx = frame.section().read(frame.ip);
+                    frame.ip += 1;
+                    let value = self.pop();
+                    let assoc = value.as_struct().get_attr(idx as usize);
+                    self.push_stack(Value::from(assoc.clone()));
                 }
                 OpCode::PushLocal => {
                     // no-op
@@ -774,6 +772,15 @@ impl Vm {
         Gc::with_value(address, OxModule::new(name, None, objects))
     }
 
+    pub fn new_empty_module(&mut self, name: OxString) -> Gc<OxModule> {
+        let address = self.allocate_from::<OxModule>();
+        let objects = self.new_vec();
+        if cfg!(debug_assertions) {
+            println!("new_module {}", self.allocator.last_record().unwrap());
+        }
+        Gc::with_value(address, OxModule::new(name, None, objects))
+    }
+
     pub fn new_entry_module(
         &mut self,
         name: OxString,
@@ -808,7 +815,7 @@ impl Vm {
         Gc::with_value(address, OxStruct::new(name, methods))
     }
 
-    pub fn new_instance(&mut self, object: Gc<OxStruct>, fields: OxVec<Value>) -> Gc<OxInstance> {
+    pub fn new_instance(&mut self, object: Gc<OxString>, fields: OxVec<Value>) -> Gc<OxInstance> {
         let address = self.allocate_from::<OxInstance>();
         Gc::with_value(address, OxInstance::new(object, fields))
     }
@@ -971,7 +978,7 @@ impl Vm {
 
     fn trace_instance(gray_list: &mut Vec<Address>, instance: &OxInstance) {
         // println!("trace instance");
-        Self::trace_struct(gray_list, instance.object());
+        Self::trace_string(gray_list, instance.name());
         for field in instance.fields().iter() {
             Self::mark_value(gray_list, field);
         }

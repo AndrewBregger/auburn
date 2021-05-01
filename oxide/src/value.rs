@@ -172,7 +172,7 @@ impl Value {
         }
     }
 
-    pub fn as_string(&self) -> &OxString {
+    pub fn as_string(&self) -> &Gc<OxString> {
         if let Self::String(val) = self {
             val
         } else {
@@ -183,7 +183,7 @@ impl Value {
         }
     }
 
-    pub fn as_function(&self) -> &OxFunction {
+    pub fn as_function(&self) -> &Gc<OxFunction> {
         match self {
             Self::Function(val) => val,
             _ => {
@@ -195,9 +195,9 @@ impl Value {
         }
     }
 
-    pub fn as_function_mut(&mut self) -> &mut OxFunction {
+    pub fn as_function_mut(&mut self) -> &mut Gc<OxFunction> {
         match self {
-            Self::Function(val) => val.as_ref_mut(),
+            Self::Function(val) => val,
             _ => {
                 panic!(
                     "Attempting to get a string from a value of type {}",

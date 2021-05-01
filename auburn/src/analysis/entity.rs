@@ -32,6 +32,7 @@ pub struct AssociatedFunctionInfo {
     pub body_scope: Option<ScopeRef>,
     pub body: HirExprPtr,
     pub takes_self: bool,
+    pub index: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -249,9 +250,20 @@ impl Entity {
 
     pub fn as_local(&self) -> &LocalInfo {
         match &self.kind {
-            EntityInfo::Param(info) 
-            | EntityInfo::Field(info) => info,
-            _ => panic!("Attempting to get local info from an entity that is not a parameter or fields"),
+            EntityInfo::Param(info) | EntityInfo::Field(info) => info,
+            _ => panic!(
+                "Attempting to get local info from an entity that is not a parameter or fields"
+            ),
+        }
+    }
+
+    pub fn as_associated_function(&self) -> &AssociatedFunctionInfo {
+        match &self.kind {
+            EntityInfo::AssociatedFunction(info) => info,
+            _ => panic!(
+                "Attempting to get associated function info from an entity that is not an associated function"
+            ),
+
         }
     }
 
@@ -269,9 +281,9 @@ impl Entity {
         }
     }
 
-    pub fn is_function(&self) -> bool  {
+    pub fn is_function(&self) -> bool {
         match self.kind {
-            EntityInfo::Function { .. } => true,
+            EntityInfo::Function { .. } | EntityInfo::AssociatedFunction { .. } => true,
             _ => false,
         }
     }
@@ -285,7 +297,14 @@ impl Entity {
 
     pub fn is_instance(&self) -> bool {
         match self.kind {
-            EntityInfo::Variable(..) | EntityInfo::Field(..) => true,
+            EntityInfo::Variable(..) | EntityInfo::Field(..) | EntityInfo::SelfParam { .. } => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_self(&self) -> bool {
+        match self.kind {
+            EntityInfo::SelfParam { .. } => true,
             _ => false,
         }
     }

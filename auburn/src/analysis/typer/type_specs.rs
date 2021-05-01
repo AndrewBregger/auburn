@@ -33,7 +33,7 @@ impl<'src> Typer<'src> {
                     panic!()
                 }
             }
-            SpecKind::SelfType => todo!(),
+            SpecKind::SelfType => todo!("Self type not implemented"),
             SpecKind::Tuple(_) | SpecKind::Unit | SpecKind::Infer => todo!("{:?}", spec),
             SpecKind::Array(element_type, size) => {
                 let mir_spec = self.resolve_spec(element_type.as_ref())?;

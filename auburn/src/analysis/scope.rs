@@ -1,10 +1,8 @@
-use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::analysis::EntityRef;
 use crate::system::FileId;
-use crate::utils::Ptr;
 
 pub type ScopeRef = Rc<Scope>;
 
@@ -27,7 +25,8 @@ pub struct PossibleEntity {
 #[derive(Debug, Clone)]
 pub struct Scope {
     kind: ScopeKind,
-    elements: HashMap<String, EntityRef>,
+    names: HashMap<String, usize>,
+    elements: Vec<EntityRef>,
     parent: Option<ScopeRef>,
     children: Vec<ScopeRef>,
 }
@@ -36,14 +35,15 @@ impl Scope {
     pub fn new(kind: ScopeKind, parent: Option<ScopeRef>) -> Self {
         Self {
             kind,
-            elements: HashMap::new(),
+            names: HashMap::new(),
+            elements: vec![],
             parent,
             children: vec![],
         }
     }
 
-    pub fn elements(&self) -> &HashMap<String, EntityRef> {
-        self.elements.borrow()
+    pub fn elements(&self) -> &[EntityRef] {
+        self.elements.as_slice()
     }
 
     pub fn len(&self) -> usize {
@@ -51,7 +51,8 @@ impl Scope {
     }
 
     pub fn get(&self, name: &str) -> Option<&EntityRef> {
-        self.elements.get(name)
+        let idx = self.names.get(name)?;
+        Some(&self.elements[*idx])
     }
 
     pub fn parent(&self) -> Option<ScopeRef> {
@@ -75,10 +76,12 @@ impl Scope {
     }
 
     pub fn shallow_lookup(&self, name: &str) -> Option<EntityRef> {
-        self.elements.get(name).map(Ptr::clone)
+        self.get(name).map(Rc::clone)
     }
 
     pub fn add_element(&mut self, name: &str, entity: EntityRef) {
-        self.elements.insert(name.to_string(), entity);
+        let idx = self.len();
+        self.names.insert(name.to_string(), idx);
+        self.elements.push(entity);
     }
 }

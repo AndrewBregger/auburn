@@ -1,0 +1,28 @@
+struct Vec {
+    pub x f32
+    pub y f32
+    pub z f32
+
+    fn default() Vec {
+        Vec {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0
+        }
+    }
+
+    fn new(x f32, y f32, z f32) Vec {
+        Vec {
+            x,
+            y,
+            z,
+        }
+    }
+}
+
+fn main() {
+    let vec = Vec.default()
+    let vec2 = Vec.new(1.0, 2.0, 3.0)
+    echo vec
+    echo vec2
+}

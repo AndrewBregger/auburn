@@ -184,7 +184,8 @@ impl<'src> Typer<'src> {
     pub fn resolve_file(mut self, parsed_file: ParsedFile) -> Result<HirFile, Error> {
         self.push_scope(ScopeKind::File {
             file_id: parsed_file.file_id,
-            file_name: parsed_file.file_name.clone(),
+            // file_name: parsed_file.file_name.clone(),
+            file_name: parsed_file.stem().to_owned(),
         });
         // println!("Stmts: {}", parsed_file.stmts.len());
 

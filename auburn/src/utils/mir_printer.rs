@@ -87,6 +87,12 @@ impl MirPrinter {
             }
             HirExprKind::Method(method_expr) => {
                 println!(
+                    "{}Reciever: {} | {}",
+                    Self::indent(indent),
+                    method_expr.struct_entity.borrow().name(),
+                    method_expr.struct_entity.borrow().ty()
+                );
+                println!(
                     "{}Type: {}",
                     Self::indent(indent + 1),
                     method_expr.function_type
@@ -96,6 +102,11 @@ impl MirPrinter {
                 }
             }
             HirExprKind::AssociatedFunction(associated_function_expr) => {
+                println!("{}Reciever:", Self::indent(indent));
+                EntityPrinter::print_impl(
+                    &associated_function_expr.struct_entity.borrow(),
+                    indent + 1,
+                );
                 println!(
                     "{}Type: {}",
                     Self::indent(indent + 1),
@@ -159,7 +170,9 @@ impl MirPrinter {
                 println!("{}Index:", Self::indent(indent));
                 Self::print_expr_inner(index_expr.index.as_ref(), indent + 1);
             }
-            HirExprKind::SelfLit => {}
+            HirExprKind::SelfLit(..) => {
+                // EntityPrinter::print_impl(entity.borrow().as_ref(), indent + 1);
+            }
             HirExprKind::Integer(_)
             | HirExprKind::Float(_)
             | HirExprKind::String(_)

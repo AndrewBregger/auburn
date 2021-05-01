@@ -1,0 +1,33 @@
+struct Vec {
+    pub x f32
+    pub y f32
+    pub z f32
+
+    fn new(x f32, y f32, z f32) Vec {
+        Vec {
+            x,
+            y,
+            z,
+        }
+    }
+
+    fn len(self) f32 {
+        self.x * self.x + self.y * self.y + self.z * self.z
+    }
+
+    // this is not correct since sqrt is not implemented
+    fn norm(self) Vec {
+        let len = self.len()
+        Vec {
+            x: self.x / len,
+            y: self.y / len,
+            z: self.z / len,
+        }
+    }
+}
+
+fn main() {
+    let vec = Vec.new(3.0, 4.0, 5.0)
+    echo vec.len()
+    echo vec.norm()
+}

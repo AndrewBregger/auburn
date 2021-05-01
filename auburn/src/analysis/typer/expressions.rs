@@ -167,7 +167,7 @@ impl<'src> Typer<'src> {
                         let mir_inner = HirExprInner::new(
                             AddressMode::Address,
                             ResultMeta::new(*mutable, false, false, false, false),
-                            HirExprKind::SelfLit,
+                            HirExprKind::SelfLit(self_entity.clone()),
                         );
                         Rc::new(HirExpr::new(
                             mir_inner,
@@ -594,11 +594,7 @@ impl<'src> Typer<'src> {
                 // we know it is a structure at this point.
                 let entity_borrow = entity.deref().borrow();
                 let structure_info = entity_borrow.as_struct();
-                if let Some(field_entity) = structure_info
-                    .fields
-                    .elements()
-                    .get(field.kind().value.as_str())
-                {
+                if let Some(field_entity) = structure_info.fields.get(field.kind().value.as_str()) {
                     let field_borrow = field_entity.deref().borrow();
                     if !operand.inner().kind().is_self() {
                         // otherwise, we need to check if this field can be access in this context.
@@ -732,6 +728,7 @@ impl<'src> Typer<'src> {
         let mir_entity = match mir_expr.inner().kind() {
             HirExprKind::Field(field_expr) => field_expr.field.clone(),
             HirExprKind::Name(entity) => entity.clone(),
+            HirExprKind::SelfLit(entity) => entity.clone(),
             _ => {
                 let err = Error::invalid_lvalue();
                 return Err(err.with_position(mir_expr.position()));
@@ -779,6 +776,7 @@ impl<'src> Typer<'src> {
         position: Position,
     ) -> Result<Rc<HirExpr>, Error> {
         let method_borrow = method_entity.deref().borrow();
+        println!("associated_type: {}", associated_type.borrow().type_name());
         match method_borrow.kind() {
             EntityInfo::AssociatedFunction(associated_function_info) => {
                 let method_type = method_borrow.ty();
@@ -809,7 +807,16 @@ impl<'src> Typer<'src> {
                                 let mir_actual = self.resolve_expr(act, Some(param.clone()))?;
                                 mir_actuals.push(mir_actual);
                             }
+
+                            let ty = Type::inner(associated_type.borrow().ty());
+
+                            let struct_entity = match ty.kind() {
+                                TypeKind::Struct { entity } => entity.clone(),
+                                _ => panic!("reciever is not a struct, invalid entity"),
+                            };
+
                             let associated_function_expr = AssociatedFunctionExpr {
+                                struct_entity,
                                 function_type: method_type.clone(),
                                 name: name.kind().value.clone(),
                                 actuals: mir_actuals,
@@ -837,7 +844,9 @@ impl<'src> Typer<'src> {
                             return Err(err.with_position(name.position()));
                         }
                     }
-                } else if associated_type.deref().borrow().is_instance() {
+                } else if associated_type.deref().borrow().is_instance()
+                    || associated_type.deref().borrow().is_self()
+                {
                     if !associated_function_info.takes_self {
                         let err =
                             Error::associated_function_invalid_receiver(name.kind().value.as_str());
@@ -876,7 +885,14 @@ impl<'src> Typer<'src> {
                                 mir_actuals.push(mir_actual);
                             }
 
+                            let ty = Type::inner(associated_type.borrow().ty());
+                            let struct_entity = match ty.kind() {
+                                TypeKind::Struct { entity } => entity.clone(),
+                                _ => panic!("reciever is not a struct, invalid entity"),
+                            };
+
                             let method_expr = MethodExpr {
+                                struct_entity,
                                 function_type: method_type.clone(),
                                 name: name.kind().value.clone(),
                                 actuals: mir_actuals,
@@ -922,14 +938,14 @@ impl<'src> Typer<'src> {
         position: Position,
     ) -> Result<HirExprPtr, Error> {
         let mut mir_fields = vec![];
-        let elements = structure.fields.elements();
-        let mut inited_fields = vec![false; elements.len()];
+        // let elements = structure.fields.elements();
+        let mut inited_fields = vec![false; structure.fields.len()];
 
         for field in fields {
             match field {
                 StructExprField::Bind(name, expr) => {
                     let field_name = name.kind().value.as_str();
-                    if let Some(field) = elements.get(field_name) {
+                    if let Some(field) = structure.fields.get(field_name) {
                         let mir_field =
                             self.resolve_expr(expr.as_ref(), Some(field.deref().borrow().ty()))?;
                         if let EntityInfo::Field(local_info) = field.deref().borrow().kind() {
@@ -960,7 +976,7 @@ impl<'src> Typer<'src> {
                 StructExprField::Field(expr) => match expr.kind() {
                     ExprKind::Name(name) => {
                         let field_name = name.kind().value.as_str();
-                        if let Some(field) = elements.get(field_name) {
+                        if let Some(field) = structure.fields.get(field_name) {
                             let mir_field = self
                                 .resolve_expr(expr.as_ref(), Some(field.deref().borrow().ty()))?;
                             if let EntityInfo::Field(local_info) = field.deref().borrow().kind() {
@@ -991,9 +1007,11 @@ impl<'src> Typer<'src> {
 
         let fully_inited = inited_fields.iter().fold(true, |acc, x| acc && *x);
         if !fully_inited {
-            let mut fields_list = elements
+            let mut fields_list = structure
+                .fields
+                .elements()
                 .iter()
-                .map(|(_, field)| {
+                .map(|field| {
                     (
                         field.borrow().name().to_owned(),
                         field.borrow().as_local().clone(),
@@ -1021,7 +1039,7 @@ impl<'src> Typer<'src> {
 
         mir_fields.sort_by(|a, b| a.0.cmp(&b.0));
 
-        debug_assert!(mir_fields.len() == elements.len());
+        debug_assert!(mir_fields.len() == structure.fields.len());
 
         let struct_expr = StructExpr {
             struct_type: struct_type.clone(),
