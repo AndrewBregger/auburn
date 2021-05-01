@@ -2,7 +2,10 @@ mod file_context;
 mod type_helpers;
 
 use crate::{
-    analysis::{Entity, EntityInfo, FunctionInfo, StructureInfo, VariableInfo},
+    analysis::{
+        AssociatedFunctionInfo, Entity, EntityInfo, FunctionInfo, Scope, StructureInfo,
+        VariableInfo,
+    },
     ir::{
         self,
         ast::NodeType,
@@ -14,7 +17,7 @@ use crate::{
     system::{FileId, FileMap},
     types::{Type, TypeKind},
 };
-use file_context::FileContext;
+use file_context::{FileContext, SELF_GLOBAL_IDX};
 use hir::HirExprKind;
 use ir::hir;
 use oxide::{gc::Gc, vm::OpCode, OxFunction, OxModule, OxStruct, Section, Value, Vm};
@@ -46,6 +49,9 @@ pub enum BuildError {
 
     #[error("unable to cast literal of type '{0}' to value")]
     InvalidLiteralCast(Rc<Type>),
+
+    #[error("{0}")]
+    CompilerError(String),
 }
 
 pub struct CodeGen<'vm, 'ctx> {
@@ -93,7 +99,9 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
 impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
     fn push_context(&mut self, file: &'ctx HirFile) {
         let file_id = file.id();
-        let context = FileContext::new(file, &mut self.vm);
+        let name = self.vm.new_string_from_str(file.stem());
+        let module = self.vm.new_empty_module(name);
+        let context = FileContext::new(file, module);
         self.file_context.insert(file_id, context);
     }
 
@@ -196,9 +204,6 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
 
         self.build_file(hir_file)?;
 
-        let stem = hir_file.stem();
-        let name_obj = self.vm.new_string_from_str(stem);
-
         let context = self
             .file_context
             .remove(&hir_file.id())
@@ -208,20 +213,13 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         // // the list of objects and name will not be collected.
         // self.vm.compiler_address.push(name_obj.buffer().ptr());
         // self.vm.compiler_address.push(context.values.ptr());
-
-        let mut objects = self.vm.vec_with_capacity::<Value>(context.values.len());
-        objects.extend_from_slice(context.values.as_slice());
-
         if let Some(entry) = hir_file.get_entry() {
             let borrow = entry.deref().borrow();
             let name = borrow.name();
             if let Some(global_info) = context.globals.get(name) {
                 println!("building new module");
-                // self.vm.force_no_collection(true);
-                let module = self
-                    .vm
-                    .new_entry_module(name_obj, global_info.object_idx, objects);
-                // self.vm.force_no_collection(false);
+                let mut module = context.module;
+                module.set_entry(global_info.object_idx);
                 Ok(module)
             } else {
                 println!("failed to find global entity");
@@ -285,8 +283,7 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             .vm
             .new_function(name_string, mir_function.params.len() as u8, section);
         self.current_context_mut().push_function(function);
-
-        self.handle_function_params(mir_function)?;
+        self.handle_function_params(mir_function.params.as_ref(), false)?;
 
         self.handle_expr_inner(mir_function.body.as_ref(), true)?;
         self.emit_op(OpCode::Return);
@@ -299,14 +296,38 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         } else {
             panic!("failed to get the current function")
         };
+
         Ok(function)
     }
 
-    fn handle_function_params(&mut self, mir_function: &FunctionInfo) -> Result<(), BuildError> {
+    fn handle_function_params(
+        &mut self,
+        param_scope: &Scope,
+        _takes_self: bool,
+    ) -> Result<(), BuildError> {
         self.handling_params = true;
 
-        for (_, param_entity) in mir_function.params.elements() {
-            self.handle_entity(&param_entity.deref().borrow())?;
+        let param_entities = param_scope.elements();
+        for param_entity in param_entities.iter() {
+            let entity = param_entity.deref().borrow();
+            match entity.kind() {
+                EntityInfo::Param(_) => {
+                    self.build_local(entity.name())?;
+                }
+                EntityInfo::SelfParam { .. } => {
+                    // this will always be the first element so the local index will always 0
+                    self.build_local("self")?;
+                    let context = self.current_context_mut();
+                    let value = Value::from(context.structure.unwrap());
+                    context.set_self_global(value);
+                }
+                _ => {
+                    return Err(BuildError::CompilerError(format!(
+                        "'{}' is expected to be a paramter or self param",
+                        entity.name()
+                    )));
+                }
+            }
         }
 
         self.handling_params = false;
@@ -361,25 +382,53 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         name: &str,
         struct_info: &StructureInfo,
     ) -> Result<Gc<OxStruct>, BuildError> {
-        // let mut methods = self.vm.new_vec::<Value>(struct_info.methods.len());
-        let mut methods = self.vm.vec_with_capacity(struct_info.methods.len());
+        let name = self.vm.new_string_from_str(name);
+        let methods = self.vm.vec_with_capacity(struct_info.methods.len());
+        let mut structure = self.vm.new_struct(name, methods);
+        self.current_context_mut().structure = Some(structure.clone());
 
-        for (_, element) in struct_info.methods.elements() {
+        let method_entities = struct_info.methods.elements();
+        for element in method_entities {
             debug_assert!(element.deref().borrow().is_function());
             match self.handle_entity(&element.deref().borrow())? {
                 Some(value) => match value {
                     Value::Function(inner) => {
-                        methods.push(inner);
+                        structure.push(inner);
                     }
                     _ => return Err(BuildError::SubEntityNotEntity),
                 },
-                None => {}
+                None => {
+                    return Err(BuildError::SubEntityNotEntity);
+                }
             }
         }
-
-        let name = self.vm.new_string_from_str(name);
-        let structure = self.vm.new_struct(name, methods);
         Ok(structure)
+    }
+
+    fn build_associated_function(
+        &mut self,
+        name: &str,
+        associated_function: &AssociatedFunctionInfo,
+    ) -> Result<Gc<OxFunction>, BuildError> {
+        self.push_scope();
+
+        let name_string = self.vm.new_string_from_str(name);
+        let section = self.vm.new_section();
+        let function =
+            self.vm
+                .new_function(name_string, associated_function.params.len() as u8, section);
+        self.current_context_mut().push_function(function);
+
+        self.handle_function_params(
+            associated_function.params.as_ref(),
+            associated_function.takes_self,
+        )?;
+
+        self.handle_expr_inner(associated_function.body.as_ref(), true)?;
+        self.emit_op(OpCode::Return);
+
+        self.pop_scope();
+        Ok(function)
     }
 }
 
@@ -400,15 +449,21 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
                 self.build_variable(name, variable_info)?;
                 Ok(None)
             }
-            EntityInfo::AssociatedFunction(_) => {
-                todo!()
+            EntityInfo::AssociatedFunction(associated_function) => {
+                let assoc_function = self.build_associated_function(name, associated_function)?;
+                Ok(Some(Value::from(assoc_function)))
             }
             EntityInfo::Param(_) => {
                 self.build_local(name)?;
                 Ok(None)
             }
             EntityInfo::SelfParam { mutable: _ } => {
-                todo!()
+                if self.handling_params {
+                    // self.emit_op_u8(OpCode::LoadLocal, 0);
+                } else {
+                    unreachable!("self param should always have handling params set");
+                }
+                Ok(None)
             }
             EntityInfo::Field(_field_expr) => {
                 todo!()
@@ -510,8 +565,89 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
 
                 self.emit_op_u8(OpCode::Call, call_expr.actuals.len() as u8);
             }
-            HirExprKind::Method(_) => {}
-            HirExprKind::AssociatedFunction(_) => {}
+            HirExprKind::Method(method_expr) => {
+                // determine the struct that object that should be loaded from globals.
+                let reciever_borrow = method_expr.struct_entity.borrow();
+
+                assert!(reciever_borrow.is_struct());
+                let type_name = reciever_borrow.name();
+                println!(
+                    "reciever type {} {}",
+                    reciever_borrow.type_name(),
+                    type_name
+                );
+
+                let struct_idx = match method_expr
+                    .actuals
+                    .first()
+                    .expect("method call should have atleast one param")
+                    .inner()
+                    .kind()
+                {
+                    HirExprKind::SelfLit(..) => SELF_GLOBAL_IDX,
+                    _ => self
+                        .current_context_mut()
+                        .load_global_in_function(type_name),
+                };
+
+                // lodas the struct object which stores the associated function
+                self.emit_op_u8(OpCode::LoadGlobal, struct_idx);
+                // the loads associated function from the struct object just loaded.
+                if let Some(method) = reciever_borrow
+                    .as_struct()
+                    .methods
+                    .get(method_expr.name.as_str())
+                {
+                    let method_idx = method.borrow().as_associated_function().index as u8;
+                    self.emit_op_u8(OpCode::LoadAssoc, method_idx);
+
+                    let num_actuals = method_expr.actuals.len();
+                    for actual in method_expr.actuals.iter() {
+                        self.handle_expr(actual.as_ref())?;
+                    }
+
+                    self.emit_op_u8(OpCode::Call, num_actuals as u8);
+                } else {
+                    return Err(BuildError::CompilerError(format!(
+                        "unable to find associated function '{}' in entity '{}'",
+                        method_expr.name, type_name
+                    )));
+                }
+            }
+            HirExprKind::AssociatedFunction(associated_function_expr) => {
+                // determine the struct that object that should be loaded from globals.
+                let reciever_borrow = associated_function_expr.struct_entity.borrow();
+
+                assert!(reciever_borrow.is_struct());
+                let type_name = reciever_borrow.name();
+                let struct_idx = self
+                    .current_context_mut()
+                    .load_global_in_function(type_name);
+
+                // lodas the struct object which stores the associated function
+                self.emit_op_u8(OpCode::LoadGlobal, struct_idx);
+                // the loads associated function from the struct object just loaded.
+                if let Some(method) = reciever_borrow
+                    .as_struct()
+                    .methods
+                    .get(associated_function_expr.name.as_str())
+                {
+                    let method_idx = method.borrow().as_associated_function().index as u8;
+                    self.emit_op_u8(OpCode::LoadAssoc, method_idx);
+
+                    let num_actuals = associated_function_expr.actuals.len() - 1;
+                    for actual in associated_function_expr.actuals.iter().skip(1) {
+                        self.handle_expr(actual.as_ref())?;
+                    }
+
+                    self.emit_op_u8(OpCode::Call, num_actuals as u8);
+                } else {
+                    return Err(BuildError::CompilerError(format!(
+                        "unable to find associated function '{}' in entity '{}'",
+                        associated_function_expr.name, type_name
+                    )));
+                }
+            }
             HirExprKind::Block(block_expr) => {
                 if self.result_used {
                     self.handle_returning_block(block_expr, 2, is_scope)?;
@@ -538,7 +674,10 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
             HirExprKind::For(_for_expr) => {}
             HirExprKind::If(if_expr) => self.handle_if(if_expr)?,
             HirExprKind::StructExpr(struct_expr) => self.handle_struct_expr(struct_expr)?,
-            HirExprKind::SelfLit => {}
+            HirExprKind::SelfLit(..) => {
+                // self will always be the first local at 0
+                self.emit_op_u8(OpCode::LoadLocal, 0);
+            }
             HirExprKind::Break => {}
             HirExprKind::Continue => {}
             HirExprKind::Return(return_expr) => {
@@ -695,16 +834,22 @@ impl<'vm, 'ctx> CodeGen<'vm, 'ctx> {
         // println!("struct_type: {}", struct_type);
         debug_assert!(struct_type.is_struct());
 
-        if let TypeKind::Struct { entity } = struct_type.kind() {
+        let name = if let TypeKind::Struct { entity } = struct_type.kind() {
             let entity_borrow = entity.deref().borrow();
             let name = entity_borrow.name();
-            let context = self.current_context_mut();
-            let global_idx = context.load_global_in_function(name);
-            self.emit_op_u8(OpCode::LoadGlobal, global_idx);
+            self.vm.new_gc_string_from_str(name)
         } else {
             unreachable!()
         };
 
+        // inefficent but will work for now.
+
+        let name_idx = self
+            .current_context_mut()
+            .current_section_mut()
+            .add_constant(Value::String(name));
+
+        self.emit_op_u8(OpCode::LoadStr, name_idx);
         for (_, field) in struct_expr.fields.iter() {
             self.handle_expr(field.as_ref())?;
         }

@@ -24,12 +24,20 @@ impl OxStruct {
         &self.methods
     }
 
+    pub fn push(&mut self, funct: Gc<OxFunction>) {
+        self.methods.push(funct);
+    }
+
     pub fn disassemble(&self, indent: usize) {
         println!(
-            "{}<struct {}>",
+            "{}disassembly {}:",
             (0..indent).map(|_| '\t').collect::<String>(),
             self.name
         );
+
+        for method in self.methods.iter() {
+            method.disassemble(indent + 1);
+        }
     }
 }
 

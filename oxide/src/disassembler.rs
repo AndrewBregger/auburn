@@ -51,6 +51,7 @@ impl Disassembler {
                 }
                 OpCode::SetGlobal
                 | OpCode::LoadLocal
+                | OpCode::LoadAssoc
                 | OpCode::SetLocal
                 | OpCode::SetRegister
                 | OpCode::SetAttr

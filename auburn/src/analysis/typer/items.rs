@@ -113,6 +113,7 @@ impl<'src> Typer<'src> {
                     body,
                     item.position(),
                     declared,
+                    None,
                 )
             }),
             ItemKind::Param { .. } | ItemKind::SelfParam { .. } | ItemKind::Field { .. } => {
@@ -223,6 +224,7 @@ impl<'src> Typer<'src> {
             self.set_self(entity.clone());
             self.push_scope(ScopeKind::StructMethods(name.kind().value.clone()));
 
+            // pre-declare all methods in method scope.
             for method in methods.iter() {
                 if let ItemKind::Function { vis, name, .. } = method.kind() {
                     let entity = new_ptr(Entity::unresolved(
@@ -236,7 +238,10 @@ impl<'src> Typer<'src> {
                 }
             }
 
-            for (&method, entity) in methods.iter().zip(entities) {
+            let method_scope = self.pop_scope();
+            entity.deref().borrow_mut().as_struct_mut().methods = method_scope;
+
+            for (idx, (&method, entity)) in methods.iter().zip(entities).enumerate() {
                 match method.kind() {
                     ItemKind::Function {
                         vis,
@@ -254,15 +259,14 @@ impl<'src> Typer<'src> {
                             body,
                             method.position(),
                             true,
+                            Some(idx),
                         )?;
                     }
                     _ => todo!(),
                 }
             }
 
-            let method_scope = self.pop_scope();
             self.unset_self();
-            entity.deref().borrow_mut().as_struct_mut().methods = method_scope;
         });
 
         if !declared {
@@ -369,6 +373,7 @@ impl<'src> Typer<'src> {
         body: &FunctionBody,
         position: Position,
         declared: bool,
+        index: Option<usize>,
     ) -> Result<EntityRef, Error> {
         let mut function_params = Vec::with_capacity(params.len());
         let mut takes_self = false;
@@ -497,6 +502,7 @@ impl<'src> Typer<'src> {
                 body_scope,
                 body: mir_expr,
                 takes_self,
+                index: index.expect("associated function should have an index"),
             };
 
             entity.borrow_mut().resolve(

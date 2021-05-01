@@ -46,15 +46,20 @@ pub struct CallExpr {
     pub actuals: Vec<Rc<HirExpr>>,
 }
 
+// the 2 following structs are the same but represent differnet situations
+// instance.name(<actuals>)
 #[derive(Debug, Clone)]
 pub struct MethodExpr {
+    pub struct_entity: EntityRef,
     pub function_type: Rc<Type>,
     pub name: String,
     pub actuals: Vec<Rc<HirExpr>>,
 }
 
+// Struct.name(<actuals>)
 #[derive(Debug, Clone)]
 pub struct AssociatedFunctionExpr {
+    pub struct_entity: EntityRef,
     pub function_type: Rc<Type>,
     pub name: String,
     pub actuals: Vec<Rc<HirExpr>>,
@@ -142,7 +147,7 @@ pub enum HirExprKind {
     For(ForExpr),
     If(IfExpr),
     StructExpr(StructExpr),
-    SelfLit,
+    SelfLit(EntityRef),
     Break,
     Continue,
     Return(HirExprPtr),
@@ -253,7 +258,7 @@ impl NodeType for HirExprInner {
 impl HirExprKind {
     pub fn is_self(&self) -> bool {
         match self {
-            Self::SelfLit => true,
+            Self::SelfLit(..) => true,
             _ => false,
         }
     }
@@ -283,7 +288,7 @@ impl NodeType for HirExprKind {
             Self::For { .. } => "For",
             Self::If { .. } => "If",
             Self::StructExpr { .. } => "Struct Expr",
-            Self::SelfLit => "Self Literal",
+            Self::SelfLit(..) => "Self Literal",
             Self::Break => "Break",
             Self::Continue => "Continue",
             Self::Return(..) => "Return",

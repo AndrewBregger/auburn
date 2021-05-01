@@ -1,0 +1,39 @@
+struct Vec {
+    pub x f32
+    pub y f32
+    pub z f32
+
+    fn new(x f32, y f32, z f32) Vec {
+        Vec {
+            x,
+            y,
+            z,
+        }
+    }
+
+    fn get_x(self) f32 {
+        self.x
+    }
+
+    fn get_y(self) f32 {
+        self.y
+    }
+
+    fn get_z(self) f32 {
+        self.z
+    }
+
+    fn print(self) {
+        echo self.x
+        echo self.y
+        echo self.z
+    }
+}
+
+fn main() {
+    let vec = Vec.new(1.0, 2.0, 3.0)
+    vec.print()
+    echo vec.get_x()
+    echo vec.get_y()
+    echo vec.get_z()
+}

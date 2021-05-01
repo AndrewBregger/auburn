@@ -32,23 +32,23 @@ impl EntityPrinter {
             EntityInfo::Unresolved(..) => println!("{}Unresolved", Self::indent(indent + 1)),
             EntityInfo::Resolving => println!("{}Resolving", Self::indent(indent + 1)),
             EntityInfo::Structure(structure) => {
-                for member in structure.fields.elements().values() {
+                for member in structure.fields.elements() {
                     Self::print_impl(&member.deref().borrow(), indent + 1);
                 }
 
-                for member in structure.methods.elements().values() {
+                for member in structure.methods.elements() {
                     Self::print_impl(&member.deref().borrow(), indent + 1);
                 }
             }
             EntityInfo::Function(function) => {
                 println!("{}Params:", Self::indent(indent));
-                for member in function.params.elements().values() {
+                for member in function.params.elements() {
                     Self::print_impl(&member.deref().borrow(), indent + 1);
                 }
                 println!("{}Body:", Self::indent(indent));
                 println!("{}Body Entities:", Self::indent(indent));
                 if let Some(body) = function.body_scope.as_ref() {
-                    for member in body.elements().values() {
+                    for member in body.elements() {
                         Self::print_impl(&member.deref().borrow(), indent + 1);
                     }
                 }
@@ -56,7 +56,12 @@ impl EntityPrinter {
                 MirPrinter::print_expr_inner(function.body.as_ref(), indent + 1);
             }
             EntityInfo::Variable(variable) => {
-                println!("{}Mutable: {} Global: {}", Self::indent(indent + 1), variable.mutable, variable.global);
+                println!(
+                    "{}Mutable: {} Global: {}",
+                    Self::indent(indent + 1),
+                    variable.mutable,
+                    variable.global
+                );
                 if let Some(spec) = variable.spec.as_ref() {
                     MirPrinter::print_spec_inner(&spec.deref().borrow(), indent + 1);
                 }
@@ -76,14 +81,19 @@ impl EntityPrinter {
                 println!("{}Self, Mutable {}", Self::indent(indent + 1), mutable)
             }
             EntityInfo::AssociatedFunction(associated_function) => {
+                println!(
+                    "{}Index: {}",
+                    Self::indent(indent),
+                    associated_function.index
+                );
                 println!("{}Params:", Self::indent(indent));
-                for member in associated_function.params.elements().values() {
+                for member in associated_function.params.elements() {
                     Self::print_impl(&member.deref().borrow(), indent + 1);
                 }
                 println!("{}Body:", Self::indent(indent));
                 println!("{}Body Entities:", Self::indent(indent));
                 if let Some(body) = associated_function.body_scope.as_ref() {
-                    for member in body.elements().values() {
+                    for member in body.elements() {
                         Self::print_impl(&member.deref().borrow(), indent + 1);
                     }
                 }

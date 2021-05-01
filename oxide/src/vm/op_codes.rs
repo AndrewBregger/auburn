@@ -136,6 +136,7 @@ define_opcodes!(
     "load_false" => LoadFalse,
     "set_register" => SetRegister,
     "load_register" => LoadRegister,
+    "load_assoc" => LoadAssoc,
 
     "new_instance" => NewInstance,
     "new_tuple" => NewTuple,
